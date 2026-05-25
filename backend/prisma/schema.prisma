@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  COACH
+  ADMIN
+}
+
+enum SessionType {
+  VIDEO
+  AUDIO
+  CHAT
+}
+
+enum SessionStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum VideoType {
+  INTRO
+  TOPIC
+  THERAPY
+  COACHING
+  MOTIVATIONAL
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  phone        String?   @unique
+  name         String
+  passwordHash String?
+  role         Role      @default(USER)
+  avatarUrl    String?
+  timezone     String    @default("Asia/Kolkata")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  coach         Coach?
+  sessions      Session[]
+  videoProgress VideoProgress[]
+  notifications Notification[]
+}
+
+model Coach {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  specialty  String
+  bio        String
+  yearsExp   Int
+  rating     Float    @default(5.0)
+  languages  String[]
+  hourlyRate Int
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availability Availability[]
+  sessions     Session[]
+}
+
+model Category {
+  id     String  @id @default(cuid())
+  slug   String  @unique
+  name   String
+  order  Int
+
+  topics Topic[]
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  categoryId  String
+  slug        String   @unique
+  name        String
+  description String
+  iconName    String
+  order       Int
+
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sessions Session[]
+  videos   Video[]
+}
+
+model Availability {
+  id        String @id @default(cuid())
+  coachId   String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String        @id @default(cuid())
+  userId       String
+  coachId      String
+  topicId      String
+  scheduledAt  DateTime
+  durationMin  Int           @default(30)
+  type         SessionType
+  status       SessionStatus @default(PENDING)
+  meetingUrl   String?
+  notes        String?
+  isDemo       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}
+
+model Video {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  url          String
+  thumbnailUrl String
+  durationSec  Int
+  type         VideoType
+  isPremium    Boolean   @default(false)
+  topicId      String?
+  createdAt    DateTime  @default(now())
+
+  topic    Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  progress VideoProgress[]
+}
+
+model VideoProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  videoId     String
+  progressSec Int      @default(0)
+  completed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
