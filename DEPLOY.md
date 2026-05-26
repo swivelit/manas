@@ -39,6 +39,10 @@ Set these environment variables:
 | `JWT_SECRET` | A long random secret |
 | `NODE_ENV` | `production` |
 | `NODE_VERSION` | `20` |
+| `EMAIL_USER` | Sender email account username |
+| `EMAIL_PASS` | Sender email app password |
+| `EMAIL_FROM` | `MANAS <no-reply@manas.app>` or your sender address |
+| `OTP_EXPIRY_MINUTES` | `10` |
 
 If you use an existing manually-created Render service, changing `render.yaml` alone may not update the dashboard command. In that case, update the Render dashboard Build Command manually to match the value above.
 
@@ -68,6 +72,10 @@ This repository does not currently include Prisma migrations, so the first Rende
 | `NODE_VERSION` | `20` |
 | `PORT` | `4000` |
 | `FRONTEND_URL` | Update to your frontend domain |
+| `EMAIL_USER` | Add manually in Render; backend-only |
+| `EMAIL_PASS` | Add manually in Render; backend-only app password |
+| `EMAIL_FROM` | Optional sender display address |
+| `OTP_EXPIRY_MINUTES` | `10` |
 | `GOOGLE_CLIENT_ID` | Add manually when implementing Google OAuth |
 
 ### Free tier notes

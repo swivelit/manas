@@ -13,23 +13,58 @@ import { Button } from '../../components/Button';
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
 
-  async function handleRegister() {
-    if (!name || !email || !password) { Alert.alert('Please fill in all fields'); return; }
-    if (password.length < 8) { Alert.alert('Password must be at least 8 characters'); return; }
+  function getErrorMessage(err: any, fallback: string) {
+    const error = err?.response?.data?.error;
+    return typeof error === 'string' ? error : fallback;
+  }
+
+  async function handleRequestOtp() {
+    if (!name.trim() || !email.trim()) { Alert.alert('Please enter your name and email'); return; }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { name, email, password });
-      await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      const { data } = await api.post('/auth/request-email-otp', {
+        name: name.trim(),
+        email: email.trim(),
+        mode: 'register',
+      });
+      const devOtp = data?.devOnly?.otp;
+      if (devOtp) setOtp(devOtp);
+      setOtpSent(true);
+      Alert.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS verification code.');
     } catch (err: any) {
-      Alert.alert('Registration failed', err?.response?.data?.error ?? 'Please try again');
+      Alert.alert('Code request failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otp.trim()) { Alert.alert('Enter the code from your email'); return; }
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/verify-email-otp', {
+        name: name.trim(),
+        email: email.trim(),
+        otp: otp.trim(),
+        mode: 'register',
+      });
+      await setAuth(data.token, data.user);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      Alert.alert('Registration failed', getErrorMessage(err, 'Please try again'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleChangeEmail() {
+    setOtpSent(false);
+    setOtp('');
   }
 
   return (
@@ -41,22 +76,45 @@ export default function Register() {
           </TouchableOpacity>
 
           <Text style={styles.heading}>Start your{'\n'}<Text style={styles.headingItalic}>journey.</Text></Text>
-          <Text style={styles.sub}>Create your free account to begin.</Text>
+          <Text style={styles.sub}>Create your account with an email verification code.</Text>
 
           <View style={styles.form}>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Your name</Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Sarah Mathew" placeholderTextColor={colors.muted} />
+              <TextInput style={styles.input} value={name} onChangeText={setName} editable={!otpSent} placeholder="Sarah Mathew" placeholderTextColor={colors.muted} />
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Email</Text>
-              <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="sarah@example.com" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" />
+              <TextInput style={styles.input} value={email} onChangeText={setEmail} editable={!otpSent} placeholder="sarah@example.com" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Password</Text>
-              <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Min. 8 characters" placeholderTextColor={colors.muted} secureTextEntry />
-            </View>
-            <Button label={loading ? 'Creating account…' : 'Begin →'} onPress={handleRegister} loading={loading} />
+
+            {otpSent ? (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Verification code</Text>
+                  <TextInput
+                    style={[styles.input, styles.otpInput]}
+                    value={otp}
+                    onChangeText={setOtp}
+                    placeholder="123456"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="number-pad"
+                    textContentType="oneTimeCode"
+                    maxLength={6}
+                  />
+                </View>
+
+                <TouchableOpacity onPress={handleChangeEmail} style={styles.inlineAction}>
+                  <Text style={styles.inlineActionText}>Use different details</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+
+            <Button
+              label={loading ? 'Please wait...' : otpSent ? 'Verify and begin' : 'Send verification code'}
+              onPress={otpSent ? handleVerifyOtp : handleRequestOtp}
+              loading={loading}
+            />
           </View>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={styles.switchRow}>
@@ -89,6 +147,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.ink,
   },
+  otpInput: { letterSpacing: 4, textAlign: 'center', fontFamily: fontFamilies.dmSansMedium },
+  inlineAction: { alignSelf: 'center', paddingVertical: 2 },
+  inlineActionText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.blue },
   switchRow: { alignItems: 'center', marginTop: 24 },
   switchText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted },
   switchLink: { color: colors.blue, fontFamily: fontFamilies.dmSansMedium },

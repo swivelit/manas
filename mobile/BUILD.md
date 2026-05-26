@@ -79,7 +79,7 @@ Before your first submission, complete these in the Play Console:
 - [ ] **Content rating questionnaire**: answer for medical/health app category
 - [ ] **Target API level**: SDK 34+ (EAS handles this automatically)
 - [ ] **Data safety section**: declare what user data is collected (email, health data)
-- [ ] **App access**: provide test account credentials (`sarah@example.com` / `password123`)
+- [ ] **App access**: provide an email account that can receive the MANAS login OTP.
 
 ---
 

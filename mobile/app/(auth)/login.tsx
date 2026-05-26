@@ -12,22 +12,56 @@ import { Button } from '../../components/Button';
 
 export default function Login() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
 
-  async function handleLogin() {
-    if (!email || !password) { Alert.alert('Please fill in all fields'); return; }
+  function getErrorMessage(err: any, fallback: string) {
+    const error = err?.response?.data?.error;
+    return typeof error === 'string' ? error : fallback;
+  }
+
+  async function handleRequestOtp() {
+    if (!email.trim()) { Alert.alert('Enter your email'); return; }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { email, password });
-      await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      const { data } = await api.post('/auth/request-email-otp', {
+        email: email.trim(),
+        mode: 'login',
+      });
+      const devOtp = data?.devOnly?.otp;
+      if (devOtp) setOtp(devOtp);
+      setOtpSent(true);
+      Alert.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS login code.');
     } catch (err: any) {
-      Alert.alert('Login failed', err?.response?.data?.error ?? 'Please try again');
+      Alert.alert('Code request failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otp.trim()) { Alert.alert('Enter the code from your email'); return; }
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/verify-email-otp', {
+        email: email.trim(),
+        otp: otp.trim(),
+        mode: 'login',
+      });
+      await setAuth(data.token, data.user);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      Alert.alert('Login failed', getErrorMessage(err, 'Please try again'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleChangeEmail() {
+    setOtpSent(false);
+    setOtp('');
   }
 
   return (
@@ -39,7 +73,7 @@ export default function Login() {
           </TouchableOpacity>
 
           <Text style={styles.heading}>Welcome{'\n'}<Text style={styles.headingItalic}>back.</Text></Text>
-          <Text style={styles.sub}>Sign in to continue your journey.</Text>
+          <Text style={styles.sub}>Sign in with a secure code sent to your email.</Text>
 
           <View style={styles.form}>
             <View style={styles.field}>
@@ -48,26 +82,42 @@ export default function Login() {
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
+                editable={!otpSent}
                 placeholder="sarah@example.com"
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
 
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={colors.muted}
-                secureTextEntry
-              />
-            </View>
+            {otpSent ? (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Login code</Text>
+                  <TextInput
+                    style={[styles.input, styles.otpInput]}
+                    value={otp}
+                    onChangeText={setOtp}
+                    placeholder="123456"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="number-pad"
+                    textContentType="oneTimeCode"
+                    maxLength={6}
+                  />
+                </View>
 
-            <Button label={loading ? 'Signing in…' : 'Sign in'} onPress={handleLogin} loading={loading} />
+                <TouchableOpacity onPress={handleChangeEmail} style={styles.inlineAction}>
+                  <Text style={styles.inlineActionText}>Use a different email</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+
+            <Button
+              label={loading ? 'Please wait...' : otpSent ? 'Verify and sign in' : 'Send login code'}
+              onPress={otpSent ? handleVerifyOtp : handleRequestOtp}
+              loading={loading}
+            />
           </View>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.switchRow}>
@@ -100,6 +150,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.ink,
   },
+  otpInput: { letterSpacing: 4, textAlign: 'center', fontFamily: fontFamilies.dmSansMedium },
+  inlineAction: { alignSelf: 'center', paddingVertical: 2 },
+  inlineActionText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.blue },
   switchRow: { alignItems: 'center', marginTop: 24 },
   switchText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted },
   switchLink: { color: colors.blue, fontFamily: fontFamilies.dmSansMedium },

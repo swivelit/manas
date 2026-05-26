@@ -35,21 +35,35 @@ enum VideoType {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  phone        String?   @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
   name         String
   passwordHash String?
-  role         Role      @default(USER)
+  role         Role     @default(USER)
   avatarUrl    String?
-  timezone     String    @default("Asia/Kolkata")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  timezone     String   @default("Asia/Kolkata")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   coach         Coach?
   sessions      Session[]
   videoProgress VideoProgress[]
   notifications Notification[]
+}
+
+model EmailOtp {
+  id         String    @id @default(cuid())
+  email      String
+  otpHash    String
+  purpose    String    @default("AUTH")
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@index([email, consumedAt, expiresAt])
 }
 
 model Coach {
@@ -68,18 +82,18 @@ model Coach {
 }
 
 model Category {
-  id     String  @id @default(cuid())
-  slug   String  @unique
-  name   String
-  order  Int
+  id    String @id @default(cuid())
+  slug  String @unique
+  name  String
+  order Int
 
   topics Topic[]
 }
 
 model Topic {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   categoryId  String
-  slug        String   @unique
+  slug        String @unique
   name        String
   description String
   iconName    String
@@ -101,18 +115,18 @@ model Availability {
 }
 
 model Session {
-  id           String        @id @default(cuid())
-  userId       String
-  coachId      String
-  topicId      String
-  scheduledAt  DateTime
-  durationMin  Int           @default(30)
-  type         SessionType
-  status       SessionStatus @default(PENDING)
-  meetingUrl   String?
-  notes        String?
-  isDemo       Boolean       @default(true)
-  createdAt    DateTime      @default(now())
+  id          String        @id @default(cuid())
+  userId      String
+  coachId     String
+  topicId     String
+  scheduledAt DateTime
+  durationMin Int           @default(30)
+  type        SessionType
+  status      SessionStatus @default(PENDING)
+  meetingUrl  String?
+  notes       String?
+  isDemo      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)

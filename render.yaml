@@ -23,6 +23,14 @@ services:
         value: 4000
       - key: FRONTEND_URL
         value: https://manas.app
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: MANAS <no-reply@manas.app>
+      - key: OTP_EXPIRY_MINUTES
+        value: 10
 
 databases:
   - name: manas-db
