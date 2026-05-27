@@ -1,14 +1,36 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useTopic, useCoaches } from '../../lib/queries';
+import { useTopic, useCoaches, useVideos, useBookmarkVideo } from '../../lib/queries';
+import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
+import { Icon } from '../../components/Icon';
 
 export default function TopicDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { data: topic, isLoading } = useTopic(slug);
   const { data: coaches } = useCoaches();
+  const { data: topicVideos } = useVideos(topic ? { topicId: topic.id } : undefined);
+  const bookmark = useBookmarkVideo();
+  const token = useAuthStore(s => s.token);
+  const [savedFirstVideo, setSavedFirstVideo] = useState(false);
+
+  // The topic heart bookmarks the topic's first (intro) video as a stand-in.
+  // NOTE: v1.1 should introduce a TopicBookmark model so users can save topics
+  // directly without a representative video.
+  async function handleTopicHeart() {
+    if (!token) { Alert.alert('Sign in', 'Sign in to save topics.'); return; }
+    const v = topicVideos?.[0];
+    if (!v) { Alert.alert('Not available', 'No video yet to save for this topic.'); return; }
+    try {
+      const res = await bookmark.mutateAsync(v.id);
+      setSavedFirstVideo(res.bookmarked);
+    } catch {
+      Alert.alert('Could not save');
+    }
+  }
 
   if (isLoading) {
     return (
@@ -30,8 +52,8 @@ export default function TopicDetail() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.favBtn}>
-            <Text>♡</Text>
+          <TouchableOpacity style={styles.favBtn} onPress={handleTopicHeart} activeOpacity={0.7}>
+            <Icon name="heart" size={16} color={savedFirstVideo ? colors.pink : colors.ink} strokeWidth={savedFirstVideo ? 2.5 : 1.5} />
           </TouchableOpacity>
           <Text style={styles.float1}>✦</Text>
           <Text style={styles.float2}>✿</Text>

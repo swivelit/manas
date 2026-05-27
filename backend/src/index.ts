@@ -12,6 +12,8 @@ import coachesRoutes from './routes/coaches';
 import sessionsRoutes from './routes/sessions';
 import videosRoutes from './routes/videos';
 import notificationsRoutes from './routes/notifications';
+import moodRoutes from './routes/mood';
+import { startReminderCron } from './lib/reminders';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -41,6 +43,7 @@ app.use('/coaches', coachesRoutes);
 app.use('/sessions', sessionsRoutes);
 app.use('/videos', videosRoutes);
 app.use('/notifications', notificationsRoutes);
+app.use('/mood', moodRoutes);
 
 // 404
 app.use((_req: Request, res: Response) => {
@@ -56,6 +59,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 MANAS API listening on port ${PORT}`);
+  startReminderCron();
 });
 
 export default app;

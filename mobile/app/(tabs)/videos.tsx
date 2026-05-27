@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useVideos } from '../../lib/queries';
+import { useVideos, useBookmarkVideo, useVideoBookmarks } from '../../lib/queries';
+import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
@@ -22,6 +24,16 @@ const thumbColors = [
 export default function VideosScreen() {
   const [activeType, setActiveType] = useState('All');
   const { data: videos, isLoading } = useVideos({ type: TYPE_MAP[activeType] });
+  const { data: bookmarks } = useVideoBookmarks();
+  const bookmark = useBookmarkVideo();
+  const token = useAuthStore(s => s.token);
+
+  const bookmarkedIds = new Set<string>((bookmarks ?? []).map((b: any) => b.id));
+
+  async function handleHeart(id: string) {
+    if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
+    try { await bookmark.mutateAsync(id); } catch { /* swallow — list still re-renders on next fetch */ }
+  }
 
   const featured = videos?.[0];
   const list = videos?.slice(1) ?? [];
@@ -88,6 +100,14 @@ export default function VideosScreen() {
                     <Text style={styles.vidTitle} numberOfLines={2}>{v.title}</Text>
                     <Text style={styles.vidMeta}>{Math.floor(v.durationSec / 60)} min</Text>
                   </View>
+                  <TouchableOpacity onPress={() => handleHeart(v.id)} hitSlop={10} style={styles.heartBtn}>
+                    <Icon
+                      name="heart"
+                      size={14}
+                      color={bookmarkedIds.has(v.id) ? colors.pink : colors.muted}
+                      strokeWidth={bookmarkedIds.has(v.id) ? 2.5 : 1.5}
+                    />
+                  </TouchableOpacity>
                   {v.isPremium && <Icon name="lock" size={12} color={colors.muted} />}
                 </TouchableOpacity>
               );
@@ -146,4 +166,5 @@ const styles = StyleSheet.create({
   vidType: { fontFamily: fontFamilies.dmSansBold, fontSize: 8, letterSpacing: 1.5, color: colors.pink, textTransform: 'uppercase' },
   vidTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 11.5, color: colors.ink, marginTop: 2, lineHeight: 14 },
   vidMeta: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: colors.muted, marginTop: 3 },
+  heartBtn: { padding: 6 },
 });

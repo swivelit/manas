@@ -192,12 +192,18 @@ async function main() {
   const overthinkingTopic = healingTopicRecords.find(t => t.slug === 'overthinking')!;
   const decisionTopic = coachingTopicRecords.find(t => t.slug === 'decision-making')!;
 
+  // NOTE: production needs real counselling content from a real CDN. These public-domain
+  // Google sample MP4s are wired so the player demonstrably works end-to-end.
+  const SAMPLE_BASE = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample';
+  const sample = (file: string) => `${SAMPLE_BASE}/${file}.mp4`;
+  const sampleThumb = (file: string) => `${SAMPLE_BASE}/images/${file}.jpg`;
+
   const videos = [
     {
       title: 'Three breaths for an anxious day',
       description: 'A simple, evidence-based breathing technique to calm your nervous system in under 10 minutes.',
-      url: 'https://example.com/videos/three-breaths',
-      thumbnailUrl: 'https://example.com/thumbnails/three-breaths.jpg',
+      url: sample('BigBuckBunny'),
+      thumbnailUrl: sampleThumb('BigBuckBunny'),
       durationSec: 480,
       type: VideoType.THERAPY,
       isPremium: false,
@@ -206,8 +212,8 @@ async function main() {
     {
       title: 'What overthinking really is',
       description: 'Dr. Arjun explains the neuroscience behind overthinking and why willpower alone doesn\'t stop it.',
-      url: 'https://example.com/videos/overthinking-explained',
-      thumbnailUrl: 'https://example.com/thumbnails/overthinking.jpg',
+      url: sample('ElephantsDream'),
+      thumbnailUrl: sampleThumb('ElephantsDream'),
       durationSec: 720,
       type: VideoType.THERAPY,
       isPremium: false,
@@ -216,8 +222,8 @@ async function main() {
     {
       title: 'Decision-making under pressure',
       description: 'A framework for making clear, confident decisions even when stakes are high and time is short.',
-      url: 'https://example.com/videos/decision-making',
-      thumbnailUrl: 'https://example.com/thumbnails/decision.jpg',
+      url: sample('ForBiggerBlazes'),
+      thumbnailUrl: sampleThumb('ForBiggerBlazes'),
       durationSec: 1080,
       type: VideoType.COACHING,
       isPremium: true,
@@ -226,8 +232,8 @@ async function main() {
     {
       title: 'A letter to your tired self',
       description: 'A gentle, spoken-word piece read by Dr. Lila. For the days when you need to feel held.',
-      url: 'https://example.com/videos/letter-tired-self',
-      thumbnailUrl: 'https://example.com/thumbnails/letter.jpg',
+      url: sample('ForBiggerEscapes'),
+      thumbnailUrl: sampleThumb('ForBiggerEscapes'),
       durationSec: 360,
       type: VideoType.MOTIVATIONAL,
       isPremium: false,
@@ -236,8 +242,8 @@ async function main() {
     {
       title: 'Welcome to MANAS',
       description: 'An introduction to the MANAS platform — what it is, who it\'s for, and how to get started.',
-      url: 'https://example.com/videos/welcome',
-      thumbnailUrl: 'https://example.com/thumbnails/welcome.jpg',
+      url: sample('ForBiggerFun'),
+      thumbnailUrl: sampleThumb('ForBiggerFun'),
       durationSec: 240,
       type: VideoType.INTRO,
       isPremium: false,
@@ -246,8 +252,8 @@ async function main() {
     {
       title: 'Understanding trauma responses',
       description: 'A foundational session on how trauma lives in the body and what healing actually looks like.',
-      url: 'https://example.com/videos/trauma-responses',
-      thumbnailUrl: 'https://example.com/thumbnails/trauma.jpg',
+      url: sample('ForBiggerJoyrides'),
+      thumbnailUrl: sampleThumb('ForBiggerJoyrides'),
       durationSec: 900,
       type: VideoType.TOPIC,
       isPremium: true,

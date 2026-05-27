@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { SessionType, SessionStatus } from '@prisma/client';
+import { notifyUser } from '../lib/notifications';
 
 const router = Router();
 
@@ -18,6 +19,14 @@ const updateSchema = z.object({
   status: z.nativeEnum(SessionStatus).optional(),
   notes: z.string().optional(),
 });
+
+function meetingUrlFor(sessionId: string, type: SessionType): string | null {
+  // CHAT sessions get a Jitsi room too as a fallback until in-app chat ships in v1.1.
+  // For AUDIO, the mobile client appends #config.startWithVideoMuted=true before opening.
+  const base = `https://meet.jit.si/manas-${sessionId}`;
+  if (type === SessionType.CHAT) return base; // NOTE: in-app chat is a v1.1 follow-up.
+  return base;
+}
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   const sessions = await prisma.session.findMany({
@@ -61,14 +70,16 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     },
   });
 
-  // Create booking confirmation notification
-  await prisma.notification.create({
-    data: {
-      userId: req.user!.id,
-      type: 'BOOKING_CONFIRMED',
-      title: 'Session confirmed!',
-      body: `Your demo session with ${session.coach.user.name} has been confirmed.`,
-    },
+  const meetingUrl = meetingUrlFor(session.id, session.type);
+  await prisma.session.update({ where: { id: session.id }, data: { meetingUrl } });
+  (session as typeof session & { meetingUrl: string | null }).meetingUrl = meetingUrl;
+
+  await notifyUser({
+    userId: req.user!.id,
+    type: 'BOOKING_CONFIRMED',
+    title: 'Session confirmed',
+    body: `Your demo session with ${session.coach.user.name} has been confirmed.`,
+    data: { sessionId: session.id },
   });
 
   res.status(201).json(session);
@@ -90,15 +101,53 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await prisma.session.findFirst({ where: { id: req.params.id, userId: req.user!.id } });
+  const existing = await prisma.session.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+    include: { coach: { include: { user: { select: { name: true } } } } },
+  });
   if (!existing) { res.status(404).json({ error: 'Session not found' }); return; }
 
-  const data: { scheduledAt?: Date; status?: SessionStatus; notes?: string } = {};
-  if (parsed.data.scheduledAt) data.scheduledAt = new Date(parsed.data.scheduledAt);
+  const data: { scheduledAt?: Date; status?: SessionStatus; notes?: string; remindedAt?: null } = {};
+  let scheduledChanged = false;
+  if (parsed.data.scheduledAt) {
+    data.scheduledAt = new Date(parsed.data.scheduledAt);
+    scheduledChanged = data.scheduledAt.getTime() !== existing.scheduledAt.getTime();
+    if (scheduledChanged) data.remindedAt = null; // re-arm the reminder for the new slot.
+  }
   if (parsed.data.status) data.status = parsed.data.status;
   if (parsed.data.notes) data.notes = parsed.data.notes;
 
   const session = await prisma.session.update({ where: { id: req.params.id }, data });
+
+  // Side-effect notifications, fire and forget.
+  if (scheduledChanged) {
+    void notifyUser({
+      userId: existing.userId,
+      type: 'SESSION_RESCHEDULED',
+      title: 'Session rescheduled',
+      body: `Your session with ${existing.coach.user.name} has a new time.`,
+      data: { sessionId: session.id },
+    });
+  }
+  if (parsed.data.status === SessionStatus.COMPLETED && existing.status !== SessionStatus.COMPLETED) {
+    void notifyUser({
+      userId: existing.userId,
+      type: 'SESSION_COMPLETED',
+      title: 'Session complete',
+      body: 'How was it? Tap to leave a quick note.',
+      data: { sessionId: session.id },
+    });
+  }
+  if (parsed.data.status === SessionStatus.CANCELLED && existing.status !== SessionStatus.CANCELLED) {
+    void notifyUser({
+      userId: existing.userId,
+      type: 'SESSION_CANCELLED',
+      title: 'Session cancelled',
+      body: 'Your session has been cancelled. You can book a new time anytime.',
+      data: { sessionId: session.id },
+    });
+  }
+
   res.json(session);
 });
 

@@ -1,34 +1,40 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
-import { useCoach, useCoachAvailability, useBookSession, useTopic } from '../../lib/queries';
+import { formatInTimeZone } from 'date-fns-tz';
+import { useCoach, useCoachAvailability, useBookSession, useTopic, useMe } from '../../lib/queries';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 export default function BookingScreen() {
   const { coachId, topicSlug } = useLocalSearchParams<{ coachId: string; topicSlug: string }>();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedStartsAt, setSelectedStartsAt] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState<'VIDEO' | 'AUDIO' | 'CHAT'>('VIDEO');
 
   const { data: coach } = useCoach(coachId);
   const { data: topic } = useTopic(topicSlug ?? 'chronic-anxiety');
+  const { data: me } = useMe();
   const { data: availability, isLoading: slotsLoading } = useCoachAvailability(coachId, selectedDate);
   const bookSession = useBookSession();
 
-  async function handleConfirm() {
-    if (!selectedSlot || !topic) return;
-    const [h, m] = selectedSlot.split(':').map(Number);
-    const dt = new Date(selectedDate);
-    dt.setHours(h, m, 0, 0);
+  const userTz = me?.timezone ?? 'Asia/Kolkata';
+  const tzLabel = formatInTimeZone(new Date(), userTz, 'zzz'); // e.g. "IST", "GMT+5:30"
 
+  function slotLabel(startsAt: string): string {
+    return formatInTimeZone(new Date(startsAt), userTz, 'HH:mm');
+  }
+
+  async function handleConfirm() {
+    if (!selectedStartsAt || !topic) return;
     try {
       await bookSession.mutateAsync({
         coachId,
         topicId: topic.id,
-        scheduledAt: dt.toISOString(),
+        scheduledAt: selectedStartsAt,
         type: sessionType,
       });
       Alert.alert('Booked!', 'Your free demo session is confirmed.', [
@@ -39,13 +45,12 @@ export default function BookingScreen() {
     }
   }
 
-  const markedDates: Record<string, any> = {
+  const markedDates: Record<string, { selected?: boolean; selectedColor?: string; marked?: boolean; dotColor?: string }> = {
     [selectedDate]: { selected: true, selectedColor: colors.ink },
   };
-  availability?.slots?.filter((s: any) => s.available).forEach((s: any) => {
-    const key = `${selectedDate}-${s.time}`;
+  if (availability?.slots?.some((s: { available: boolean }) => s.available)) {
     markedDates[selectedDate] = { ...markedDates[selectedDate], dotColor: colors.pink, marked: true };
-  });
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -62,7 +67,7 @@ export default function BookingScreen() {
         {/* Calendar */}
         <Calendar
           current={selectedDate}
-          onDayPress={(day: any) => { setSelectedDate(day.dateString); setSelectedSlot(null); }}
+          onDayPress={(day: { dateString: string }) => { setSelectedDate(day.dateString); setSelectedStartsAt(null); }}
           markedDates={markedDates}
           theme={{
             backgroundColor: colors.cream,
@@ -86,7 +91,7 @@ export default function BookingScreen() {
 
         {/* Slot title */}
         <View style={styles.slotTitle}>
-          <Text style={styles.slotDay}>{format(new Date(selectedDate), 'EEEE').toUpperCase()} · IST</Text>
+          <Text style={styles.slotDay}>{format(new Date(selectedDate), 'EEEE').toUpperCase()} · {tzLabel}</Text>
           <Text style={styles.slotCoach}>
             Available with{' '}
             <Text style={styles.slotCoachName}>{coach ? coach.user.name.replace('Dr. ', 'Dr. ') : '…'}</Text>
@@ -101,23 +106,23 @@ export default function BookingScreen() {
             {availability?.slots?.length === 0 && (
               <Text style={styles.noSlots}>No availability on this day.</Text>
             )}
-            {availability?.slots?.map((s: any) => (
+            {availability?.slots?.map((s: { time: string; startsAt: string; available: boolean }) => (
               <TouchableOpacity
-                key={s.time}
+                key={s.startsAt}
                 disabled={!s.available}
-                onPress={() => setSelectedSlot(s.time)}
+                onPress={() => setSelectedStartsAt(s.startsAt)}
                 style={[
                   styles.slot,
-                  selectedSlot === s.time && styles.slotSelected,
+                  selectedStartsAt === s.startsAt && styles.slotSelected,
                   !s.available && styles.slotOff,
                 ]}
               >
                 <Text style={[
                   styles.slotText,
-                  selectedSlot === s.time && styles.slotTextSelected,
+                  selectedStartsAt === s.startsAt && styles.slotTextSelected,
                   !s.available && styles.slotTextOff,
                 ]}>
-                  {s.time}
+                  {slotLabel(s.startsAt)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -140,13 +145,13 @@ export default function BookingScreen() {
         {/* Confirm */}
         <TouchableOpacity
           onPress={handleConfirm}
-          disabled={!selectedSlot || bookSession.isPending}
-          style={[styles.confirm, (!selectedSlot || bookSession.isPending) && styles.confirmDisabled]}
+          disabled={!selectedStartsAt || bookSession.isPending}
+          style={[styles.confirm, (!selectedStartsAt || bookSession.isPending) && styles.confirmDisabled]}
           activeOpacity={0.85}
         >
           <Text style={styles.confirmLeft}>
-            {selectedSlot ? `${format(new Date(selectedDate), 'd MMM')} · ` : 'Select a slot · '}
-            <Text style={styles.confirmSlot}>{selectedSlot ?? '—'}</Text>
+            {selectedStartsAt ? `${format(new Date(selectedDate), 'd MMM')} · ` : 'Select a slot · '}
+            <Text style={styles.confirmSlot}>{selectedStartsAt ? slotLabel(selectedStartsAt) : '—'}</Text>
           </Text>
           <Text style={styles.confirmRight}>
             {bookSession.isPending ? 'Booking…' : 'Confirm →'}

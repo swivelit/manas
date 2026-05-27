@@ -70,7 +70,21 @@ export function useVideos(params?: { type?: string; topicId?: string }) {
 }
 
 export function useVideo(id: string) {
-  return useQuery({ queryKey: ['video', id], queryFn: () => api.get(`/videos/${id}`).then(r => r.data) });
+  return useQuery({
+    queryKey: ['video', id],
+    queryFn: async () => {
+      try {
+        const r = await api.get(`/videos/${id}`);
+        return { video: r.data, paywalled: false as const };
+      } catch (e: any) {
+        if (e?.response?.status === 402) {
+          return { video: null, paywalled: true as const };
+        }
+        throw e;
+      }
+    },
+    retry: (failureCount, err: any) => err?.response?.status !== 402 && failureCount < 1,
+  });
 }
 
 export function useVideoProgress() {
@@ -80,6 +94,21 @@ export function useVideoProgress() {
       api.post(`/videos/${id}/progress`, { progressSec, completed }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
   });
+}
+
+export function useBookmarkVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/videos/${id}/bookmark`).then(r => r.data as { bookmarked: boolean }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['video-bookmarks'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+export function useVideoBookmarks() {
+  return useQuery({ queryKey: ['video-bookmarks'], queryFn: () => api.get('/videos/bookmarks').then(r => r.data) });
 }
 
 // ---- Me ----
@@ -93,6 +122,19 @@ export function useUpdateMe() {
     mutationFn: (data: { name?: string; timezone?: string; avatarUrl?: string }) =>
       api.patch('/me', data).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+}
+
+// ---- Mood ----
+export function useMoodEntries(limit = 30) {
+  return useQuery({ queryKey: ['mood', limit], queryFn: () => api.get('/mood', { params: { limit } }).then(r => r.data) });
+}
+
+export function useCreateMoodEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { mood: number; note?: string }) => api.post('/mood', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mood'] }),
   });
 }
 

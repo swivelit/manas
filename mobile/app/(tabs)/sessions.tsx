@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSessions } from '../../lib/queries';
 import { SessionCard } from '../../components/SessionCard';
@@ -43,7 +44,7 @@ export default function SessionsScreen() {
             <SessionCard
               session={item}
               accentColor={accentColors[index % accentColors.length]}
-              onPress={() => {}}
+              onPress={() => router.push(`/session/${item.id}`)}
             />
           )}
         />

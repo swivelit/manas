@@ -1,7 +1,8 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
 import { useSessions } from '../../lib/queries';
@@ -40,7 +41,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Mood check-in */}
-        <MoodCheckIn onPress={() => {}} />
+        <MoodCheckIn onPress={() => router.push('/mood')} />
 
         {/* Categories */}
         <View style={styles.catsTitle}>

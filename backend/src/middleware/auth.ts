@@ -25,6 +25,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   }
 }
 
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) { next(); return; }
+  try {
+    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET!) as JwtPayload;
+    req.user = { id: payload.id, email: payload.email, role: payload.role };
+  } catch {
+    // Invalid token on an optional route — proceed unauthenticated.
+  }
+  next();
+}
+
 export function requireRole(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.role)) {

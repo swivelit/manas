@@ -23,10 +23,23 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#FAF6EF",
+      "barStyle": "dark-content",
+      "translucent": false
+    },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F25BB0"
+        }
+      ],
       [
         "expo-splash-screen",
         {

@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import {
   MAX_OTP_ATTEMPTS,
@@ -279,9 +280,126 @@ router.post('/login', async (req: Request, res: Response) => {
   res.json({ token: signToken(user), user: safeUser });
 });
 
-// Stub — Google OAuth
-router.post('/google', (_req: Request, res: Response) => {
-  res.status(501).json({ error: 'Google OAuth not yet implemented' });
+// ---- Google OAuth ----
+// Verifies a Google `id_token` minted on the mobile via expo-auth-session.
+// Requires GOOGLE_CLIENT_ID_WEB and/or GOOGLE_CLIENT_ID_ANDROID env vars.
+// If neither is set, returns 501 so the mobile UI can show a friendly "coming soon".
+const googleSchema = z.object({ idToken: z.string().min(1) });
+
+router.post('/google', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const audiences = [
+      process.env.GOOGLE_CLIENT_ID_WEB,
+      process.env.GOOGLE_CLIENT_ID_ANDROID,
+      process.env.GOOGLE_CLIENT_ID_IOS,
+    ].filter((v): v is string => !!v);
+
+    if (audiences.length === 0) {
+      res.status(501).json({ error: 'Google sign-in is not configured on this server yet.' });
+      return;
+    }
+
+    const parsed = googleSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({ idToken: parsed.data.idToken, audience: audiences });
+    const payload = ticket.getPayload();
+    if (!payload?.email) { res.status(401).json({ error: 'Google token missing email' }); return; }
+
+    const email = normalizeEmail(payload.email);
+    const name = (payload.name ?? getFallbackName(email)).trim() || getFallbackName(email);
+
+    let user = await prisma.user.findUnique({ where: { email }, select: userSelect });
+    if (!user) {
+      user = await prisma.user.create({
+        data: { email, name, avatarUrl: payload.picture ?? null },
+        select: userSelect,
+      });
+    }
+
+    res.json({ token: signToken(user), user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Phone OTP (Twilio Verify) ----
+// Wired only when TWILIO_* env vars are present. Otherwise 501.
+const requestPhoneSchema = z.object({ phone: z.string().trim().min(8).max(20) });
+const verifyPhoneSchema = z.object({
+  phone: z.string().trim().min(8).max(20),
+  code: z.string().trim().regex(/^\d{4,10}$/),
+  name: z.string().trim().min(2).optional(),
+});
+
+function twilioConfigured(): boolean {
+  return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_VERIFY_SERVICE_SID);
+}
+
+function normalizePhone(raw: string): string {
+  const trimmed = raw.replace(/\s+/g, '');
+  return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
+}
+
+router.post('/request-phone-otp', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!twilioConfigured()) {
+      res.status(501).json({ error: 'Phone sign-in is not configured on this server yet.' });
+      return;
+    }
+    const parsed = requestPhoneSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+    const { default: twilio } = await import('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
+    await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID!)
+      .verifications.create({ to: normalizePhone(parsed.data.phone), channel: 'sms' });
+
+    res.json({ ok: true, message: 'Verification code sent' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/verify-phone-otp', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!twilioConfigured()) {
+      res.status(501).json({ error: 'Phone sign-in is not configured on this server yet.' });
+      return;
+    }
+    const parsed = verifyPhoneSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+    const { default: twilio } = await import('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
+    const phone = normalizePhone(parsed.data.phone);
+    const check = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID!)
+      .verificationChecks.create({ to: phone, code: parsed.data.code });
+
+    if (check.status !== 'approved') {
+      res.status(401).json({ error: 'Invalid or expired code' });
+      return;
+    }
+
+    let user = await prisma.user.findUnique({ where: { phone }, select: userSelect });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone,
+          email: `${phone.replace('+', '')}@phone.manas.local`, // placeholder; real email captured later in onboarding
+          name: parsed.data.name ?? `MANAS ${phone.slice(-4)}`,
+        },
+        select: userSelect,
+      });
+    }
+
+    res.json({ token: signToken(user), user });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

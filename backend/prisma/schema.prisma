@@ -43,13 +43,17 @@ model User {
   role         Role     @default(USER)
   avatarUrl    String?
   timezone     String   @default("Asia/Kolkata")
+  isPremium    Boolean  @default(false)
+  pushToken    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  coach         Coach?
-  sessions      Session[]
-  videoProgress VideoProgress[]
-  notifications Notification[]
+  coach          Coach?
+  sessions       Session[]
+  videoProgress  VideoProgress[]
+  videoBookmarks VideoBookmark[]
+  moodEntries    MoodEntry[]
+  notifications  Notification[]
 }
 
 model EmailOtp {
@@ -126,6 +130,7 @@ model Session {
   meetingUrl  String?
   notes       String?
   isDemo      Boolean       @default(true)
+  remindedAt  DateTime?
   createdAt   DateTime      @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -139,14 +144,16 @@ model Video {
   description  String
   url          String
   thumbnailUrl String
+  subtitleUrl  String?
   durationSec  Int
   type         VideoType
   isPremium    Boolean   @default(false)
   topicId      String?
   createdAt    DateTime  @default(now())
 
-  topic    Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  progress VideoProgress[]
+  topic     Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  progress  VideoProgress[]
+  bookmarks VideoBookmark[]
 }
 
 model VideoProgress {
@@ -173,4 +180,28 @@ model Notification {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VideoBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+}
+
+model MoodEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  mood      Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
