@@ -94,7 +94,7 @@ Bump `version` (semver) for every public release.
 
 The `eas.json` `preview` and `production` profiles already inject:
 ```
-EXPO_PUBLIC_API_URL=https://manas-api.onrender.com
+EXPO_PUBLIC_API_URL=https://manas-api-dlj7.onrender.com
 ```
 
 To add more env vars:

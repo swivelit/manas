@@ -7,25 +7,29 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppFonts } from '../theme/fonts';
 import { useAuthStore } from '../lib/auth';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
 export default function RootLayout() {
-  const [fontsLoaded] = useAppFonts();
+  const [fontsLoaded, fontError] = useAppFonts();
   const loadAuth = useAuthStore(s => s.loadAuth);
 
   useEffect(() => {
     loadAuth();
-  }, []);
+  }, [loadAuth]);
 
   useEffect(() => {
-    if (fontsLoaded) void SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (fontError) console.warn('[fonts] failed to load, using system fallbacks:', fontError);
+  }, [fontError]);
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

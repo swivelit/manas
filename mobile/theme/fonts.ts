@@ -13,8 +13,8 @@ import {
   InstrumentSerif_400Regular_Italic,
 } from '@expo-google-fonts/instrument-serif';
 
-export function useAppFonts() {
-  return useFonts({
+export function useAppFonts(): [boolean, Error | null] {
+  const [loaded, error] = useFonts({
     Fraunces_400Regular,
     Fraunces_300Light_Italic,
     Fraunces_500Medium,
@@ -23,6 +23,7 @@ export function useAppFonts() {
     DMSans_700Bold,
     InstrumentSerif_400Regular_Italic,
   });
+  return [loaded, error];
 }
 
 export const fontFamilies = {

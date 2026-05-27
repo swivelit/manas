@@ -1,3 +1,59 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
 dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
 .DS_Store
-*.log
+*.pem
+
+# local env files
+.env*.local
+.env
+.env.*
+!.env.example
+
+# Secrets / generated native config
+google-services.json
+GoogleService-Info.plist
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+# generated native module outputs
+modules/jai-on-device-model/android/.cxx/
+modules/jai-on-device-model/android/build/
+modules/wake-word/android/.cxx/
+modules/wake-word/android/build/
+
+# Local model weights are intentionally not committed.
+models/*.gguf

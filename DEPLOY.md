@@ -55,8 +55,8 @@ This repository does not currently include Prisma migrations, so the first Rende
    ```
 
 5. **Copy the live URL**
-   - Your API lives at: `https://manas-api.onrender.com`
-   - Test: `curl https://manas-api.onrender.com/health`
+   - Your API lives at: `https://manas-api-dlj7.onrender.com`
+   - Test: `curl https://manas-api-dlj7.onrender.com/health`
 
 6. **Update mobile app**
    - Set `EXPO_PUBLIC_API_URL` in `mobile/.env.production` to the Render URL
