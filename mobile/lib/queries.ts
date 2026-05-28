@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
+import { useAuthStore } from './auth';
 
 // ---- Categories & Topics ----
 export function useCategories() {
@@ -36,11 +37,21 @@ export function useCoachAvailability(coachId: string, date: string) {
 
 // ---- Sessions ----
 export function useSessions() {
-  return useQuery({ queryKey: ['sessions'], queryFn: () => api.get('/sessions').then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get('/sessions').then(r => r.data),
+    enabled: !!token,
+  });
 }
 
 export function useSession(id: string) {
-  return useQuery({ queryKey: ['session', id], queryFn: () => api.get(`/sessions/${id}`).then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['session', id],
+    queryFn: () => api.get(`/sessions/${id}`).then(r => r.data),
+    enabled: !!token && !!id,
+  });
 }
 
 export function useBookSession() {
@@ -83,23 +94,31 @@ export function useVideo(id: string) {
         throw e;
       }
     },
+    enabled: !!id,
     retry: (failureCount, err: any) => err?.response?.status !== 402 && failureCount < 1,
   });
 }
 
 export function useVideoProgress() {
   const qc = useQueryClient();
+  const token = useAuthStore(s => s.token);
   return useMutation({
-    mutationFn: ({ id, progressSec, completed }: { id: string; progressSec: number; completed?: boolean }) =>
-      api.post(`/videos/${id}/progress`, { progressSec, completed }).then(r => r.data),
+    mutationFn: ({ id, progressSec, completed }: { id: string; progressSec: number; completed?: boolean }) => {
+      if (!token) throw new Error('Sign in required to save video progress.');
+      return api.post(`/videos/${id}/progress`, { progressSec, completed }).then(r => r.data);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
   });
 }
 
 export function useBookmarkVideo() {
   const qc = useQueryClient();
+  const token = useAuthStore(s => s.token);
   return useMutation({
-    mutationFn: (id: string) => api.post(`/videos/${id}/bookmark`).then(r => r.data as { bookmarked: boolean }),
+    mutationFn: (id: string) => {
+      if (!token) throw new Error('Sign in required to bookmark videos.');
+      return api.post(`/videos/${id}/bookmark`).then(r => r.data as { bookmarked: boolean });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['video-bookmarks'] });
       qc.invalidateQueries({ queryKey: ['videos'] });
@@ -108,12 +127,22 @@ export function useBookmarkVideo() {
 }
 
 export function useVideoBookmarks() {
-  return useQuery({ queryKey: ['video-bookmarks'], queryFn: () => api.get('/videos/bookmarks').then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['video-bookmarks'],
+    queryFn: () => api.get('/videos/bookmarks').then(r => r.data),
+    enabled: !!token,
+  });
 }
 
 // ---- Me ----
 export function useMe() {
-  return useQuery({ queryKey: ['me'], queryFn: () => api.get('/me').then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.get('/me').then(r => r.data),
+    enabled: !!token,
+  });
 }
 
 export function useUpdateMe() {
@@ -127,7 +156,12 @@ export function useUpdateMe() {
 
 // ---- Mood ----
 export function useMoodEntries(limit = 30) {
-  return useQuery({ queryKey: ['mood', limit], queryFn: () => api.get('/mood', { params: { limit } }).then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['mood', limit],
+    queryFn: () => api.get('/mood', { params: { limit } }).then(r => r.data),
+    enabled: !!token,
+  });
 }
 
 export function useCreateMoodEntry() {
@@ -140,7 +174,12 @@ export function useCreateMoodEntry() {
 
 // ---- Notifications ----
 export function useNotifications() {
-  return useQuery({ queryKey: ['notifications'], queryFn: () => api.get('/notifications').then(r => r.data) });
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api.get('/notifications').then(r => r.data),
+    enabled: !!token,
+  });
 }
 
 export function useMarkNotificationRead() {

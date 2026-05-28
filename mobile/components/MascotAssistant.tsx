@@ -8,22 +8,36 @@ import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
 
 const contextMessages: Record<string, string> = {
-  '/': "Welcome! I'm Manas, your guide here. Tap any section to explore, or ask me where to start.",
-  '/(tabs)': 'This is your home — your mood, your path, your upcoming sessions. What would you like to do today?',
-  '/(tabs)/topics': 'These are the healing spaces available to you. Each one is a gentle journey, not a destination.',
-  '/(tabs)/videos': 'The Library holds therapist-led videos for you to watch anytime — before or after a session.',
-  '/(tabs)/sessions': 'Your sessions live here. You can book new ones or revisit past conversations.',
-  '/(tabs)/profile': "This is your journey. Everything you've explored, watched, and healed is tracked here.",
-  '/mood': "How you're feeling matters. Choose the option that fits closest — there's no wrong answer.",
+  '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
+  '/onboarding': 'This is the welcome screen. Continue to sign in or create an account so your sessions, progress, and preferences can be saved.',
+  '/(auth)': 'Use this auth screen to sign in with email, Google, or mobile OTP where available. If a provider is not configured yet, use email OTP for testing.',
+  '/(auth)/login': 'Sign in here. Enter your email to request an OTP, or use Google when production credentials are configured.',
+  '/(auth)/register': 'Create your MANAS account here. Add your name and email, verify the OTP, then continue to the home tabs.',
+  '/(auth)/phone': 'Use mobile OTP here. Enter your phone number, request the code, then verify it to continue.',
+  '/(tabs)': 'This is Home. Review your mood prompt, choose Emotional Healing or Coaching, book a free demo, or open your upcoming session.',
+  '/(tabs)/topics': 'These are Emotional Healing topics. Search a feeling, open a topic, then choose a coach and booking time.',
+  '/topics/emotional-healing-list': 'These are the Emotional Healing topics. Pick the topic that fits what you want to work through, then choose a coach.',
+  '/coaching': 'This is Coaching. Pick a growth topic, review the detail page, then book a demo with an available coach.',
+  '/topics': 'This topic page explains the focus area. Use the heart to save it, review coach options, or book a free demo.',
+  '/booking': 'This booking page shows coach availability in your timezone. Select a date, time slot, and video, audio, or chat session before confirming.',
+  '/(tabs)/videos': 'The Library has free and premium videos. Public videos open without signing in; bookmarks and progress are saved after you sign in.',
+  '/video': 'This video page lets you watch, resume progress, and bookmark after signing in. Premium videos show a safe upgrade prompt.',
+  '/(tabs)/sessions': 'Your sessions live here. Review upcoming or past bookings, then join confirmed sessions inside the join window.',
+  '/session': 'This session detail shows the coach, topic, time, session type, and meeting link when it is ready.',
+  '/(tabs)/profile': "This is Profile. Review your saved journey, session history, and account actions.",
+  '/mood': "This mood page records how you're feeling today. Pick the closest option and add a note if it helps.",
 };
 
 const VOICE_PREF_KEY = 'manas_voice_enabled';
 
 function getContextMessage(path: string): string {
-  for (const key of Object.keys(contextMessages)) {
-    if (path.startsWith(key)) return contextMessages[key];
-  }
-  return "I'm here to help you navigate. Tap anything you're curious about!";
+  if (contextMessages[path]) return contextMessages[path];
+
+  const prefix = Object.keys(contextMessages)
+    .filter(key => key !== '/' && path.startsWith(key))
+    .sort((a, b) => b.length - a.length)[0];
+
+  return prefix ? contextMessages[prefix] : contextMessages['/'];
 }
 
 export function MascotAssistant() {

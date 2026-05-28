@@ -58,7 +58,14 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
     }
   }
 
-  res.json(video);
+  const progress = req.user
+    ? await prisma.videoProgress.findUnique({
+      where: { userId_videoId: { userId: req.user.id, videoId: video.id } },
+      select: { progressSec: true, completed: true, updatedAt: true },
+    })
+    : null;
+
+  res.json({ ...video, progress });
 });
 
 router.post('/:id/progress', requireAuth, async (req: Request, res: Response) => {

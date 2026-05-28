@@ -5,7 +5,8 @@ import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Icon } from './Icon';
 
-const JOIN_WINDOW_MIN = 10;
+const PRE_START_JOIN_WINDOW_MIN = 10;
+const POST_START_JOIN_WINDOW_MIN = 30;
 
 interface Session {
   id: string;
@@ -29,8 +30,8 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
   const minsUntil = differenceInMinutes(date, now);
   const joinable =
     session.status === 'CONFIRMED' &&
-    minsUntil <= JOIN_WINDOW_MIN &&
-    minsUntil >= -session.type.length; // crude post-start window — keep button live for ~30 min after start
+    minsUntil <= PRE_START_JOIN_WINDOW_MIN &&
+    minsUntil >= -POST_START_JOIN_WINDOW_MIN;
   const completed = session.status === 'COMPLETED';
   const cancelled = session.status === 'CANCELLED';
 

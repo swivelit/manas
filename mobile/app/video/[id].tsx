@@ -1,46 +1,114 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { useEventListener } from 'expo';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useVideo, useVideoProgress, useBookmarkVideo } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Icon } from '../../components/Icon';
 
+type VideoDetails = {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  thumbnailUrl?: string | null;
+  subtitleUrl?: string | null;
+  durationSec: number;
+  type: string;
+  isPremium: boolean;
+  topic?: { name: string } | null;
+  progress?: { progressSec?: number | null; completed?: boolean | null } | null;
+};
+
+function PlayableVideo({ video, videoId }: { video: VideoDetails; videoId: string }) {
+  const token = useAuthStore(s => s.token);
+  const trackProgress = useVideoProgress();
+  const lastPostedSecondRef = useRef<number | null>(null);
+  const savedProgressSec = typeof video.progress?.progressSec === 'number' ? video.progress.progressSec : 0;
+
+  const source = useMemo(() => ({
+    uri: video.url,
+    metadata: {
+      title: video.title,
+      artwork: video.thumbnailUrl ?? undefined,
+    },
+  }), [video.thumbnailUrl, video.title, video.url]);
+
+  const player = useVideoPlayer(source, p => {
+    p.timeUpdateEventInterval = 1;
+    if (savedProgressSec > 0) {
+      p.currentTime = savedProgressSec;
+    }
+  });
+
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+    if (!token) return;
+    const pos = Math.floor(currentTime);
+    const dur = Math.floor(video.durationSec ?? 0);
+    const completed = dur > 0 && pos >= dur - 5;
+    if (pos % 10 === 0 && pos > 0 && lastPostedSecondRef.current !== pos && !trackProgress.isPending) {
+      lastPostedSecondRef.current = pos;
+      trackProgress.mutate({ id: videoId, progressSec: pos, completed });
+    }
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.player}
+      nativeControls
+      contentFit="contain"
+      buttonOptions={{ showSubtitles: video.subtitleUrl ? undefined : false }}
+    />
+  );
+}
+
 export default function VideoPlayer() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, isLoading } = useVideo(id);
-  const trackProgress = useVideoProgress();
+  const videoId = Array.isArray(id) ? id[0] : id;
+  const { data, isLoading, isError, error } = useVideo(videoId);
   const bookmark = useBookmarkVideo();
   const token = useAuthStore(s => s.token);
-  const videoRef = useRef<Video>(null);
-  const [, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  const video = data?.video;
+  const video = data?.video as VideoDetails | undefined;
   const paywalled = data?.paywalled === true;
-
-  function handleStatus(s: AVPlaybackStatus) {
-    setStatus(s);
-    if (!token || !s.isLoaded) return;
-    const pos = Math.floor(s.positionMillis / 1000);
-    const dur = Math.floor((s.durationMillis ?? 0) / 1000);
-    const completed = dur > 0 && pos >= dur - 5;
-    if (pos % 10 === 0 && pos > 0) {
-      trackProgress.mutate({ id, progressSec: pos, completed });
-    }
-  }
 
   async function handleBookmark() {
     if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
     try {
-      const res = await bookmark.mutateAsync(id);
+      const res = await bookmark.mutateAsync(videoId);
       setIsBookmarked(res.bookmarked);
     } catch {
       Alert.alert('Could not bookmark');
     }
+  }
+
+  if (!videoId || isError) {
+    const message = (error as any)?.response?.status === 404
+      ? 'This video could not be found.'
+      : 'This video could not load. Check your connection and try again.';
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.head}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.type}>VIDEO UNAVAILABLE</Text>
+        </View>
+        <View style={styles.errorWrap}>
+          <Text style={styles.errorTitle}>Unable to open video</Text>
+          <Text style={styles.errorBody}>{message}</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.errorBtn} activeOpacity={0.85}>
+            <Text style={styles.errorBtnText}>Back to library</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (isLoading) {
@@ -84,7 +152,25 @@ export default function VideoPlayer() {
     );
   }
 
-  if (!video) return null;
+  if (!video) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.head}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.type}>VIDEO UNAVAILABLE</Text>
+        </View>
+        <View style={styles.errorWrap}>
+          <Text style={styles.errorTitle}>Unable to open video</Text>
+          <Text style={styles.errorBody}>The library did not return playable video details.</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.errorBtn} activeOpacity={0.85}>
+            <Text style={styles.errorBtnText}>Back to library</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -98,17 +184,7 @@ export default function VideoPlayer() {
         </TouchableOpacity>
       </View>
 
-      {/* NOTE: expo-av Video doesn't expose a textTracks prop. The subtitleUrl is stored
-          and surfaced as a "CC" badge below; full WebVTT rendering ships with the
-          expo-video migration planned for v1.1. */}
-      <Video
-        ref={videoRef}
-        source={{ uri: video.url }}
-        style={styles.player}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        onPlaybackStatusUpdate={handleStatus}
-      />
+      <PlayableVideo video={video} videoId={videoId} />
 
       <View style={styles.meta}>
         <Text style={styles.title}>{video.title}</Text>
@@ -146,4 +222,9 @@ const styles = StyleSheet.create({
   paywallBtnText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.cream },
   paywallBackBtn: { marginTop: 14, paddingVertical: 4 },
   paywallBackText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.muted },
+  errorWrap: { flex: 1, padding: 24, justifyContent: 'center' },
+  errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.cream },
+  errorBody: { fontFamily: fontFamilies.dmSans, fontSize: 13, color: '#BCC3DE', lineHeight: 19, marginTop: 8 },
+  errorBtn: { alignSelf: 'flex-start', marginTop: 20, backgroundColor: colors.cream, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 14 },
+  errorBtnText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.ink },
 });

@@ -23,7 +23,7 @@ const thumbColors = [
 
 export default function VideosScreen() {
   const [activeType, setActiveType] = useState('All');
-  const { data: videos, isLoading } = useVideos({ type: TYPE_MAP[activeType] });
+  const { data: videos, isLoading, isError } = useVideos({ type: TYPE_MAP[activeType] });
   const { data: bookmarks } = useVideoBookmarks();
   const bookmark = useBookmarkVideo();
   const token = useAuthStore(s => s.token);
@@ -83,6 +83,18 @@ export default function VideosScreen() {
           <ActivityIndicator color={colors.blue} style={{ marginTop: 24 }} />
         ) : (
           <View style={styles.list}>
+            {isError && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Library unavailable</Text>
+                <Text style={styles.emptyText}>Videos could not load right now. You can still browse other sections.</Text>
+              </View>
+            )}
+            {!isError && !featured && list.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No videos yet</Text>
+                <Text style={styles.emptyText}>Try another filter or check back later.</Text>
+              </View>
+            )}
             {list.map((v: any, i: number) => {
               const grad = thumbColors[i % thumbColors.length];
               return (
@@ -167,4 +179,7 @@ const styles = StyleSheet.create({
   vidTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 11.5, color: colors.ink, marginTop: 2, lineHeight: 14 },
   vidMeta: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: colors.muted, marginTop: 3 },
   heartBtn: { padding: 6 },
+  emptyState: { backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
 });
