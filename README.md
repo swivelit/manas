@@ -2,6 +2,13 @@
 JEY GROUPS
 MANAS
 MANAS — Psychologist Counseling Virtual Offi ce Application
+
+Mobile release MVP notes:
+- The mobile app is branded as MANAS with package identifiers `com.jeygroups.manas`.
+- Patient/user flow is the current MVP focus: browse Emotional Healing and Coaching topics, choose a coach, book a demo slot, open the video library, and use the in-app MANAS guide.
+- Coach/Psychologist and Admin dashboards are not represented as complete release features yet.
+- Release verification remains strict for production backend/Firebase configuration. Debug/mock auth is for local smoke testing only.
+
 Product Requirement & Developer Documentation
 1. Project Overview
 Application Name MANAS

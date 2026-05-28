@@ -10,8 +10,8 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-          <Text style={styles.skip}>Skip</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.skip}>Explore</Text>
         </TouchableOpacity>
       </View>
 
@@ -40,7 +40,7 @@ export default function Onboarding() {
       </View>
 
       <View style={styles.btnRow}>
-        <Button label="Sign in" variant="ghost" onPress={() => router.push('/(auth)/login')} />
+        <Button label="Explore demo" variant="ghost" onPress={() => router.replace('/(tabs)')} />
         <Button label="Begin →" variant="primary" onPress={() => router.push('/(auth)/register')} />
       </View>
     </SafeAreaView>

@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 import { useSessions } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { MoodCheckIn } from '../../components/MoodCheckIn';
-import { SessionCard } from '../../components/SessionCard';
 import { Icon } from '../../components/Icon';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';

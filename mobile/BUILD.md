@@ -97,6 +97,31 @@ The `eas.json` `preview` and `production` profiles already inject:
 EXPO_PUBLIC_API_URL=https://manas-api-dlj7.onrender.com
 ```
 
+Release verification is intentionally stricter than local development. Before a
+production build can be called release-ready, provide these public Firebase
+configuration values through EAS environment variables or `.env.production`:
+
+```
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+```
+
+Local smoke testing may use `EXPO_PUBLIC_E2E_MOCK_AUTH=1`, but that flag is
+debug-only and must not be enabled in release builds. The release check can be
+run with:
+
+```bash
+JAI_REQUIRE_RELEASE_BACKEND_FIRST_CONFIG=1 npm run release:verify-backend-first
+```
+
+The current package identifiers are `com.jeygroups.manas` for Android and iOS.
+Do not commit real `google-services.json`, `GoogleService-Info.plist`, signing
+keys, service account JSON, or production secret values.
+
 To add more env vars:
 ```json
 "env": {

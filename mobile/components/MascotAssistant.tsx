@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
+import { getAssistantGuide } from '../data/manas';
 
 const contextMessages: Record<string, string> = {
   '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
@@ -31,13 +32,14 @@ const contextMessages: Record<string, string> = {
 const VOICE_PREF_KEY = 'manas_voice_enabled';
 
 function getContextMessage(path: string): string {
+  if (path.includes('chronic-anxiety')) return getAssistantGuide(path);
   if (contextMessages[path]) return contextMessages[path];
 
   const prefix = Object.keys(contextMessages)
     .filter(key => key !== '/' && path.startsWith(key))
     .sort((a, b) => b.length - a.length)[0];
 
-  return prefix ? contextMessages[prefix] : contextMessages['/'];
+  return prefix ? contextMessages[prefix] : getAssistantGuide(path);
 }
 
 export function MascotAssistant() {

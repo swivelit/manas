@@ -44,7 +44,10 @@
     "@testing-library/dom": "^10.4.1",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^56.0.12",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "^56.0.4",
     "expo-doctor": "^1.19.8",
+    "tsx": "^4.22.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -57,7 +60,10 @@
     "doctor": "expo-doctor",
     "export:android": "expo export --platform android --output-dir ./dist/android --clear",
     "start:clear": "expo start --clear",
-    "verify": "npm run typecheck && npm run deps:check && npm run doctor && npm run export:android"
+    "verify": "npm run typecheck && npm run deps:check && npm run doctor && npm run export:android",
+    "lint": "eslint .",
+    "test": "node --import tsx --test tests/manas.test.mjs",
+    "release:verify-backend-first": "node scripts/verify-release-config.mjs"
   },
   "expo": {
     "doctor": {

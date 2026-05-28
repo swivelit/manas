@@ -71,7 +71,7 @@ export default function PhoneAuth() {
           </TouchableOpacity>
 
           <Text style={styles.heading}>Use your{'\n'}<Text style={styles.headingItalic}>phone.</Text></Text>
-          <Text style={styles.sub}>We'll text you a one-time code. Include your country code.</Text>
+          <Text style={styles.sub}>We will text you a one-time code. Include your country code.</Text>
 
           <View style={styles.form}>
             <View style={styles.field}>

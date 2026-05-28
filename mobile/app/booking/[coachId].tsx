@@ -31,17 +31,24 @@ export default function BookingScreen() {
   async function handleConfirm() {
     if (!selectedStartsAt || !topic) return;
     try {
-      await bookSession.mutateAsync({
+      const session = await bookSession.mutateAsync({
         coachId,
         topicId: topic.id,
         scheduledAt: selectedStartsAt,
         type: sessionType,
       });
-      Alert.alert('Booked!', 'Your free demo session is confirmed.', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/sessions') },
-      ]);
+      router.replace({
+        pathname: '/booking/confirmation' as never,
+        params: {
+          coach: coach?.user?.name ?? 'Your MANAS coach',
+          topic: topic.name,
+          startsAt: selectedStartsAt,
+          type: sessionType,
+          mock: session?.isMock ? '1' : '0',
+        },
+      });
     } catch {
-      Alert.alert('Booking failed', 'Please try again.');
+      Alert.alert('Booking failed', 'Please try again. If the backend is unavailable, use the demo booking flow from the public app.');
     }
   }
 

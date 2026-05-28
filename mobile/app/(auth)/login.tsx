@@ -162,7 +162,7 @@ export default function Login() {
           </View>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.switchRow}>
-            <Text style={styles.switchText}>Don't have an account? <Text style={styles.switchLink}>Begin →</Text></Text>
+            <Text style={styles.switchText}>Do not have an account? <Text style={styles.switchLink}>Begin →</Text></Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

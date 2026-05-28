@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+../dist/
 
 # Native
 .kotlin/
@@ -32,6 +33,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +43,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# generated native module outputs
+modules/**/android/build/
+modules/**/android/.cxx/
+
+# native service config and release artifacts
+google-services.json
+GoogleService-Info.plist
+*.apk
+*.aab

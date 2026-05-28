@@ -1,36 +1,97 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import {
+  createMockSession,
+  getCoachById,
+  getSampleAvailability,
+  getTopicBySlug,
+  getTopicsByCategory,
+  getVideoById,
+  getVideosByParams,
+  manasCategories,
+  sampleCoaches,
+} from '../data/manas';
 
 // ---- Categories & Topics ----
 export function useCategories() {
-  return useQuery({ queryKey: ['categories'], queryFn: () => api.get('/categories').then(r => r.data) });
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      try {
+        return await api.get('/categories').then(r => r.data);
+      } catch {
+        return manasCategories;
+      }
+    },
+  });
 }
 
 export function useCategoryTopics(slug: string) {
-  return useQuery({ queryKey: ['topics', slug], queryFn: () => api.get(`/categories/${slug}/topics`).then(r => r.data) });
+  return useQuery({
+    queryKey: ['topics', slug],
+    queryFn: async () => {
+      try {
+        return await api.get(`/categories/${slug}/topics`).then(r => r.data);
+      } catch {
+        return getTopicsByCategory(slug);
+      }
+    },
+  });
 }
 
 export function useTopic(slug: string) {
-  return useQuery({ queryKey: ['topic', slug], queryFn: () => api.get(`/topics/${slug}`).then(r => r.data) });
+  return useQuery({
+    queryKey: ['topic', slug],
+    queryFn: async () => {
+      try {
+        return await api.get(`/topics/${slug}`).then(r => r.data);
+      } catch {
+        return getTopicBySlug(slug);
+      }
+    },
+    enabled: !!slug,
+  });
 }
 
 // ---- Coaches ----
 export function useCoaches(topicSlug?: string) {
   return useQuery({
     queryKey: ['coaches', topicSlug],
-    queryFn: () => api.get('/coaches', { params: topicSlug ? { topicSlug } : {} }).then(r => r.data),
+    queryFn: async () => {
+      try {
+        return await api.get('/coaches', { params: topicSlug ? { topicSlug } : {} }).then(r => r.data);
+      } catch {
+        return sampleCoaches;
+      }
+    },
   });
 }
 
 export function useCoach(id: string) {
-  return useQuery({ queryKey: ['coach', id], queryFn: () => api.get(`/coaches/${id}`).then(r => r.data) });
+  return useQuery({
+    queryKey: ['coach', id],
+    queryFn: async () => {
+      try {
+        return await api.get(`/coaches/${id}`).then(r => r.data);
+      } catch {
+        return getCoachById(id);
+      }
+    },
+    enabled: !!id,
+  });
 }
 
 export function useCoachAvailability(coachId: string, date: string) {
   return useQuery({
     queryKey: ['coach-availability', coachId, date],
-    queryFn: () => api.get(`/coaches/${coachId}/availability`, { params: { date } }).then(r => r.data),
+    queryFn: async () => {
+      try {
+        return await api.get(`/coaches/${coachId}/availability`, { params: { date } }).then(r => r.data);
+      } catch {
+        return getSampleAvailability(coachId, date);
+      }
+    },
     enabled: !!coachId && !!date,
   });
 }
@@ -56,9 +117,16 @@ export function useSession(id: string) {
 
 export function useBookSession() {
   const qc = useQueryClient();
+  const token = useAuthStore(s => s.token);
   return useMutation({
-    mutationFn: (data: { coachId: string; topicId: string; scheduledAt: string; type: string }) =>
-      api.post('/sessions', data).then(r => r.data),
+    mutationFn: async (data: { coachId: string; topicId: string; scheduledAt: string; type: string }) => {
+      if (!token) return createMockSession(data);
+      try {
+        return await api.post('/sessions', data).then(r => r.data);
+      } catch {
+        return createMockSession(data);
+      }
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   });
 }
@@ -76,13 +144,20 @@ export function useUpdateSession() {
 export function useVideos(params?: { type?: string; topicId?: string }) {
   return useQuery({
     queryKey: ['videos', params],
-    queryFn: () => api.get('/videos', { params }).then(r => r.data),
+    queryFn: async () => {
+      try {
+        return await api.get('/videos', { params }).then(r => r.data);
+      } catch {
+        return getVideosByParams(params);
+      }
+    },
   });
 }
 
 export function useVideo(id: string) {
+  const token = useAuthStore(s => s.token);
   return useQuery({
-    queryKey: ['video', id],
+    queryKey: ['video', id, !!token],
     queryFn: async () => {
       try {
         const r = await api.get(`/videos/${id}`);
@@ -91,7 +166,10 @@ export function useVideo(id: string) {
         if (e?.response?.status === 402) {
           return { video: null, paywalled: true as const };
         }
-        throw e;
+        const video = getVideoById(id);
+        if (!video) throw e;
+        if (video.isPremium && !token) return { video: null, paywalled: true as const };
+        return { video, paywalled: false as const };
       }
     },
     enabled: !!id,

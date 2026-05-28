@@ -3,8 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
-import { useMe } from '../../lib/queries';
-import { useSessions } from '../../lib/queries';
+import { useMe, useSessions } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { SessionCard } from '../../components/SessionCard';
 import { Icon } from '../../components/Icon';
