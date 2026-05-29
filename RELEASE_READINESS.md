@@ -1,18 +1,20 @@
 # MANAS Release Readiness
 
-Last checked: 2026-05-28
+Last checked: 2026-05-29
 
 ## Verification Summary
 
 | Check | Status | Evidence | Remaining work |
 | --- | --- | --- | --- |
+| Node/SDK compatibility | Done | Mobile uses Expo SDK 56; `.nvmrc` pins Node `22.13.1`. | Run `nvm install 22.13.1 && nvm use 22.13.1` before mobile verification. |
 | Mobile TypeScript | Done | `npm run typecheck` passes in `mobile`. | None for current code. |
-| Mobile Expo dependency check | Done | `npm run deps:check` passes. | None for current SDK set. |
-| Mobile Expo Doctor | Done | `npm run doctor` passes after replacing `expo-av` with `expo-video`; `expo-modules-jsi` is excluded from React Native Directory metadata because it is an Expo transitive package with no directory entry. | Keep checking after SDK upgrades. |
-| Android export | Done | `npm run export:android` passes and writes the Android export. | None for current app bundle export. |
-| Backend TypeScript and Prisma generation | Done | `npm run verify` in `backend` runs `npx prisma generate && npm run typecheck`. | None for current backend code. |
-| Backend local smoke | Done | With local PostgreSQL at `postgresql://hari@localhost:5432/manas_dev`, `prisma db push`, seed, and existing server on port 4000 returned `/health`, `/categories`, 15 Emotional Healing topics, and 10 Coaching topics. | This is local smoke only, not production infrastructure validation. |
-| Android launch | Done | Android debug build installs and opens to the onboarding screen; clean post-launch log sample has no MANAS `AndroidRuntime` or `ReactNativeJS` fatal lines. | Release APK/AAB signing and Play Store track validation are not covered. |
+| Mobile Expo dependency check | Done | `npx expo install --check` passes; offline sandbox run used Expo's local bundled dependency map, then online doctor passed with network access. | None for current SDK set. |
+| Mobile Expo Doctor | Done | `npx expo-doctor --verbose` passes 21/21 checks with network access. | Keep checking after SDK upgrades. |
+| Android export | Done | `npx expo export --platform android --output-dir ./dist/android --clear` passes and writes the Android export. | None for current app bundle export. |
+| Backend TypeScript and Prisma generation | Done | `npx prisma generate`, `npm run typecheck`, and `npm run build` pass in `backend`. | None for current backend code. |
+| Backend local smoke | Done | With local PostgreSQL at `postgresql://hari@localhost:5432/manas_dev`, `prisma db push`, seed, and server on port 4000 returned `/health`, 2 categories, 15 Emotional Healing topics, 10 Coaching topics, and video rows. | This is local smoke only, not production infrastructure validation. |
+| Android launch | Done | Android debug development build installed and launched on `Pixel_9`; final `android-launch-logcat.txt` grep found no MANAS startup fatal errors after navigating onboarding, auth, home, topics, booking, videos, profile, and assistant. | Release APK/AAB signing and Play Store track validation are not covered. |
+| Crash fix | Done | Login/register no longer crash when Google OAuth Android client ID is missing; Google auth is disabled until platform credentials are configured. | Configure production OAuth IDs before enabling Google login for release. |
 
 ## PRD Scope
 
@@ -26,6 +28,7 @@ Last checked: 2026-05-28
 | Calendar coach availability | Partial | Backend `GET /coaches/:id/availability` returns 30-minute slots and hides already booked slots. | Availability is seeded/static; no coach self-service dashboard to manage availability. |
 | Timezone support | Partial | Backend returns UTC `startsAt` plus `Asia/Kolkata`; mobile formats slots in `me.timezone` or fallback `Asia/Kolkata`. | Per-coach timezone and user-editable timezone handling are not complete. |
 | Booking confirmations | Partial | Backend creates a `BOOKING_CONFIRMED` notification and mobile shows a confirmation alert. | Production push/email/SMS delivery is not validated. |
+| Booking reminders, reschedule, completed notifications | Partial | Reminder cron support and notification records exist. | Reschedule/completed flows and production delivery channels are release blockers. |
 | Video library public videos | Done | `GET /videos` is public; logged-out mobile library renders without protected bookmark queries. | Replace demo videos with approved production content. |
 | Video library premium videos | Partial | Backend returns 402 for premium videos when user is not premium; mobile shows a paywall fallback. | Payment/premium enrollment flow is missing. |
 | Video streaming | Done | Mobile uses `expo-video` with remote MP4 sample URLs. | Production CDN and DRM/access policy are not validated. |
@@ -38,7 +41,7 @@ Last checked: 2026-05-28
 | Coach/Psychologist role | Partial | Prisma `Role.COACH` and coach records exist; coaches appear in patient booking. | Coach/Psychologist dashboard is missing. |
 | Admin role | Partial | Prisma `Role.ADMIN` exists. | Admin dashboard is missing. |
 | Email/password auth | Partial | Backend `/auth/register` and `/auth/login` support password auth; mobile UI currently uses email OTP flow. | Add/verify password login/register UI if required for release. |
-| Google login | Partial | Backend and mobile support Google token exchange when client IDs are configured. | Production Google login credentials and OAuth validation are not configured in this repo. |
+| Google login | Partial | Backend and mobile support Google token exchange when client IDs are configured; missing IDs no longer crash auth screens. | Production Google login credentials and OAuth validation are not configured in this repo. |
 | Mobile OTP login | Partial | Backend has Twilio Verify endpoints; mobile phone auth screen exists. | Production Twilio credentials and SMS delivery are not configured in this repo. |
 | Video session type | Done | Session type enum and booking UI include `VIDEO`; backend generates Jitsi URL. | Production video provider and privacy review. |
 | Audio session type | Partial | Session type enum and booking UI include `AUDIO`; backend uses Jitsi URL with client-side audio behavior noted. | Native audio-only session experience is not fully implemented. |
@@ -46,6 +49,18 @@ Last checked: 2026-05-28
 | Production notifications | Partial | Notification records are created and mobile can fetch notifications when authenticated. | Push/email/SMS delivery, reminder scheduling, and notification management are not production-ready. |
 | Real production content/videos | Missing | Seed explicitly uses public Google sample MP4 files for demo playback. | Replace with approved MANAS counseling/coaching content and real CDN URLs. |
 | Migration strategy beyond Prisma db push | Missing | Local smoke used `npx prisma db push`. | Add versioned migration workflow, migration review, rollback procedure, and environment promotion plan. |
+| Payments and premium enrollment | Missing | Premium flags/paywall behavior exist, but no payment provider or enrollment purchase flow is implemented. | Required before charging users or unlocking paid videos/sessions. |
+| Privacy, consent, and clinical safety | Missing | No production privacy policy, consent flow, data retention policy, emergency disclaimer, or clinical escalation workflow is implemented in-app. | Release blocker for a counseling/mental health app. |
+| Play Store readiness | Missing | `mobile/BUILD.md` lists store submission steps. | Complete privacy policy URL, data safety, content rating, screenshots, app access, signed AAB, and internal track validation. |
+
+## Release Blockers
+
+- Production Google OAuth, mobile OTP/SMS, email delivery, and notification credentials are not configured.
+- Payment/premium enrollment and real MANAS counseling/coaching video content are missing.
+- Coach and admin dashboards are missing.
+- Chat sessions and native audio-only sessions are not fully implemented.
+- Privacy policy, consent, mental health safety disclosures, data retention, and Play Store data safety work are missing.
+- Prisma `db push` is still used; production needs checked-in migrations and a rollback process.
 
 ## Release Decision
 

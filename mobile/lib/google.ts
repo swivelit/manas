@@ -1,6 +1,7 @@
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { api } from './api';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -17,10 +18,20 @@ const GOOGLE_IOS_CLIENT_ID =
   ((Constants.expoConfig?.extra as { googleClientIdIos?: string } | undefined)?.googleClientIdIos);
 
 export function isGoogleConfigured(): boolean {
-  return !!(GOOGLE_WEB_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID || GOOGLE_IOS_CLIENT_ID);
+  if (Platform.OS === 'android') return !!GOOGLE_ANDROID_CLIENT_ID;
+  if (Platform.OS === 'ios') return !!GOOGLE_IOS_CLIENT_ID;
+  return !!GOOGLE_WEB_CLIENT_ID;
 }
 
 export function useGoogleAuth() {
+  if (!isGoogleConfigured()) {
+    return [
+      null,
+      null,
+      async () => ({ type: 'cancel' }),
+    ] as ReturnType<typeof Google.useIdTokenAuthRequest>;
+  }
+
   return Google.useIdTokenAuthRequest({
     clientId: GOOGLE_WEB_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,

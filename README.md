@@ -1,4 +1,33 @@
 # manas
+
+## Local Verification
+
+Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain.
+
+```bash
+nvm install 22.13.1
+nvm use 22.13.1
+./scripts/verify-all.sh
+```
+
+For Android launch debugging with a development build:
+
+```bash
+cd mobile
+npx expo start --clear --dev-client
+npx expo run:android
+adb logcat -c
+adb logcat -d > ../android-launch-logcat.txt
+grep -iE "AndroidRuntime|FATAL|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com.jeygroups.manas" ../android-launch-logcat.txt | tail -200
+```
+
+When testing against a backend running on the same machine from the Android emulator, start Metro with:
+
+```bash
+cd mobile
+EXPO_PUBLIC_API_URL=http://10.0.2.2:4000 npx expo start --clear --dev-client
+```
+
 JEY GROUPS
 MANAS
 MANAS — Psychologist Counseling Virtual Offi ce Application
