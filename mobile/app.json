@@ -33,6 +33,7 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
+      "./plugins/with-android-gradle-node",
       [
         "expo-notifications",
         {
