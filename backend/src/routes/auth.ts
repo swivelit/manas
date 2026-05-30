@@ -212,6 +212,7 @@ router.post('/verify-email-otp', async (req: Request, res: Response, next: NextF
         data: {
           email,
           name: parsed.data.name ?? getFallbackName(email),
+          consentAt: new Date(), // account created via consented signup flow
         },
         select: userSelect,
       });
@@ -240,7 +241,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email, name, passwordHash },
+    data: { email, name, passwordHash, consentAt: new Date() },
     select: userSelect,
   });
 
@@ -313,7 +314,7 @@ router.post('/google', async (req: Request, res: Response, next: NextFunction) =
     let user = await prisma.user.findUnique({ where: { email }, select: userSelect });
     if (!user) {
       user = await prisma.user.create({
-        data: { email, name, avatarUrl: payload.picture ?? null },
+        data: { email, name, avatarUrl: payload.picture ?? null, consentAt: new Date() },
         select: userSelect,
       });
     }
@@ -391,6 +392,7 @@ router.post('/verify-phone-otp', async (req: Request, res: Response, next: NextF
           phone,
           email: `${phone.replace('+', '')}@phone.manas.local`, // placeholder; real email captured later in onboarding
           name: parsed.data.name ?? `MANAS ${phone.slice(-4)}`,
+          consentAt: new Date(), // account created via consented signup flow
         },
         select: userSelect,
       });

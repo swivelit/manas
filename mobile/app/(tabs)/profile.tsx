@@ -7,6 +7,7 @@ import { useMe } from '../../lib/queries';
 import { useSessions } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { SessionCard } from '../../components/SessionCard';
+import { CrisisBanner } from '../../components/CrisisBanner';
 import { Icon } from '../../components/Icon';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
@@ -78,6 +79,15 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {/* Legal + crisis support footer — always reachable from the profile. */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.row} onPress={() => router.push('/legal')} activeOpacity={0.85}>
+            <Text style={styles.rowText}>Privacy & Terms</Text>
+            <Icon name="chevron_right" size={16} color={colors.muted} />
+          </TouchableOpacity>
+          <CrisisBanner variant="footer" style={styles.footerBanner} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -118,4 +128,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 13, color: colors.ink, marginBottom: 10 },
   emptyCard: { backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line, alignItems: 'center' },
   emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.blue },
+  footer: { paddingHorizontal: 22, marginTop: 22, gap: 10 },
+  row: { backgroundColor: colors.paper, borderRadius: 14, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
+  footerBanner: { marginTop: 0 },
 });
