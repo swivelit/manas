@@ -8,16 +8,21 @@ const PROJECT_ID =
   (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ??
   (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
 
-// Foreground display behaviour. Default: show as banner + play sound.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Foreground display behaviour. Keep notification setup non-fatal because push
+// capabilities vary across Expo Go, development builds, simulators, and EAS.
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (err) {
+  console.warn('[push] setNotificationHandler failed:', err);
+}
 
 /**
  * Ask for push permission (if not yet asked), grab the Expo token, send it
@@ -25,29 +30,29 @@ Notifications.setNotificationHandler({
  * (e.g. simulator). Idempotent — safe to call after every login.
  */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) {
-    // Simulators can't receive real pushes — no point asking for permission.
-    return null;
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'MANAS',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 200, 100, 200],
-      lightColor: '#F25BB0',
-    });
-  }
-
-  const settings = await Notifications.getPermissionsAsync();
-  let status = settings.status;
-  if (status !== 'granted') {
-    const req = await Notifications.requestPermissionsAsync();
-    status = req.status;
-  }
-  if (status !== 'granted') return null;
-
   try {
+    if (!Device.isDevice) {
+      // Simulators can't receive real pushes — no point asking for permission.
+      return null;
+    }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'MANAS',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 200, 100, 200],
+        lightColor: '#F25BB0',
+      });
+    }
+
+    const settings = await Notifications.getPermissionsAsync();
+    let status = settings.status;
+    if (status !== 'granted') {
+      const req = await Notifications.requestPermissionsAsync();
+      status = req.status;
+    }
+    if (status !== 'granted') return null;
+
     const token = (await Notifications.getExpoPushTokenAsync(
       PROJECT_ID ? { projectId: PROJECT_ID } : undefined
     )).data;
@@ -57,7 +62,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return token;
   } catch (err) {
     // E.g. project not linked to EAS yet — log and return null. The app still works.
-    console.warn('[push] getExpoPushTokenAsync failed:', err);
+    console.warn('[push] registration failed:', err);
     return null;
   }
 }

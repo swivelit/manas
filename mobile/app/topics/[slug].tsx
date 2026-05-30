@@ -10,7 +10,8 @@ import { Icon } from '../../components/Icon';
 
 export default function TopicDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { data: topic, isLoading } = useTopic(slug);
+  const topicSlug = Array.isArray(slug) ? slug[0] : slug;
+  const { data: topic, isLoading, isError } = useTopic(topicSlug);
   const { data: coaches } = useCoaches();
   const { data: topicVideos } = useVideos(topic ? { topicId: topic.id } : undefined);
   const bookmark = useBookmarkVideo();
@@ -22,7 +23,8 @@ export default function TopicDetail() {
   // directly without a representative video.
   async function handleTopicHeart() {
     if (!token) { Alert.alert('Sign in', 'Sign in to save topics.'); return; }
-    const v = topicVideos?.[0];
+    const videoList = Array.isArray(topicVideos) ? topicVideos : [];
+    const v = videoList[0];
     if (!v) { Alert.alert('Not available', 'No video yet to save for this topic.'); return; }
     try {
       const res = await bookmark.mutateAsync(v.id);
@@ -40,9 +42,26 @@ export default function TopicDetail() {
     );
   }
 
-  if (!topic) return null;
+  if (isError || !topic) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.errorWrap}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnInline}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.errorTitle}>Topic unavailable</Text>
+          <Text style={styles.errorText}>This topic could not load right now. Check your connection or whether the production database has been seeded.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const previewCoaches = coaches?.slice(0, 2) ?? [];
+  const coachList = Array.isArray(coaches) ? coaches : [];
+  const previewCoaches = coachList.slice(0, 2);
+  const topicName = String(topic.name ?? 'MANAS Topic');
+  const titleParts = topicName.split(' ').filter(Boolean);
+  const titleFirstLine = titleParts.length > 1 ? titleParts.slice(0, -1).join(' ') : topicName;
+  const titleLastWord = titleParts.length > 1 ? titleParts[titleParts.length - 1] : '';
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -63,7 +82,7 @@ export default function TopicDetail() {
         {/* Body */}
         <View style={styles.body}>
           <Text style={styles.tag}>{topic.category?.name?.toUpperCase()} · {String(topic.order ?? '').padStart(2, '0')} / {topic.category?.slug === 'emotional-healing' ? '15' : '10'}</Text>
-          <Text style={styles.title}>{topic.name.split(' ').slice(0, -1).join(' ')}{'\n'}<Text style={styles.titleItalic}>{topic.name.split(' ').slice(-1)[0]}.</Text></Text>
+          <Text style={styles.title}>{titleFirstLine}{titleLastWord ? '\n' : ''}<Text style={styles.titleItalic}>{titleLastWord ? `${titleLastWord}.` : ''}</Text></Text>
 
           <View style={styles.stats}>
             <View style={styles.stat}><Text style={styles.statLabel}>SESSIONS</Text><Text style={styles.statVal}>6 weeks</Text></View>
@@ -80,13 +99,13 @@ export default function TopicDetail() {
               {previewCoaches.map((c: any, i: number) => (
                 <TouchableOpacity
                   key={c.id}
-                  onPress={() => router.push(`/topics/${slug}/coaches`)}
+                  onPress={() => router.push(`/topics/${topicSlug}/coaches`)}
                   style={styles.coachChip}
                 >
                   <View style={[styles.coachPic, i === 1 && styles.coachPicBlue]} />
                   <View>
-                    <Text style={styles.coachName}>{c.user.name.replace('Dr. ', 'Dr. ')}</Text>
-                    <Text style={styles.coachRating}>★ {c.rating.toFixed(1)}</Text>
+                    <Text style={styles.coachName}>{c.user?.name?.replace('Dr. ', 'Dr. ') ?? 'MANAS coach'}</Text>
+                    <Text style={styles.coachRating}>★ {typeof c.rating === 'number' ? c.rating.toFixed(1) : 'New'}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -95,7 +114,7 @@ export default function TopicDetail() {
 
           {/* Book CTA */}
           <TouchableOpacity
-            onPress={() => router.push(`/topics/${slug}/coaches`)}
+            onPress={() => router.push(`/topics/${topicSlug}/coaches`)}
             style={styles.bookBtn}
             activeOpacity={0.85}
           >
@@ -145,4 +164,8 @@ const styles = StyleSheet.create({
   bookBtnLeft: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.cream },
   bookBtnFree: { fontFamily: fontFamilies.frauncesItalic, color: colors.pinkSoft, fontSize: 14 },
   bookBtnArrow: { fontFamily: fontFamilies.dmSans, fontSize: 16, color: colors.cream },
+  errorWrap: { flex: 1, padding: 22, justifyContent: 'center' },
+  backBtnInline: { width: 34, height: 34, borderRadius: 99, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink },
+  errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
 });

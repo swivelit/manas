@@ -26,8 +26,11 @@ interface SessionCardProps {
 
 export function SessionCard({ session, accentColor = colors.ink, onPress }: SessionCardProps) {
   const date = new Date(session.scheduledAt);
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
   const now = new Date();
-  const minsUntil = differenceInMinutes(date, now);
+  const minsUntil = differenceInMinutes(safeDate, now);
+  const topicName = session.topic?.name ?? 'Session';
+  const coachName = session.coach?.user?.name ?? 'MANAS coach';
   const joinable =
     session.status === 'CONFIRMED' &&
     minsUntil <= PRE_START_JOIN_WINDOW_MIN &&
@@ -51,15 +54,15 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.card, cancelled && styles.cardDim]}>
       <View style={[styles.dateBox, { backgroundColor: accentColor }]}>
-        <Text style={styles.dateNum}>{format(date, 'd')}</Text>
-        <Text style={styles.dateMon}>{format(date, 'MMM').toUpperCase()}</Text>
+        <Text style={styles.dateNum}>{format(safeDate, 'd')}</Text>
+        <Text style={styles.dateMon}>{format(safeDate, 'MMM').toUpperCase()}</Text>
       </View>
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>{session.topic.name} · Demo</Text>
+        <Text style={styles.title} numberOfLines={1}>{topicName} · Demo</Text>
         <View style={styles.meta}>
-          <Text style={styles.metaText}>{session.coach.user.name}</Text>
+          <Text style={styles.metaText}>{coachName}</Text>
           <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.metaText}>{format(date, 'h:mm a')}</Text>
+          <Text style={styles.metaText}>{format(safeDate, 'h:mm a')}</Text>
           <Text style={styles.metaDot}>·</Text>
           <Text style={styles.metaText}>{session.type}</Text>
         </View>

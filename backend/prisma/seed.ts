@@ -9,13 +9,13 @@ async function main() {
   // Categories
   const healing = await prisma.category.upsert({
     where: { slug: 'emotional-healing' },
-    update: {},
+    update: { name: 'Emotional Healing', order: 1 },
     create: { slug: 'emotional-healing', name: 'Emotional Healing', order: 1 },
   });
 
   const coaching = await prisma.category.upsert({
     where: { slug: 'coaching' },
-    update: {},
+    update: { name: 'Coaching & Growth', order: 2 },
     create: { slug: 'coaching', name: 'Coaching & Growth', order: 2 },
   });
 
@@ -43,7 +43,7 @@ async function main() {
     const t = healingTopics[i];
     const record = await prisma.topic.upsert({
       where: { slug: t.slug },
-      update: {},
+      update: { ...t, categoryId: healing.id, order: i + 1 },
       create: { ...t, categoryId: healing.id, order: i + 1 },
     });
     healingTopicRecords.push({ id: record.id, slug: record.slug });
@@ -68,7 +68,7 @@ async function main() {
     const t = coachingTopics[i];
     const record = await prisma.topic.upsert({
       where: { slug: t.slug },
-      update: {},
+      update: { ...t, categoryId: coaching.id, order: i + 1 },
       create: { ...t, categoryId: coaching.id, order: i + 1 },
     });
     coachingTopicRecords.push({ id: record.id, slug: record.slug });
@@ -78,7 +78,11 @@ async function main() {
   const sarahHash = await bcrypt.hash('password123', 10);
   const sarah = await prisma.user.upsert({
     where: { email: 'sarah@example.com' },
-    update: {},
+    update: {
+      name: 'Sarah Mathew',
+      role: Role.USER,
+      timezone: 'Asia/Kolkata',
+    },
     create: {
       email: 'sarah@example.com',
       name: 'Sarah Mathew',
@@ -93,7 +97,10 @@ async function main() {
 
   const miraUser = await prisma.user.upsert({
     where: { email: 'mira@manas.app' },
-    update: {},
+    update: {
+      name: 'Dr. Mira Sundaram',
+      role: Role.COACH,
+    },
     create: {
       email: 'mira@manas.app',
       name: 'Dr. Mira Sundaram',
@@ -104,7 +111,10 @@ async function main() {
 
   const arjunUser = await prisma.user.upsert({
     where: { email: 'arjun@manas.app' },
-    update: {},
+    update: {
+      name: 'Dr. Arjun Iyer',
+      role: Role.COACH,
+    },
     create: {
       email: 'arjun@manas.app',
       name: 'Dr. Arjun Iyer',
@@ -115,7 +125,10 @@ async function main() {
 
   const lilaUser = await prisma.user.upsert({
     where: { email: 'lila@manas.app' },
-    update: {},
+    update: {
+      name: 'Dr. Lila Roy',
+      role: Role.COACH,
+    },
     create: {
       email: 'lila@manas.app',
       name: 'Dr. Lila Roy',
@@ -127,7 +140,14 @@ async function main() {
   // Coach profiles
   const mira = await prisma.coach.upsert({
     where: { userId: miraUser.id },
-    update: {},
+    update: {
+      specialty: 'Clinical Psychology',
+      bio: 'Dr. Mira Sundaram is a clinical psychologist with 12 years of experience specialising in anxiety, trauma, and chronic stress. Her warm, evidence-based approach helps clients rebuild steadiness in their nervous systems.',
+      yearsExp: 12,
+      rating: 4.9,
+      languages: ['EN', 'TA'],
+      hourlyRate: 150000,
+    },
     create: {
       userId: miraUser.id,
       specialty: 'Clinical Psychology',
@@ -141,7 +161,14 @@ async function main() {
 
   const arjun = await prisma.coach.upsert({
     where: { userId: arjunUser.id },
-    update: {},
+    update: {
+      specialty: 'CBT & Trauma',
+      bio: 'Dr. Arjun Iyer combines cognitive behavioural therapy with trauma-sensitive approaches. 8 years of practice helping clients break free from negative thinking cycles.',
+      yearsExp: 8,
+      rating: 4.8,
+      languages: ['EN', 'HI'],
+      hourlyRate: 120000,
+    },
     create: {
       userId: arjunUser.id,
       specialty: 'CBT & Trauma',
@@ -155,7 +182,14 @@ async function main() {
 
   const lila = await prisma.coach.upsert({
     where: { userId: lilaUser.id },
-    update: {},
+    update: {
+      specialty: 'Somatic Therapy',
+      bio: 'Dr. Lila Roy is a somatic therapist with 15 years of experience. She works with the body\'s wisdom to release stored tension and restore emotional equilibrium.',
+      yearsExp: 15,
+      rating: 4.9,
+      languages: ['EN', 'BN'],
+      hourlyRate: 180000,
+    },
     create: {
       userId: lilaUser.id,
       specialty: 'Somatic Therapy',
@@ -184,7 +218,15 @@ async function main() {
   ];
 
   for (const av of availabilityData) {
-    await prisma.availability.create({ data: av }).catch(() => {});
+    const existing = await prisma.availability.findFirst({
+      where: av,
+      orderBy: { id: 'asc' },
+    });
+    if (existing) {
+      await prisma.availability.update({ where: { id: existing.id }, data: av });
+    } else {
+      await prisma.availability.create({ data: av });
+    }
   }
 
   // Sample videos
@@ -262,7 +304,15 @@ async function main() {
   ];
 
   for (const v of videos) {
-    await prisma.video.create({ data: v }).catch(() => {});
+    const existing = await prisma.video.findFirst({
+      where: { title: v.title },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) {
+      await prisma.video.update({ where: { id: existing.id }, data: v });
+    } else {
+      await prisma.video.create({ data: v });
+    }
   }
 
   // Demo session for Sarah (matches the mockup — tomorrow, Dr. Mira, 4:30 PM)
@@ -270,18 +320,31 @@ async function main() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(11, 0, 0, 0); // 4:30 PM IST = 11:00 UTC
 
-  await prisma.session.create({
-    data: {
+  const demoSession = {
+    userId: sarah.id,
+    coachId: mira.id,
+    topicId: anxietyTopic.id,
+    scheduledAt: tomorrow,
+    durationMin: 30,
+    type: SessionType.VIDEO,
+    status: SessionStatus.CONFIRMED,
+    isDemo: true,
+  };
+  const existingDemoSession = await prisma.session.findFirst({
+    where: {
       userId: sarah.id,
       coachId: mira.id,
       topicId: anxietyTopic.id,
-      scheduledAt: tomorrow,
-      durationMin: 30,
-      type: SessionType.VIDEO,
-      status: SessionStatus.CONFIRMED,
       isDemo: true,
+      type: SessionType.VIDEO,
     },
-  }).catch(() => {});
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existingDemoSession) {
+    await prisma.session.update({ where: { id: existingDemoSession.id }, data: demoSession });
+  } else {
+    await prisma.session.create({ data: demoSession });
+  }
 
   console.log('✅ Seed complete');
 }

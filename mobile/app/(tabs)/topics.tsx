@@ -8,12 +8,13 @@ import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 export default function TopicsScreen() {
-  const { data: topics, isLoading } = useCategoryTopics('emotional-healing');
+  const { data: topics, isLoading, isError } = useCategoryTopics('emotional-healing');
   const [search, setSearch] = React.useState('');
+  const topicList = Array.isArray(topics) ? topics : [];
 
-  const filtered = topics?.filter((t: any) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
-  ) ?? [];
+  const filtered = topicList.filter((t: any) =>
+    String(t.name ?? '').toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -41,6 +42,16 @@ export default function TopicsScreen() {
       {/* Grid */}
       {isLoading ? (
         <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
+      ) : isError ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Topics unavailable</Text>
+          <Text style={styles.emptyText}>MANAS could not load the healing topics right now.</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No topics found</Text>
+          <Text style={styles.emptyText}>Try a different search or check whether the production database has been seeded.</Text>
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -74,4 +85,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.ink },
   grid: { paddingHorizontal: 22, paddingBottom: 24 },
   row: { gap: 8, marginBottom: 8, flex: 1 },
+  emptyState: { marginHorizontal: 22, marginTop: 16, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
 });

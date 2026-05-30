@@ -17,6 +17,7 @@ import { startReminderCron } from './lib/reminders';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
+const API_VERSION = process.env.npm_package_version ?? '1.0.0';
 
 // Middleware
 app.use(helmet());
@@ -32,6 +33,24 @@ app.use(express.json());
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// API discovery. Render opens the service root in a browser, so keep this
+// lightweight and public while avoiding any environment or database details.
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    name: 'MANAS API',
+    status: 'ok',
+    version: API_VERSION,
+    health: '/health',
+    endpoints: [
+      '/categories',
+      '/categories/emotional-healing/topics',
+      '/categories/coaching/topics',
+      '/coaches',
+      '/videos',
+    ],
+  });
 });
 
 // Routes

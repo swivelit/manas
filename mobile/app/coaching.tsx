@@ -11,7 +11,8 @@ const icoColors = ['#4C7BFF', '#C47A3C', '#4C7BFF', '#C47A3C', '#4C7BFF', '#C47A
 const icoBgs = [colors.blueSoft, colors.peachSoft, colors.blueSoft, colors.peachSoft, colors.blueSoft, colors.peachSoft, colors.blueSoft, colors.peachSoft, colors.blueSoft, colors.peachSoft];
 
 export default function CoachingScreen() {
-  const { data: topics, isLoading } = useCategoryTopics('coaching');
+  const { data: topics, isLoading, isError } = useCategoryTopics('coaching');
+  const topicList = Array.isArray(topics) ? topics : [];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -37,9 +38,19 @@ export default function CoachingScreen() {
         {/* Topic list */}
         {isLoading ? (
           <ActivityIndicator color={colors.blue} style={{ marginTop: 32 }} />
+        ) : isError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Coaching unavailable</Text>
+            <Text style={styles.emptyText}>MANAS could not load coaching topics right now.</Text>
+          </View>
+        ) : topicList.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No coaching topics yet</Text>
+            <Text style={styles.emptyText}>Check whether the production database has been seeded.</Text>
+          </View>
         ) : (
           <View style={styles.list}>
-            {topics?.map((t: any, i: number) => (
+            {topicList.map((t: any, i: number) => (
               <TouchableOpacity
                 key={t.id}
                 onPress={() => router.push(`/topics/${t.slug}`)}
@@ -91,4 +102,7 @@ const styles = StyleSheet.create({
   itemTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 12, color: colors.ink, lineHeight: 15 },
   itemSub: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: colors.muted, marginTop: 1 },
   arr: { fontFamily: fontFamilies.dmSans, fontSize: 16, color: colors.muted },
+  emptyState: { marginHorizontal: 22, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
 });

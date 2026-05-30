@@ -10,6 +10,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && npm run db:seed",
+    "smoke:prod": "node scripts/smoke-prod.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npx prisma generate && npm run typecheck"
   },

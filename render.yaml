@@ -19,8 +19,6 @@ services:
         value: production
       - key: NODE_VERSION
         value: 20
-      - key: PORT
-        value: 4000
       - key: FRONTEND_URL
         value: https://manas.app
       - key: EMAIL_USER

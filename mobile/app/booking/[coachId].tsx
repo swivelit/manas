@@ -11,15 +11,18 @@ import { fontFamilies } from '../../theme/fonts';
 
 export default function BookingScreen() {
   const { coachId, topicSlug } = useLocalSearchParams<{ coachId: string; topicSlug: string }>();
+  const coachParam = Array.isArray(coachId) ? coachId[0] : coachId;
+  const topicParam = Array.isArray(topicSlug) ? topicSlug[0] : topicSlug;
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedStartsAt, setSelectedStartsAt] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState<'VIDEO' | 'AUDIO' | 'CHAT'>('VIDEO');
 
-  const { data: coach } = useCoach(coachId);
-  const { data: topic } = useTopic(topicSlug ?? 'chronic-anxiety');
+  const { data: coach, isError: coachError } = useCoach(coachParam);
+  const { data: topic, isError: topicError } = useTopic(topicParam ?? 'chronic-anxiety');
   const { data: me } = useMe();
-  const { data: availability, isLoading: slotsLoading } = useCoachAvailability(coachId, selectedDate);
+  const { data: availability, isLoading: slotsLoading, isError: slotsError } = useCoachAvailability(coachParam, selectedDate);
   const bookSession = useBookSession();
+  const slots = Array.isArray(availability?.slots) ? availability.slots : [];
 
   const userTz = me?.timezone ?? 'Asia/Kolkata';
   const tzLabel = formatInTimeZone(new Date(), userTz, 'zzz'); // e.g. "IST", "GMT+5:30"
@@ -29,10 +32,10 @@ export default function BookingScreen() {
   }
 
   async function handleConfirm() {
-    if (!selectedStartsAt || !topic) return;
+    if (!selectedStartsAt || !topic || !coachParam) return;
     try {
       await bookSession.mutateAsync({
-        coachId,
+        coachId: coachParam,
         topicId: topic.id,
         scheduledAt: selectedStartsAt,
         type: sessionType,
@@ -48,8 +51,22 @@ export default function BookingScreen() {
   const markedDates: Record<string, { selected?: boolean; selectedColor?: string; marked?: boolean; dotColor?: string }> = {
     [selectedDate]: { selected: true, selectedColor: colors.ink },
   };
-  if (availability?.slots?.some((s: { available: boolean }) => s.available)) {
+  if (slots.some((s: { available: boolean }) => s.available)) {
     markedDates[selectedDate] = { ...markedDates[selectedDate], dotColor: colors.pink, marked: true };
+  }
+
+  if (coachError || topicError) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.errorWrap}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.errorTitle}>Booking unavailable</Text>
+          <Text style={styles.errorText}>MANAS could not load the coach or topic needed for booking.</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -101,12 +118,17 @@ export default function BookingScreen() {
         {/* Slots */}
         {slotsLoading ? (
           <ActivityIndicator color={colors.blue} style={{ marginTop: 16 }} />
+        ) : slotsError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Availability unavailable</Text>
+            <Text style={styles.emptyText}>Could not load time slots. Try another day or check your connection.</Text>
+          </View>
         ) : (
           <View style={styles.slots}>
-            {availability?.slots?.length === 0 && (
+            {slots.length === 0 && (
               <Text style={styles.noSlots}>No availability on this day.</Text>
             )}
-            {availability?.slots?.map((s: { time: string; startsAt: string; available: boolean }) => (
+            {slots.map((s: { time: string; startsAt: string; available: boolean }) => (
               <TouchableOpacity
                 key={s.startsAt}
                 disabled={!s.available}
@@ -192,4 +214,10 @@ const styles = StyleSheet.create({
   confirmLeft: { fontFamily: fontFamilies.dmSans, fontSize: 13, color: colors.cream },
   confirmSlot: { fontFamily: fontFamilies.frauncesItalic, color: colors.pinkSoft, fontSize: 14 },
   confirmRight: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.cream },
+  emptyState: { marginHorizontal: 22, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
+  errorWrap: { flex: 1, padding: 22, justifyContent: 'center' },
+  errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink },
+  errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
 });

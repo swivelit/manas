@@ -28,15 +28,17 @@ export default function VideosScreen() {
   const bookmark = useBookmarkVideo();
   const token = useAuthStore(s => s.token);
 
-  const bookmarkedIds = new Set<string>((bookmarks ?? []).map((b: any) => b.id));
+  const videoList = Array.isArray(videos) ? videos : [];
+  const bookmarkList = Array.isArray(bookmarks) ? bookmarks : [];
+  const bookmarkedIds = new Set<string>(bookmarkList.map((b: any) => b.id));
 
   async function handleHeart(id: string) {
     if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
     try { await bookmark.mutateAsync(id); } catch { /* swallow — list still re-renders on next fetch */ }
   }
 
-  const featured = videos?.[0];
-  const list = videos?.slice(1) ?? [];
+  const featured = videoList[0];
+  const list = videoList.slice(1);
 
   return (
     <SafeAreaView style={styles.screen}>

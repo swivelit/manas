@@ -16,8 +16,13 @@ import { fontFamilies } from '../../theme/fonts';
 export default function HomeScreen() {
   const user = useAuthStore(s => s.user);
   const { data: sessions } = useSessions();
+  const sessionList = Array.isArray(sessions) ? sessions : [];
 
-  const upcoming = sessions?.find((s: any) => s.status === 'CONFIRMED' || s.status === 'PENDING');
+  const upcoming = sessionList.find((s: any) => s.status === 'CONFIRMED' || s.status === 'PENDING');
+  const upcomingDate = upcoming ? new Date(upcoming.scheduledAt) : null;
+  const upcomingTime = upcomingDate && !Number.isNaN(upcomingDate.getTime())
+    ? format(upcomingDate, 'h:mm a')
+    : 'time pending';
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning,';
@@ -92,8 +97,8 @@ export default function HomeScreen() {
               <Text style={styles.upcomingLabel}>UP NEXT · TOMORROW</Text>
               <Text style={styles.upcomingText}>
                 Demo with{' '}
-                <Text style={styles.upcomingCoach}>{upcoming.coach.user.name.replace('Dr. ', 'Dr. ')}</Text>
-                {' '}· {format(new Date(upcoming.scheduledAt), 'h:mm a')}
+                <Text style={styles.upcomingCoach}>{upcoming.coach?.user?.name?.replace('Dr. ', 'Dr. ') ?? 'your MANAS coach'}</Text>
+                {' '}· {upcomingTime}
               </Text>
             </View>
             <TouchableOpacity style={styles.joinBtn}>

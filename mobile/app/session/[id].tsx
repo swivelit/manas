@@ -16,7 +16,8 @@ const JOIN_WINDOW_MIN = 10;
 
 export default function SessionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: session, isLoading } = useSession(id);
+  const sessionId = Array.isArray(id) ? id[0] : id;
+  const { data: session, isLoading, isError } = useSession(sessionId);
   const update = useUpdateSession();
 
   const [rescheduling, setRescheduling] = useState(false);
@@ -35,10 +36,23 @@ export default function SessionDetail() {
   if (isLoading) {
     return <SafeAreaView style={styles.screen}><ActivityIndicator color={colors.blue} style={{ marginTop: 80 }} /></SafeAreaView>;
   }
-  if (!session) return null;
+  if (isError || !session) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.errorWrap}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.errorTitle}>Session unavailable</Text>
+          <Text style={styles.errorText}>MANAS could not load this session right now.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const at = new Date(session.scheduledAt);
-  const minsUntil = differenceInMinutes(at, new Date());
+  const safeAt = Number.isNaN(at.getTime()) ? new Date() : at;
+  const minsUntil = differenceInMinutes(safeAt, new Date());
   const canJoin = session.status === 'CONFIRMED' && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -30;
 
   async function handleJoin() {
@@ -51,7 +65,7 @@ export default function SessionDetail() {
 
   async function handlePickSlot(slot: { startsAt: string }) {
     try {
-      await update.mutateAsync({ id, scheduledAt: slot.startsAt });
+      await update.mutateAsync({ id: sessionId, scheduledAt: slot.startsAt });
       setRescheduling(false);
       setNewDate(null);
       Alert.alert('Rescheduled', `New time: ${format(new Date(slot.startsAt), 'EEE, d MMM · h:mm a')}`);
@@ -71,7 +85,7 @@ export default function SessionDetail() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await update.mutateAsync({ id, status: 'CANCELLED' });
+              await update.mutateAsync({ id: sessionId, status: 'CANCELLED' });
               router.back();
             } catch {
               Alert.alert('Could not cancel', 'Please try again.');
@@ -93,13 +107,13 @@ export default function SessionDetail() {
           {session.isDemo ? 'FREE DEMO' : 'SESSION'} · {session.status}
         </Text>
         <Text style={styles.title}>
-          {session.topic.name}{'\n'}<Text style={styles.titleItalic}>with {session.coach.user.name.replace('Dr. ', 'Dr. ')}.</Text>
+          {session.topic?.name ?? 'Session'}{'\n'}<Text style={styles.titleItalic}>with {session.coach?.user?.name?.replace('Dr. ', 'Dr. ') ?? 'your MANAS coach'}.</Text>
         </Text>
 
         <View style={styles.metaCard}>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>When</Text>
-            <Text style={styles.metaVal}>{format(at, 'EEE, d MMM · h:mm a')}</Text>
+            <Text style={styles.metaVal}>{format(safeAt, 'EEE, d MMM · h:mm a')}</Text>
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Format</Text>
@@ -203,4 +217,7 @@ const styles = StyleSheet.create({
   slot: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.creamDeep },
   slotText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 11, color: colors.ink },
   meetingMeta: { marginTop: 18, fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.muted },
+  errorWrap: { flex: 1, padding: 22, justifyContent: 'center' },
+  errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink },
+  errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
 });

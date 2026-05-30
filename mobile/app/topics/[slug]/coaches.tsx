@@ -11,8 +11,10 @@ const FILTERS = ['All', 'Anxiety', 'English', 'Today', '★ 4.8+'];
 
 export default function CoachList() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const topicSlug = Array.isArray(slug) ? slug[0] : slug;
   const [activeFilter, setActiveFilter] = useState('All');
-  const { data: coaches, isLoading } = useCoaches(slug);
+  const { data: coaches, isLoading, isError } = useCoaches(topicSlug);
+  const coachList = Array.isArray(coaches) ? coaches : [];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -43,14 +45,24 @@ export default function CoachList() {
       {/* Coach list */}
       {isLoading ? (
         <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
+      ) : isError ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Coaches unavailable</Text>
+          <Text style={styles.emptyText}>MANAS could not load coaches right now.</Text>
+        </View>
+      ) : coachList.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No coaches available</Text>
+          <Text style={styles.emptyText}>Check whether the production database has been seeded.</Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {coaches?.map((c: any, i: number) => (
+          {coachList.map((c: any, i: number) => (
             <CoachCard
               key={c.id}
               coach={c}
               index={i}
-              onPress={() => router.push(`/booking/${c.id}?topicSlug=${slug}`)}
+              onPress={() => router.push(`/booking/${c.id}?topicSlug=${topicSlug}`)}
             />
           ))}
         </ScrollView>
@@ -73,4 +85,7 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.inkSoft },
   chipTextActive: { color: colors.cream },
   list: { paddingHorizontal: 22, gap: 10, paddingBottom: 24 },
+  emptyState: { marginHorizontal: 22, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
+  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
 });

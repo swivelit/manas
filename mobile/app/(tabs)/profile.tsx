@@ -16,8 +16,9 @@ export default function ProfileScreen() {
   const { data: sessions } = useSessions();
   const clearAuth = useAuthStore(s => s.clearAuth);
 
-  const upcoming = sessions?.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status)) ?? [];
-  const completed = sessions?.filter((s: any) => s.status === 'COMPLETED') ?? [];
+  const sessionList = Array.isArray(sessions) ? sessions : [];
+  const upcoming = sessionList.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status));
+  const completed = sessionList.filter((s: any) => s.status === 'COMPLETED');
 
   function handleLogout() {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [

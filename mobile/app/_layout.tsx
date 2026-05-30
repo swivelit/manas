@@ -32,7 +32,7 @@ export default function RootLayout() {
   }, [fontError]);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded, fontError]);
 
   // Once signed in, request push permission + persist the Expo token. Tapping a
@@ -40,10 +40,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (!token) return;
     void registerForPushNotificationsAsync();
-    const sub = Notifications.addNotificationResponseReceivedListener(() => {
-      // Future: deep-link to /(tabs)/sessions when type === 'BOOKING_CONFIRMED' etc.
-    });
-    return () => sub.remove();
+    try {
+      const sub = Notifications.addNotificationResponseReceivedListener(() => {
+        // Future: deep-link to /(tabs)/sessions when type === 'BOOKING_CONFIRMED' etc.
+      });
+      return () => sub.remove();
+    } catch (err) {
+      console.warn('[push] notification listener unavailable:', err);
+      return undefined;
+    }
   }, [token]);
 
   if (!fontsLoaded && !fontError) return null;

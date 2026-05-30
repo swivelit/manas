@@ -10,7 +10,8 @@ import { fontFamilies } from '../../theme/fonts';
 const accentColors = [colors.ink, colors.blue, colors.purple];
 
 export default function SessionsScreen() {
-  const { data: sessions, isLoading } = useSessions();
+  const { data: sessions, isLoading, isError } = useSessions();
+  const sessionList = Array.isArray(sessions) ? sessions : [];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -27,7 +28,12 @@ export default function SessionsScreen() {
 
       {isLoading ? (
         <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
-      ) : sessions?.length === 0 ? (
+      ) : isError ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>Sessions unavailable</Text>
+          <Text style={styles.emptySub}>Sign in again or check your connection.</Text>
+        </View>
+      ) : sessionList.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>No sessions yet</Text>
           <Text style={styles.emptySub}>Book your first free demo to get started</Text>
@@ -37,7 +43,7 @@ export default function SessionsScreen() {
         </View>
       ) : (
         <FlatList
-          data={sessions}
+          data={sessionList}
           keyExtractor={(s: any) => s.id}
           contentContainerStyle={styles.list}
           renderItem={({ item, index }) => (
