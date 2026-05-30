@@ -63,3 +63,37 @@ export async function notifyUser(args: NotifyUserArgs) {
   }
   return row;
 }
+
+/**
+ * Broadcast a notification to every active user (admin tool). Persists one
+ * Notification row per user and best-effort fans out to Expo in chunks.
+ * NOTE: for a large audience, move push fan-out to a queue/batch worker (v1.1).
+ */
+export async function broadcastNotification(args: { title: string; body: string; type?: string }) {
+  const type = args.type ?? 'BROADCAST';
+  const users = await prisma.user.findMany({ where: { isActive: true }, select: { pushToken: true, id: true } });
+  if (users.length === 0) return { count: 0 };
+
+  await prisma.notification.createMany({
+    data: users.map(u => ({ userId: u.id, type, title: args.title, body: args.body })),
+  });
+
+  const tokens = users
+    .map(u => u.pushToken)
+    .filter((t): t is string => !!t && t.startsWith('ExponentPushToken'));
+
+  for (let i = 0; i < tokens.length; i += 100) {
+    const chunk = tokens.slice(i, i + 100).map(to => ({ to, title: args.title, body: args.body, data: { type } }));
+    try {
+      await fetch(EXPO_PUSH_URL, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Accept-Encoding': 'gzip, deflate', 'Content-Type': 'application/json' },
+        body: JSON.stringify(chunk),
+      });
+    } catch (err) {
+      console.warn('[push] broadcast chunk failed:', err);
+    }
+  }
+
+  return { count: users.length };
+}

@@ -14,7 +14,7 @@ const progressSchema = z.object({
 router.get('/', async (req: Request, res: Response) => {
   const { type, topicId } = req.query as { type?: string; topicId?: string };
 
-  const where: { type?: VideoType; topicId?: string | null } = {};
+  const where: { type?: VideoType; topicId?: string | null; approved: boolean } = { approved: true };
   if (type && Object.values(VideoType).includes(type as VideoType)) {
     where.type = type as VideoType;
   }
@@ -45,6 +45,12 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
     include: { topic: { select: { name: true, slug: true } } },
   });
   if (!video) { res.status(404).json({ error: 'Video not found' }); return; }
+
+  // Unapproved videos are hidden from everyone except admins.
+  if (!video.approved && req.user?.role !== 'ADMIN') {
+    res.status(404).json({ error: 'Video not found' });
+    return;
+  }
 
   if (video.isPremium) {
     if (!req.user) {

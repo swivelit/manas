@@ -92,6 +92,15 @@ async function main() {
     },
   });
 
+  // Admin user (PDF §4.C). Email OTP login also works in dev (the code is
+  // returned in the response); the password backs the /auth/login API.
+  const adminPassword = await bcrypt.hash('adminpass123', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@manas.app' },
+    update: { name: 'MANAS Admin', role: Role.ADMIN },
+    create: { email: 'admin@manas.app', name: 'MANAS Admin', passwordHash: adminPassword, role: Role.ADMIN },
+  });
+
   // Coach users
   const coachPassword = await bcrypt.hash('coachpass123', 10);
 

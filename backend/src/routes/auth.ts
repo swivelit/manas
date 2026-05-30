@@ -26,8 +26,11 @@ const userSelect = {
   role: true,
   avatarUrl: true,
   timezone: true,
+  isActive: true,
   createdAt: true,
 } as const;
+
+const DEACTIVATED_MESSAGE = 'This account has been deactivated. Please contact support.';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -218,6 +221,7 @@ router.post('/verify-email-otp', async (req: Request, res: Response, next: NextF
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (error) {
     next(error);
@@ -266,6 +270,11 @@ router.post('/login', async (req: Request, res: Response) => {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: 'Invalid credentials' });
+    return;
+  }
+
+  if (!user.isActive) {
+    res.status(403).json({ error: DEACTIVATED_MESSAGE });
     return;
   }
 
@@ -319,6 +328,7 @@ router.post('/google', async (req: Request, res: Response, next: NextFunction) =
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (err) {
     next(err);
@@ -398,6 +408,7 @@ router.post('/verify-phone-otp', async (req: Request, res: Response, next: NextF
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (err) {
     next(err);

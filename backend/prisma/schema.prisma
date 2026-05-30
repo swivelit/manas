@@ -44,6 +44,7 @@ model User {
   avatarUrl    String?
   timezone     String   @default("Asia/Kolkata")
   isPremium    Boolean  @default(false)
+  isActive     Boolean  @default(true) // admins can deactivate; blocks new logins
   pushToken    String?
   consentAt    DateTime? // set when the user accepts Terms + Privacy at signup
   createdAt    DateTime @default(now())
@@ -149,6 +150,7 @@ model Video {
   durationSec  Int
   type         VideoType
   isPremium    Boolean   @default(false)
+  approved     Boolean   @default(true) // admins can unapprove to hide from the library
   topicId      String?
   createdAt    DateTime  @default(now())
 
