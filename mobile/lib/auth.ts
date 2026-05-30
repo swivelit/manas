@@ -50,3 +50,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }));
+
+// Landing route by role. ADMIN gains its own area in Phase 3; until then it
+// falls back to the patient tabs.
+export function routeForRole(role?: string | null): '/(tabs)' | '/(coach)/appointments' {
+  if (role === 'COACH') return '/(coach)/appointments';
+  return '/(tabs)';
+}

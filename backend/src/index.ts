@@ -13,6 +13,7 @@ import sessionsRoutes from './routes/sessions';
 import videosRoutes from './routes/videos';
 import notificationsRoutes from './routes/notifications';
 import moodRoutes from './routes/mood';
+import coachRoutes from './routes/coach';
 import { startReminderCron } from './lib/reminders';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/sessions', sessionsRoutes);
 app.use('/videos', videosRoutes);
 app.use('/notifications', notificationsRoutes);
 app.use('/mood', moodRoutes);
+app.use('/coach', coachRoutes);
 
 // 404
 app.use((_req: Request, res: Response) => {

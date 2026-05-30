@@ -189,3 +189,58 @@ export function useMarkNotificationRead() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }
+
+// ---- Topics (all, for pickers) ----
+export function useAllTopics() {
+  return useQuery({ queryKey: ['all-topics'], queryFn: () => api.get('/topics').then(r => r.data) });
+}
+
+// ---- Coach surface ----
+export function useCoachAppointments() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['coach-appointments'],
+    queryFn: () => api.get('/coach/appointments').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function useUpdateCoachSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' }) =>
+      api.patch(`/coach/sessions/${id}`, { status }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach-appointments'] }),
+  });
+}
+
+export function useMyAvailability() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['coach-my-availability'],
+    queryFn: () => api.get('/coach/availability').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export type AvailabilityRow = { dayOfWeek: number; startTime: string; endTime: string };
+
+export function useReplaceAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (availability: AvailabilityRow[]) =>
+      api.put('/coach/availability', { availability }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach-my-availability'] }),
+  });
+}
+
+export function useCreateCoachVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string; description: string; url: string; thumbnailUrl?: string;
+      type: string; isPremium?: boolean; topicId?: string; durationSec?: number;
+    }) => api.post('/coach/videos', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
+  });
+}

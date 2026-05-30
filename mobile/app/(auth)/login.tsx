@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth';
+import { useAuthStore, routeForRole } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
@@ -26,7 +26,7 @@ export default function Login() {
         try {
           const { token, user } = await exchangeGoogleIdToken(googleResponse.params.id_token);
           await setAuth(token, user);
-          router.replace('/(tabs)');
+          router.replace(routeForRole(user.role));
         } catch (err: unknown) {
           const e = err as { response?: { status?: number; data?: { error?: string } } };
           Alert.alert('Google sign-in failed', e?.response?.data?.error ?? 'Please try again');
@@ -77,7 +77,7 @@ export default function Login() {
         mode: 'login',
       });
       await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      router.replace(routeForRole(data.user.role));
     } catch (err: any) {
       Alert.alert('Login failed', getErrorMessage(err, 'Please try again'));
     } finally {

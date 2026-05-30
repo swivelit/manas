@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth';
+import { useAuthStore, routeForRole } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
@@ -57,7 +57,7 @@ export default function PhoneAuth() {
         name: name.trim() || undefined,
       });
       await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      router.replace(routeForRole(data.user.role));
     } catch (err: unknown) {
       Alert.alert('Verification failed', errMsg(err, 'Invalid or expired code'));
     } finally {
