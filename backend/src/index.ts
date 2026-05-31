@@ -15,6 +15,7 @@ import notificationsRoutes from './routes/notifications';
 import moodRoutes from './routes/mood';
 import coachRoutes from './routes/coach';
 import adminRoutes from './routes/admin';
+import paymentsRoutes from './routes/payments';
 import { startReminderCron } from './lib/reminders';
 
 const app = express();
@@ -67,6 +68,7 @@ app.use('/notifications', notificationsRoutes);
 app.use('/mood', moodRoutes);
 app.use('/coach', coachRoutes);
 app.use('/admin', adminRoutes);
+app.use('/payments', paymentsRoutes);
 
 // 404
 app.use((_req: Request, res: Response) => {

@@ -56,6 +56,7 @@ model User {
   videoBookmarks VideoBookmark[]
   moodEntries    MoodEntry[]
   notifications  Notification[]
+  payments       Payment[]
 }
 
 model EmailOtp {
@@ -203,6 +204,21 @@ model MoodEntry {
   mood      Int
   note      String?
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  amount            Int      // in paise
+  currency          String   @default("INR")
+  status            String   @default("created") // created | paid | failed
+  createdAt         DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

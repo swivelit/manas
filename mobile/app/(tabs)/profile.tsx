@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { format } from 'date-fns';
 import { useMe } from '../../lib/queries';
 import { useSessions } from '../../lib/queries';
+import { usePremiumUpgrade } from '../../lib/usePremiumUpgrade';
 import { useAuthStore } from '../../lib/auth';
 import { SessionCard } from '../../components/SessionCard';
 import { CrisisBanner } from '../../components/CrisisBanner';
@@ -15,6 +16,7 @@ import { fontFamilies } from '../../theme/fonts';
 export default function ProfileScreen() {
   const { data: me } = useMe();
   const { data: sessions } = useSessions();
+  const premium = usePremiumUpgrade();
   const clearAuth = useAuthStore(s => s.clearAuth);
 
   const sessionList = Array.isArray(sessions) ? sessions : [];
@@ -82,6 +84,20 @@ export default function ProfileScreen() {
 
         {/* Legal + crisis support footer — always reachable from the profile. */}
         <View style={styles.footer}>
+          {me?.isPremium ? (
+            <View style={styles.premiumRow}>
+              <Text style={styles.premiumStar}>★</Text>
+              <Text style={styles.premiumText}>MANAS Premium · active</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.upgradeRow} onPress={premium.upgrade} disabled={premium.busy} activeOpacity={0.85}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.upgradeTitle}>{premium.busy ? 'Please wait…' : 'Upgrade to Premium'}</Text>
+                <Text style={styles.upgradeSub}>{premium.configured ? 'Unlock the full guided library' : 'Coming soon'}</Text>
+              </View>
+              <Text style={styles.upgradeChevron}>›</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.row} onPress={() => router.push('/legal')} activeOpacity={0.85}>
             <Text style={styles.rowText}>Privacy & Terms</Text>
             <Icon name="chevron_right" size={16} color={colors.muted} />
@@ -131,5 +147,12 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 22, marginTop: 22, gap: 10 },
   row: { backgroundColor: colors.paper, borderRadius: 14, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
+  upgradeRow: { backgroundColor: colors.pinkSoft, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
+  upgradeTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
+  upgradeSub: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.inkSoft, marginTop: 2 },
+  upgradeChevron: { fontFamily: fontFamilies.fraunces, fontSize: 22, color: colors.pink },
+  premiumRow: { backgroundColor: colors.pinkSoft, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  premiumStar: { fontSize: 14, color: colors.pink },
+  premiumText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
   footerBanner: { marginTop: 0 },
 });

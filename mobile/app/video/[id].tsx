@@ -5,6 +5,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useVideo, useVideoProgress, useBookmarkVideo } from '../../lib/queries';
+import { usePremiumUpgrade } from '../../lib/usePremiumUpgrade';
 import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
@@ -72,6 +73,7 @@ export default function VideoPlayer() {
   const videoId = Array.isArray(id) ? id[0] : id;
   const { data, isLoading, isError, error } = useVideo(videoId);
   const bookmark = useBookmarkVideo();
+  const premium = usePremiumUpgrade();
   const token = useAuthStore(s => s.token);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
@@ -139,9 +141,12 @@ export default function VideoPlayer() {
             <TouchableOpacity
               style={styles.paywallBtn}
               activeOpacity={0.85}
-              onPress={() => Alert.alert('Coming soon', 'Premium upgrades are launching soon. Thanks for your patience.')}
+              onPress={premium.upgrade}
+              disabled={premium.busy}
             >
-              <Text style={styles.paywallBtnText}>Coming soon</Text>
+              <Text style={styles.paywallBtnText}>
+                {premium.busy ? 'Please wait…' : premium.configured ? premium.priceLabel : 'Coming soon'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.back()} style={styles.paywallBackBtn}>
               <Text style={styles.paywallBackText}>← Back to library</Text>

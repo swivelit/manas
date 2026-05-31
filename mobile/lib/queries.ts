@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import { purchasePremium } from './payments';
 
 // ---- Categories & Topics ----
 export function useCategories() {
@@ -323,5 +324,28 @@ export function useBroadcast() {
   return useMutation({
     mutationFn: (data: { title: string; body: string }) =>
       api.post('/admin/notifications/broadcast', data).then(r => r.data),
+  });
+}
+
+// ---- Payments ----
+export function usePaymentsConfig() {
+  return useQuery({
+    queryKey: ['payments-config'],
+    queryFn: () => api.get('/payments/config').then(r => r.data as { configured: boolean; amount: number; currency: string; name: string }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePurchasePremium() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => purchasePremium(),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: ['me'] });
+        qc.invalidateQueries({ queryKey: ['videos'] });
+        qc.invalidateQueries({ queryKey: ['video'] });
+      }
+    },
   });
 }
