@@ -24,10 +24,18 @@ const API_VERSION = process.env.npm_package_version ?? '1.0.0';
 
 // Middleware
 app.use(helmet());
+
+// CORS: always allow no-origin requests (native mobile apps, curl, server-to-
+// server). In production, only allow the configured FRONTEND_URL origins
+// (comma-separated); in non-production, allow everything for convenience.
+const allowedOrigins = (process.env.FRONTEND_URL ?? '').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.FRONTEND_URL
-    : true,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);                     // mobile apps / curl
+    if (process.env.NODE_ENV !== 'production') return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(morgan('dev'));

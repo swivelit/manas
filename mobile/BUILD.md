@@ -8,12 +8,27 @@
    npm install -g eas-cli
    eas login
    ```
-3. **Link the project** (one-time)
+3. **Link the project** (one-time) — **required for push notifications and EAS builds**
    ```bash
    cd mobile
    eas init
    # This generates and adds `extra.eas.projectId` to app.json
    ```
+   `app.json` has no `extra.eas.projectId` yet, which blocks Expo push tokens and EAS builds until you run this. It must be run from your own Expo account, so it can't be done for you. `mobile/lib/notifications.ts` already reads the id from `Constants.expoConfig.extra.eas.projectId`, so push registration starts working as soon as `eas init` writes it.
+
+---
+
+## What works in Expo Go vs. what needs a build
+
+Quick UI testing works in **Expo Go** (scan the QR from `npx expo start`). A few capabilities require a **dev/preview/production build** (`eas build`), not Expo Go:
+
+| Capability | Expo Go | Dev/Prod build |
+|---|---|---|
+| All screens, auth (email OTP), booking, videos, mood, legal, crisis, coach + admin areas | ✅ | ✅ |
+| Premium payment (opens the Razorpay hosted link in the browser) | ✅ works | ✅ works |
+| **Push notification tokens** (`expo-notifications` getExpoPushToken) | ❌ needs `eas init` + a build | ✅ |
+
+> The premium payment flow deliberately uses Razorpay **Payment Links via the in-app browser**, so it works everywhere — including Expo Go — without the `react-native-razorpay` native module (which does not support this app's New Architecture). To test a real charge end-to-end you only need `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` set on the backend.
 
 ---
 
