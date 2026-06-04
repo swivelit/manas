@@ -57,3 +57,5 @@ modules/wake-word/android/build/
 
 # Local model weights are intentionally not committed.
 models/*.gguf
+# Android release signing credentials — never commit
+release-signing.properties

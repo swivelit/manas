@@ -1,5 +1,5 @@
 import '../global.css';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -11,6 +11,8 @@ import { useAppFonts } from '../theme/fonts';
 import { useAuthStore } from '../lib/auth';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { CrisisDisclaimerModal } from '../components/CrisisDisclaimerModal';
+import { hasAckedCrisis, setCrisisAck } from '../lib/crisis';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -23,9 +25,17 @@ export default function RootLayout() {
   const loadAuth = useAuthStore(s => s.loadAuth);
   const token = useAuthStore(s => s.token);
 
+  // Crisis disclaimer gate. `null` = still checking SecureStore; once resolved,
+  // `true` means we must show the one-time mandatory mental-health disclaimer.
+  const [showCrisis, setShowCrisis] = useState<boolean | null>(null);
+
   useEffect(() => {
     loadAuth();
   }, [loadAuth]);
+
+  useEffect(() => {
+    hasAckedCrisis().then(acked => setShowCrisis(!acked));
+  }, []);
 
   useEffect(() => {
     if (fontError) console.warn('[fonts] failed to load, using system fallbacks:', fontError);
@@ -60,6 +70,10 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }} />
+            <CrisisDisclaimerModal
+              visible={showCrisis === true}
+              onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
+            />
           </QueryClientProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

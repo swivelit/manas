@@ -6,16 +6,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth';
+import { useAuthStore, routeForRole } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
+import { ConsentCheckbox } from '../../components/ConsentCheckbox';
 
 export default function PhoneAuth() {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
 
@@ -27,6 +29,7 @@ export default function PhoneAuth() {
 
   async function handleRequest() {
     if (!phone.trim()) { Alert.alert('Enter your phone number'); return; }
+    if (!consent) { Alert.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
     setLoading(true);
     try {
       await api.post('/auth/request-phone-otp', { phone: phone.trim() });
@@ -54,7 +57,7 @@ export default function PhoneAuth() {
         name: name.trim() || undefined,
       });
       await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      router.replace(routeForRole(data.user.role));
     } catch (err: unknown) {
       Alert.alert('Verification failed', errMsg(err, 'Invalid or expired code'));
     } finally {
@@ -114,6 +117,10 @@ export default function PhoneAuth() {
                   maxLength={6}
                 />
               </View>
+            )}
+
+            {!sent && (
+              <ConsentCheckbox checked={consent} onToggle={() => setConsent(c => !c)} />
             )}
 
             <Button

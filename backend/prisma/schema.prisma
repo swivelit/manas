@@ -44,7 +44,9 @@ model User {
   avatarUrl    String?
   timezone     String   @default("Asia/Kolkata")
   isPremium    Boolean  @default(false)
+  isActive     Boolean  @default(true) // admins can deactivate; blocks new logins
   pushToken    String?
+  consentAt    DateTime? // set when the user accepts Terms + Privacy at signup
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -54,6 +56,7 @@ model User {
   videoBookmarks VideoBookmark[]
   moodEntries    MoodEntry[]
   notifications  Notification[]
+  payments       Payment[]
 }
 
 model EmailOtp {
@@ -148,6 +151,7 @@ model Video {
   durationSec  Int
   type         VideoType
   isPremium    Boolean   @default(false)
+  approved     Boolean   @default(true) // admins can unapprove to hide from the library
   topicId      String?
   createdAt    DateTime  @default(now())
 
@@ -200,6 +204,21 @@ model MoodEntry {
   mood      Int
   note      String?
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  amount            Int      // in paise
+  currency          String   @default("INR")
+  status            String   @default("created") // created | paid | failed
+  createdAt         DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

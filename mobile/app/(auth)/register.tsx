@@ -6,10 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth';
+import { useAuthStore, routeForRole } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
+import { ConsentCheckbox } from '../../components/ConsentCheckbox';
 import { exchangeGoogleIdToken, isGoogleConfigured, useGoogleAuth } from '../../lib/google';
 
 export default function Register() {
@@ -17,6 +18,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
   const [, googleResponse, googlePromptAsync] = useGoogleAuth();
@@ -27,7 +29,7 @@ export default function Register() {
         try {
           const { token, user } = await exchangeGoogleIdToken(googleResponse.params.id_token);
           await setAuth(token, user);
-          router.replace('/(tabs)');
+          router.replace(routeForRole(user.role));
         } catch (err: unknown) {
           const e = err as { response?: { data?: { error?: string } } };
           Alert.alert('Google sign-in failed', e?.response?.data?.error ?? 'Please try again');
@@ -37,6 +39,7 @@ export default function Register() {
   }, [googleResponse, setAuth]);
 
   async function handleGoogle() {
+    if (!consent) { Alert.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
     if (!isGoogleConfigured()) {
       Alert.alert('Coming soon', 'Google sign-in launches as soon as our setup is finalised.');
       return;
@@ -51,6 +54,7 @@ export default function Register() {
 
   async function handleRequestOtp() {
     if (!name.trim() || !email.trim()) { Alert.alert('Please enter your name and email'); return; }
+    if (!consent) { Alert.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/request-email-otp', {
@@ -80,7 +84,7 @@ export default function Register() {
         mode: 'register',
       });
       await setAuth(data.token, data.user);
-      router.replace('/(tabs)');
+      router.replace(routeForRole(data.user.role));
     } catch (err: any) {
       Alert.alert('Registration failed', getErrorMessage(err, 'Please try again'));
     } finally {
@@ -135,6 +139,10 @@ export default function Register() {
                 </TouchableOpacity>
               </>
             ) : null}
+
+            {!otpSent && (
+              <ConsentCheckbox checked={consent} onToggle={() => setConsent(c => !c)} />
+            )}
 
             <Button
               label={loading ? 'Please wait...' : otpSent ? 'Verify and begin' : 'Send verification code'}

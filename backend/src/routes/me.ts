@@ -19,7 +19,7 @@ const pushTokenSchema = z.object({
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, email: true, name: true, phone: true, role: true, avatarUrl: true, timezone: true, createdAt: true },
+    select: { id: true, email: true, name: true, phone: true, role: true, avatarUrl: true, timezone: true, isPremium: true, createdAt: true },
   });
   if (!user) { res.status(404).json({ error: 'User not found' }); return; }
   res.json(user);
@@ -32,7 +32,7 @@ router.patch('/', requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.update({
     where: { id: req.user!.id },
     data: parsed.data,
-    select: { id: true, email: true, name: true, phone: true, role: true, avatarUrl: true, timezone: true, createdAt: true },
+    select: { id: true, email: true, name: true, phone: true, role: true, avatarUrl: true, timezone: true, isPremium: true, createdAt: true },
   });
   res.json(user);
 });

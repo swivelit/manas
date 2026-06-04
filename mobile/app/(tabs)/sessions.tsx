@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSessions } from '../../lib/queries';
 import { SessionCard } from '../../components/SessionCard';
+import { CrisisBanner } from '../../components/CrisisBanner';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -16,14 +17,17 @@ export default function SessionsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.head}>
-        <Text style={styles.title}>Your{'\n'}<Text style={styles.titleItalic}>sessions.</Text></Text>
-        <TouchableOpacity
-          style={styles.bookBtn}
-          onPress={() => router.push('/(tabs)/topics')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.bookBtnText}>+ Book</Text>
-        </TouchableOpacity>
+        <View style={styles.headRow}>
+          <Text style={styles.title}>Your{'\n'}<Text style={styles.titleItalic}>sessions.</Text></Text>
+          <TouchableOpacity
+            style={styles.bookBtn}
+            onPress={() => router.push('/(tabs)/topics')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.bookBtnText}>+ Book</Text>
+          </TouchableOpacity>
+        </View>
+        <CrisisBanner variant="header" style={styles.crisis} />
       </View>
 
       {isLoading ? (
@@ -61,7 +65,9 @@ export default function SessionsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  head: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  head: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 14 },
+  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  crisis: { marginTop: 12, alignSelf: 'flex-start' },
   title: { fontFamily: fontFamilies.frauncesMedium, fontSize: 28, color: colors.ink, letterSpacing: -0.5, lineHeight: 30 },
   titleItalic: { fontFamily: fontFamilies.frauncesItalic, color: colors.pink },
   bookBtn: { backgroundColor: colors.ink, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 14, marginTop: 4 },

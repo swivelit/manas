@@ -26,8 +26,11 @@ const userSelect = {
   role: true,
   avatarUrl: true,
   timezone: true,
+  isActive: true,
   createdAt: true,
 } as const;
+
+const DEACTIVATED_MESSAGE = 'This account has been deactivated. Please contact support.';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -212,11 +215,13 @@ router.post('/verify-email-otp', async (req: Request, res: Response, next: NextF
         data: {
           email,
           name: parsed.data.name ?? getFallbackName(email),
+          consentAt: new Date(), // account created via consented signup flow
         },
         select: userSelect,
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (error) {
     next(error);
@@ -240,7 +245,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email, name, passwordHash },
+    data: { email, name, passwordHash, consentAt: new Date() },
     select: userSelect,
   });
 
@@ -265,6 +270,11 @@ router.post('/login', async (req: Request, res: Response) => {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: 'Invalid credentials' });
+    return;
+  }
+
+  if (!user.isActive) {
+    res.status(403).json({ error: DEACTIVATED_MESSAGE });
     return;
   }
 
@@ -313,11 +323,12 @@ router.post('/google', async (req: Request, res: Response, next: NextFunction) =
     let user = await prisma.user.findUnique({ where: { email }, select: userSelect });
     if (!user) {
       user = await prisma.user.create({
-        data: { email, name, avatarUrl: payload.picture ?? null },
+        data: { email, name, avatarUrl: payload.picture ?? null, consentAt: new Date() },
         select: userSelect,
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (err) {
     next(err);
@@ -391,11 +402,13 @@ router.post('/verify-phone-otp', async (req: Request, res: Response, next: NextF
           phone,
           email: `${phone.replace('+', '')}@phone.manas.local`, // placeholder; real email captured later in onboarding
           name: parsed.data.name ?? `MANAS ${phone.slice(-4)}`,
+          consentAt: new Date(), // account created via consented signup flow
         },
         select: userSelect,
       });
     }
 
+    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
     res.json({ token: signToken(user), user });
   } catch (err) {
     next(err);

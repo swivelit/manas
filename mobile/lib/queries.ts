@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import { purchasePremium } from './payments';
 
 // ---- Categories & Topics ----
 export function useCategories() {
@@ -187,5 +188,164 @@ export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: (id: string) => api.patch(`/notifications/${id}/read`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// ---- Topics (all, for pickers) ----
+export function useAllTopics() {
+  return useQuery({ queryKey: ['all-topics'], queryFn: () => api.get('/topics').then(r => r.data) });
+}
+
+// ---- Coach surface ----
+export function useCoachAppointments() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['coach-appointments'],
+    queryFn: () => api.get('/coach/appointments').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function useUpdateCoachSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' }) =>
+      api.patch(`/coach/sessions/${id}`, { status }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach-appointments'] }),
+  });
+}
+
+export function useMyAvailability() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['coach-my-availability'],
+    queryFn: () => api.get('/coach/availability').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export type AvailabilityRow = { dayOfWeek: number; startTime: string; endTime: string };
+
+export function useReplaceAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (availability: AvailabilityRow[]) =>
+      api.put('/coach/availability', { availability }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach-my-availability'] }),
+  });
+}
+
+export function useCreateCoachVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string; description: string; url: string; thumbnailUrl?: string;
+      type: string; isPremium?: boolean; topicId?: string; durationSec?: number;
+    }) => api.post('/coach/videos', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
+  });
+}
+
+// ---- Admin surface ----
+export function useAdminStats() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: () => api.get('/admin/stats').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function useAdminUsers(page = 1, pageSize = 50) {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['admin-users', page, pageSize],
+    queryFn: () => api.get('/admin/users', { params: { page, pageSize } }).then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function useUpdateAdminUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; role?: string; isPremium?: boolean; isActive?: boolean }) =>
+      api.patch(`/admin/users/${id}`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
+  });
+}
+
+export function useAdminCoaches() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['admin-coaches'],
+    queryFn: () => api.get('/admin/coaches').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function usePromoteCoach() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { userId: string; specialty?: string; bio?: string }) =>
+      api.post('/admin/coaches', data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-coaches'] });
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
+  });
+}
+
+export function useAdminVideos() {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['admin-videos'],
+    queryFn: () => api.get('/admin/videos').then(r => r.data),
+    enabled: !!token,
+  });
+}
+
+export function useUpdateAdminVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; approved?: boolean; isPremium?: boolean }) =>
+      api.patch(`/admin/videos/${id}`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-videos'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+export function useBroadcast() {
+  return useMutation({
+    mutationFn: (data: { title: string; body: string }) =>
+      api.post('/admin/notifications/broadcast', data).then(r => r.data),
+  });
+}
+
+// ---- Payments ----
+export function usePaymentsConfig() {
+  return useQuery({
+    queryKey: ['payments-config'],
+    queryFn: () => api.get('/payments/config').then(r => r.data as { configured: boolean; amount: number; currency: string; name: string }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePurchasePremium() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => purchasePremium(),
+    onSuccess: (res) => {
+      if (res.status === 'success') {
+        qc.invalidateQueries({ queryKey: ['me'] });
+        qc.invalidateQueries({ queryKey: ['videos'] });
+        qc.invalidateQueries({ queryKey: ['video'] });
+      }
+    },
   });
 }

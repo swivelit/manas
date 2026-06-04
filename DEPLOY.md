@@ -47,7 +47,7 @@ Set these environment variables:
 
 If you use an existing manually-created Render service, changing `render.yaml` alone may not update the dashboard command. In that case, update the Render dashboard Build Command manually to match the value above.
 
-This repository does not currently include Prisma migrations, so the first Render deploy uses `npx prisma db push`. Production should later move to checked-in Prisma migrations and `prisma migrate deploy` once migrations exist.
+This repository now includes a versioned Prisma migration baseline at `backend/prisma/migrations/0_init/`. The Render build command intentionally still runs `npx prisma db push` for this transitional release — see **[Database migrations](#database-migrations)** below for the reasoning and the exact one-time cutover to `prisma migrate deploy`.
 
 4. **Seed the database** (run once)
    - Open Render dashboard → `manas-api` → Shell
@@ -84,12 +84,26 @@ This repository does not currently include Prisma migrations, so the first Rende
 | `NODE_ENV` | `production` |
 | `NODE_VERSION` | `20` |
 | `PORT` | Render injects this automatically; do not hardcode it in `render.yaml` |
-| `FRONTEND_URL` | Update to your frontend domain |
+| `FRONTEND_URL` | Comma-separated list of allowed web origins (e.g. `https://manas.app,https://www.manas.app`). No-origin requests (native mobile, curl) are always allowed. |
 | `EMAIL_USER` | Add manually in Render; backend-only |
 | `EMAIL_PASS` | Add manually in Render; backend-only app password |
 | `EMAIL_FROM` | Optional sender display address |
 | `OTP_EXPIRY_MINUTES` | `10` |
-| `GOOGLE_CLIENT_ID` | Add manually when implementing Google OAuth |
+
+### Optional provider credentials (set in the Render dashboard — never commit)
+
+All of these degrade gracefully: if unset, the related endpoints return HTTP 501 and the app shows a friendly "coming soon" instead of crashing.
+
+| Variable | Purpose |
+|---|---|
+| `RAZORPAY_KEY_ID` | Razorpay key id — enables premium payments (`/payments/*`). |
+| `RAZORPAY_KEY_SECRET` | Razorpay key secret. Both must be set to enable payments. |
+| `GOOGLE_CLIENT_ID_WEB` | Google sign-in (web client id) — enables `/auth/google`. |
+| `GOOGLE_CLIENT_ID_ANDROID` | Google sign-in (Android client id). |
+| `GOOGLE_CLIENT_ID_IOS` | Google sign-in (iOS client id). |
+| `TWILIO_ACCOUNT_SID` | Phone OTP via Twilio Verify — enables `/auth/*-phone-otp`. |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token. |
+| `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify service SID. All three Twilio vars are required together. |
 
 ### Free tier notes
 
@@ -105,15 +119,38 @@ Every push to `main` triggers an automatic redeploy. To manually deploy:
 Render dashboard → manas-api → Manual Deploy → Deploy latest commit
 ```
 
-### Adding migrations after schema changes
+## Database migrations
+
+This repo now ships a versioned migration baseline: **`backend/prisma/migrations/0_init/migration.sql`** (generated offline with `prisma migrate diff --from-empty`, so it captures the full current schema — including `User.isActive`, `User.consentAt`, `Video.approved`, and the `Payment` table).
+
+### Judgment call: why the Render build still uses `db push` for this release
+
+The production database on Render was created and is currently managed by `prisma db push`, and it predates the new columns/tables above (it has no `_prisma_migrations` history table). If we flipped the build command straight to `prisma migrate deploy` right now:
+
+- `migrate deploy` would try to apply `0_init` (which does `CREATE TABLE "User" …`) against a DB where those tables already exist → **the deploy would fail**, and
+- naively baselining with `migrate resolve --applied 0_init` would *claim* the new columns exist when they don't → **runtime errors**.
+
+So this transitional release keeps `npx prisma db push` in the build command. `db push` is idempotent and simply **adds the new columns/table** (`isActive`, `consentAt`, `approved`, `Payment`) to production with no data loss, converging prod to the current schema. `db push` ignores the `migrations/` folder, so the two coexist safely.
+
+### One-time cutover to `prisma migrate deploy` (do this AFTER the next deploy)
+
+Once a `db push` deploy has converged production to the current schema:
+
+1. Open Render → `manas-api` → **Shell** and baseline the existing DB (marks `0_init` as already applied, without re-running it):
+   ```bash
+   npx prisma migrate resolve --applied 0_init
+   ```
+2. Change the Render **Build Command** (and `render.yaml` `buildCommand`) from `… && npx prisma db push` to:
+   ```
+   npm ci --include=dev && npx prisma generate && npm run build && npx prisma migrate deploy
+   ```
+3. Redeploy. `migrate deploy` will see `0_init` applied and do nothing; future migrations apply cleanly.
+
+### Day-to-day after cutover
 
 ```bash
-# Local
 cd backend
-npx prisma migrate dev --name <migration-name>
-git add prisma/migrations
-git commit -m "Add migration: <name>"
-git push
+npx prisma migrate dev --name <migration-name>   # creates prisma/migrations/<ts>_<name>/
+git add prisma/migrations && git commit -m "migration: <name>" && git push
+# Render runs `prisma migrate deploy` on deploy and applies it.
 ```
-
-After migrations are checked in, switch the Render build command from `npx prisma db push` to `npx prisma migrate deploy`.

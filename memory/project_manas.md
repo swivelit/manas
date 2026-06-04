@@ -22,13 +22,14 @@ Full-stack MANAS (Jey Groups) build completed 2026-05-26. Commit: 9cef745.
 - NativeWind v4: requires `metro.config.js` with `withNativeWind`, `babel.config.js` with `nativewind/babel`, `global.css` imported in root `_layout.tsx`
 - CSS import TS error fixed via `expo-env.d.ts` with `declare module '*.css'`
 
-**Stubbed (to implement next):**
-- Google OAuth (`POST /auth/google` returns 501)
-- Mobile OTP login
-- Video CDN (video URLs are placeholder strings — need real CDN)
-- Push notifications (notification DB model exists, sending not wired)
-- Admin dashboard
-- Coach video upload
-- Payments / premium gating
+**Release-blocker pass (2026-05-31, branch `release-blockers`):** closed the code-side Play Store gates.
+- Compliance: first-launch crisis disclaimer modal + persistent "In crisis?" banner (India helplines, `tel:` links); `legal/privacy.md`+`legal/terms.md` mirrored into `mobile/lib/legal.ts`, rendered offline at `/legal`; mandatory signup consent checkbox + `User.consentAt`.
+- Coach role: `/coach` API + `app/(coach)` (appointments accept/decline/complete/join, availability editor, video upload). `GET /topics` added.
+- Admin role: `/admin` API + `app/(admin)` (stats, users role/premium/deactivate, promote-to-coach, content approve, broadcast). Added `User.isActive` (blocks login) + `Video.approved` (hides from library). Seed `admin@manas.app`/`adminpass123`.
+- Payments: Razorpay **Payment Links** (NOT react-native-razorpay — it lacks New Architecture support) via WebBrowser + server-side `/payments/verify`; flips `isPremium`. 501 graceful when `RAZORPAY_KEY_*` unset. `/me` returns `isPremium`.
+- `routeForRole()` in `lib/auth.ts` routes ADMIN/COACH/USER after login + on cold start.
+- Versioned migration baseline `backend/prisma/migrations/0_init` (render.yaml still `db push` transitionally — see DEPLOY.md cutover). CORS allows no-origin + comma-separated `FRONTEND_URL`.
 
-**How to apply:** Reference when resuming work — check stubs before adding new features that depend on them.
+**Still stubbed / owner-only:** real Razorpay/Google/Twilio credentials (all 501 until set), `eas init` for push+builds, prod DB seed, public privacy-policy URL, Play Console, video CDN content; web admin dashboard + in-app chat/native-audio are v1.1.
+
+**How to apply:** Reference when resuming work. Verify a file/flag still exists before relying on it. Provider integrations degrade to 501 — set credentials in Render, never commit. New typed routes need `.expo/types` regenerated (start `expo start` briefly) before `tsc` passes.

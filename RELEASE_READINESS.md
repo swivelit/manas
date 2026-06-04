@@ -1,77 +1,55 @@
 # MANAS Release Readiness
 
-Last checked: 2026-05-30
+Last checked: 2026-05-31 (branch `release-blockers`)
 
 ## Done
 
-- Backend root route implemented locally: `GET /` returns MANAS API metadata and public endpoint hints without exposing secrets.
-- Backend `/health` remains lightweight and is still the Render health check path.
-- Backend verification passed locally: `npm ci`, `npx prisma generate`, `npm run typecheck`, and `npm run build`.
-- Local backend smoke passed against seeded local PostgreSQL: `/`, `/health`, `/categories`, `/categories/emotional-healing/topics`, `/categories/coaching/topics`, and `/videos`.
-- Seed script is idempotent for demo categories, topics, users, coaches, coach availability, videos, and demo session creation. Re-running `npm run db:seed` no longer creates new duplicate availability/video/session rows.
-- `backend/package.json` includes `db:setup` and `smoke:prod` commands.
-- Mobile Expo SDK 56 dependency alignment passed after patch updates: `npx expo install --check` and `npx expo-doctor --verbose` pass.
-- Mobile TypeScript passed: `npm run typecheck`.
-- Android static export passed: `npx expo export --platform android --output-dir ./dist/android --clear`.
-- Android development build launched on `Pixel_9` with production API configuration; `android-launch-logcat.txt` had no startup matches for `FATAL EXCEPTION`, `ReactNativeJS` fatal startup errors, `Invariant Violation`, or `main has not been registered`.
-- Production-config mobile screens handled empty deployed API data without crashing for onboarding, home, topics, and videos.
-- Notification registration is non-fatal; push-token, permissions, Android channel, and listener setup failures are caught and logged.
+### Play Store compliance (Phase 1 — mandatory gate)
+- **Crisis disclaimer**: one-time first-launch modal (persisted via `crisis_ack` in SecureStore) with India helplines (iCall, Vandrevala, Tele-MANAS, AASRA) as tappable `tel:` links. Persistent "In crisis? Tap for help" banner on the Sessions header and Profile footer opens the same helplines.
+- **Privacy Policy + Terms of Service**: authored at `legal/privacy.md` and `legal/terms.md`, mirrored into `mobile/lib/legal.ts` and rendered offline on the in-app `/legal` screen. Linked from Profile and the signup consent.
+- **Signup consent**: mandatory checkbox on register + phone blocks account creation until the user accepts Terms/Privacy and acknowledges MANAS is not a crisis service. `User.consentAt` is recorded at account creation across every signup path.
 
-## Partial
+### Coach surface (Phase 2 — PDF §4.B)
+- `/coach` API (role-guarded): appointments, accept/decline/mark-complete (notifies the client), get/replace weekly availability, add a video. `GET /topics` backs the upload picker.
+- `app/(coach)` area: appointments, availability editor, video upload. Role-based routing lands coaches here after login and on cold start.
 
-- Render deployed API health check works on the current deployed revision: `https://manas-api-dlj7.onrender.com/health` returned HTTP 200 with status ok.
-- Render root route is fixed in this repository, but the current deployed revision still returned `{"error":"Not found"}` until this change is deployed.
-- Production database appears unseeded on Render: `/categories` returned `[]`, topic endpoints returned `Category not found`, and `/videos` returned `[]`.
-- Emotional Healing and Coaching data are complete in the seed and local seeded smoke: 15 Emotional Healing topics and 10 Coaching topics.
-- Booking workflow exists in app and API for category -> topic -> coach -> date/time -> confirm, and booking creates notification records.
-- Calendar availability works from seeded/static coach availability and booked-slot filtering.
-- Timezone handling returns UTC `startsAt` plus a timezone field, and mobile formats in user timezone or `Asia/Kolkata` fallback.
-- Booking confirmation notifications are recorded and shown in app, but production delivery channels are not validated.
-- Video library supports public videos and premium gating, but Render currently has no seeded video rows.
-- Playback, resume progress, progress posting, and bookmarks exist for authenticated users; subtitle metadata is supported, but real subtitle rendering/content is not production-validated.
-- Toy Assistant provides route-aware text guidance and an animated mascot; voice guidance and deep screen guidance are incomplete.
-- Email/password API exists; mobile currently emphasizes OTP-style auth flows.
-- Google auth and mobile OTP paths exist, but production OAuth/Twilio credentials are not configured in the repo.
-- User, coach, and admin roles exist in Prisma; patient app is implemented, but coach/admin dashboards are missing.
-- Video/audio/chat session types exist in schema and booking UI; audio/chat are not full native production experiences.
+### Admin surface (Phase 3 — PDF §4.C)
+- `/admin` API (role-guarded): stats, paginated users (change role / toggle premium / activate-deactivate, with self-lockout guard), coaches list + promote-user-to-coach, videos list + approve toggle, broadcast notification to all users.
+- `app/(admin)` area: dashboard stat cards + broadcast, user management sheet, coach promotion, content approval.
+- `User.isActive` (deactivation blocks login at every auth path) and `Video.approved` (unapproved videos hidden from the public library) added. Admin seed: `admin@manas.app` / `adminpass123`.
 
-## Missing
+### Payments / premium enrollment (Phase 4)
+- Purchasing now flips `user.isPremium`. `POST /payments/create-order` + `POST /payments/verify` + public `GET /payments/config`, with a `Payment` model. Uses Razorpay **Payment Links** (hosted page opened via the in-app browser, verified server-side) because `react-native-razorpay` does not support this app's New Architecture — so payments work in Expo Go and every build with no native module. Returns 501 + "coming soon" when `RAZORPAY_KEY_*` are unset. `/me` now returns `isPremium`.
 
-- Production Render database seed has not been confirmed. Seed once from Render Shell after deploy with `npm run db:seed`, or run `npm run db:setup` when schema sync is also intended.
-- Payment or premium enrollment provider is not implemented.
-- Real MANAS production counseling/coaching video content and CDN policy are missing.
-- Coach dashboard is missing.
-- Admin dashboard is missing.
-- Full chat session implementation is missing.
-- Native audio-only session implementation is missing.
-- Production push/email/SMS reminder delivery is not validated.
-- Privacy policy, consent flow, data retention policy, emergency disclaimer, and clinical escalation workflow are missing in-app.
-- Versioned production migration workflow and rollback plan are missing; deployment still uses `prisma db push`.
-- Play Store production readiness is incomplete: signed AAB validation, privacy policy URL, data safety, content rating, screenshots, app access instructions, and internal-track QA.
+### Deploy hardening (Phase 5)
+- Versioned Prisma migration baseline at `backend/prisma/migrations/0_init` (full current schema). `render.yaml` intentionally still uses `db push` for this transitional release; DEPLOY.md documents the exact one-time cutover to `prisma migrate deploy`.
+- CORS hardened: always allows no-origin requests (native mobile/curl); production restricted to a comma-separated `FRONTEND_URL` allowlist.
+- BUILD.md documents the required one-time `eas init` (for push tokens + EAS builds) and an Expo Go vs. dev-build capability matrix.
 
-## Release Blocker
+### Previously completed (carried forward, not regressed)
+- Patient app: onboarding, categories/topics, coach booking (category→topic→coach→date/time→confirm), reschedule/cancel, Jitsi join, video library with premium gating + resume + bookmarks + subtitles, mood check-in, voice guidance / mascot, notifications, timezone handling.
+- Email OTP auth, Google auth + phone OTP (graceful 501 when unconfigured), push registration (non-fatal), idempotent seed.
+- Backend + mobile both typecheck, build/export, and pass Expo Doctor (21/21) on a clean install. Full live backend smoke of all new endpoints passed (see `VERIFY_FINAL.md`).
 
-- Deploy this backend change to Render so `GET /` no longer returns 404 in production.
-- Seed the Render production database. Until then, production `/categories` is empty, topic endpoints fail, `/videos` is empty, and the app can only show empty/error states.
-- Run production smoke after deploy and seed: `API_URL=https://manas-api-dlj7.onrender.com npm run smoke:prod` from `backend`.
-- Configure production Google OAuth, Twilio/mobile OTP, email, and notification credentials without committing secrets.
-- Add payment/premium enrollment before exposing premium videos or paid sessions.
-- Complete clinical/privacy/consent safety work before public mental-health release.
-- Add versioned migrations and rollback procedures before relying on production schema changes.
+## Still blocked / requires the owner (not code — credentials, accounts, hosting)
 
-## Current Render Smoke
+- **Provider credentials** (set in Render, never commit): `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (payments), `GOOGLE_CLIENT_ID_WEB/ANDROID/IOS` (Google sign-in), `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_VERIFY_SERVICE_SID` (phone OTP). All degrade gracefully (501) until set.
+- **Seed the Render production database** after deploy (`npm run db:seed` from Render Shell) — otherwise the app shows empty states.
+- **`eas init`** once (from the owner's Expo account) to write `extra.eas.projectId` — required for push tokens and EAS builds.
+- **Host the privacy policy at a public URL** (the Play Console data-safety form requires a URL; `legal/privacy.md` is the source text).
+- **Play Console**: developer account, signed AAB, data-safety + content rating, screenshots, app-access instructions, internal-track QA.
+- **One manual device QA pass** of the mobile flows (see the checklist in `VERIFY_FINAL.md`) — backend is verified live; UI is code/bundle-verified.
+- **Migration cutover** to `prisma migrate deploy` after the next `db push` deploy converges prod to the current schema (steps in DEPLOY.md).
 
-Checked against `https://manas-api-dlj7.onrender.com` before this repository change was deployed:
+## Deferred to v1.1 (documented, not blocking v1)
+- Richer **web** admin dashboard (mobile admin satisfies the v1 role requirement).
+- In-app chat sessions and native audio-only sessions (Jitsi covers all session types today).
+- Multi-window-per-day coach availability; coach self-service profile editor.
+- Immediate session revocation for deactivated users (currently blocked at next login; JWTs last 30d).
+- Push fan-out for broadcasts via a queue for large audiences; real counseling video content + CDN.
 
-| Endpoint | Result |
-| --- | --- |
-| `/` | HTTP 404, `{"error":"Not found"}` |
-| `/health` | HTTP 200, status ok |
-| `/categories` | HTTP 200, empty array |
-| `/categories/emotional-healing/topics` | HTTP 404, category not found |
-| `/categories/coaching/topics` | HTTP 404, category not found |
-| `/videos` | HTTP 200, empty array |
+## Release decision
 
-## Release Decision
+**Closer — the code-side release gates are now closed.** Play Store compliance (crisis disclaimer, privacy/terms, consent), the required Coach and Admin roles, payment/enrollment, versioned-migration infrastructure, and CORS hardening are all implemented, typecheck/build/export clean, and the backend is verified end-to-end on a seeded local database.
 
-MANAS is not release-ready. The current code is stable enough for a development build demo after deploying this fix and seeding the production database, but production release remains blocked by database seeding, provider credentials, payment/premium enrollment, dashboards, full session experiences, clinical/privacy work, migrations, and Play Store validation.
+**Not yet submittable** purely because of owner-only steps that can't be done from code: provider credentials, `eas init`, hosting the privacy policy URL, seeding prod, a Play Console account, and one manual device QA pass. Shortest path to submission is in `VERIFY_FINAL.md` and the deliverable summary.

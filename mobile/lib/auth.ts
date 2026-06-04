@@ -50,3 +50,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }));
+
+// Landing route by role: ADMIN → admin area, COACH → coach area, USER → tabs.
+export function routeForRole(role?: string | null): '/(tabs)' | '/(coach)/appointments' | '/(admin)/dashboard' {
+  if (role === 'ADMIN') return '/(admin)/dashboard';
+  if (role === 'COACH') return '/(coach)/appointments';
+  return '/(tabs)';
+}

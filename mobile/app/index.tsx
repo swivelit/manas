@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Redirect } from 'expo-router';
-import { useAuthStore } from '../lib/auth';
+import { useAuthStore, routeForRole } from '../lib/auth';
 import { colors } from '../theme/colors';
 
 export default function Index() {
-  const { token, isLoading } = useAuthStore();
+  const { token, user, isLoading } = useAuthStore();
 
   if (isLoading) {
     return (
@@ -15,6 +15,8 @@ export default function Index() {
     );
   }
 
-  if (token) return <Redirect href="/(tabs)" />;
+  // Role decides the landing surface: COACH → coach area, ADMIN → admin area
+  // (added in Phase 3), USER → patient tabs.
+  if (token) return <Redirect href={routeForRole(user?.role)} />;
   return <Redirect href="/onboarding" />;
 }

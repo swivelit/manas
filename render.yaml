@@ -5,6 +5,9 @@ services:
     region: oregon
     plan: free
     rootDir: backend
+    # NOTE: still `db push` for this transitional release. Versioned migrations
+    # live in prisma/migrations/0_init. See DEPLOY.md "Database migrations" for
+    # the one-time cutover to `npx prisma migrate deploy`.
     buildCommand: npm ci --include=dev && npx prisma generate && npm run build && npx prisma db push
     startCommand: npm run start
     healthCheckPath: /health
