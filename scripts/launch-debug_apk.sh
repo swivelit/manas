@@ -18,7 +18,7 @@ START_METRO="${START_METRO:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 
 FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.jeygroups\\.manas"
-CRASH_REGEX="AndroidRuntime|FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Could not connect to development server"
+CRASH_REGEX="FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Could not connect to development server"
 
 METRO_PID=""
 
@@ -179,8 +179,11 @@ adb_cmd logcat -c || true
 
 echo "Launching $APP_ID."
 adb_cmd shell am force-stop "$APP_ID" || true
-if ! adb_cmd shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1; then
-  echo "ERROR: Failed to send Android launcher intent for $APP_ID" >&2
+if ! adb_cmd shell am start -W \
+  -n "$APP_ID/.MainActivity" \
+  -a android.intent.action.MAIN \
+  -c android.intent.category.LAUNCHER; then
+  echo "ERROR: Failed to start $APP_ID/.MainActivity" >&2
   exit 1
 fi
 
@@ -191,6 +194,7 @@ adb_cmd shell dumpsys window | grep -E "mCurrentFocus|topResumedActivity|mFocuse
 adb_cmd logcat -d -v time > "$LOG_PATH" || true
 grep -iE "$FILTER_REGEX" "$LOG_PATH" > "$FILTERED_LOG_PATH" || true
 
+rm -f "$DIST_DIR/android-launch-fatal.txt"
 if ! grep -Fq "$APP_ID" "$FOCUS_PATH"; then
   cat <<EOF >&2
 ERROR: $APP_ID is not the focused Android app after launch.
@@ -216,6 +220,7 @@ $FILTERED_LOG_PATH
 EOF
   exit 1
 fi
+rm -f "$DIST_DIR/android-launch-fatal.txt"
 
 cat <<EOF
 

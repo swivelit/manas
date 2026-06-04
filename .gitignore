@@ -21,6 +21,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Generated Android launch logs
+/android-launch-*.txt
+
 # debug
 npm-debug.*
 yarn-debug.*
