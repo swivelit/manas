@@ -1,113 +1,154 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLIENT_DIR="$ROOT_DIR/client"
-IOS_APP_DIR="$CLIENT_DIR/ios/App"
+APP_NAME="MANAS"
+BUNDLE_ID="com.jeygroups.manas"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+MOBILE_DIR="$ROOT_DIR/mobile"
+IOS_DIR="$MOBILE_DIR/ios"
 OUTPUT_DIR="$ROOT_DIR/dist/ios-simulator"
 DERIVED_DATA_DIR="$OUTPUT_DIR/DerivedData"
-NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
-USE_ADMOB_TEST_ADS="${REACT_APP_USE_ADMOB_TEST_ADS:-true}"
-IOS_SCHEME="${IOS_SCHEME:-App}"
+IOS_SCHEME="${IOS_SCHEME:-MANAS}"
+IOS_CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
 IOS_SIMULATOR_DESTINATION="${IOS_SIMULATOR_DESTINATION:-generic/platform=iOS Simulator}"
-GENERATE_SOURCEMAP="${GENERATE_SOURCEMAP:-false}"
+FORCE_PREBUILD="${FORCE_PREBUILD:-false}"
+
+require_command() {
+  local command_name="$1"
+  local install_hint="$2"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: Required command not found: $command_name" >&2
+    echo "$install_hint" >&2
+    exit 1
+  fi
+}
+
+require_macos() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "ERROR: iOS Simulator builds require macOS with Xcode installed." >&2
+    exit 1
+  fi
+}
+
+ensure_mobile_project() {
+  if [[ ! -d "$MOBILE_DIR" ]]; then
+    echo "ERROR: mobile/ directory not found at $MOBILE_DIR" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$MOBILE_DIR/app.json" ]]; then
+    echo "ERROR: Expo config not found at mobile/app.json" >&2
+    exit 1
+  fi
+}
+
+validate_expo_identity() {
+  node - "$MOBILE_DIR/app.json" "$APP_NAME" "$BUNDLE_ID" <<'NODE'
+const fs = require('fs');
+const [appJsonPath, expectedName, expectedBundleId] = process.argv.slice(2);
+const config = JSON.parse(fs.readFileSync(appJsonPath, 'utf8')).expo || {};
+const bundleId = config.ios && config.ios.bundleIdentifier;
+
+if (config.name !== expectedName || bundleId !== expectedBundleId) {
+  console.error('ERROR: mobile/app.json does not match the MANAS iOS identity.');
+  console.error(`Expected name=${expectedName}, ios.bundleIdentifier=${expectedBundleId}`);
+  console.error(`Found name=${config.name || '(missing)'}, ios.bundleIdentifier=${bundleId || '(missing)'}`);
+  process.exit(1);
+}
+NODE
+}
+
+ensure_ios_project() {
+  if [[ "$FORCE_PREBUILD" == "true" || ! -d "$IOS_DIR" ]]; then
+    echo "Generating Expo iOS project with npx expo prebuild --platform ios."
+    npx expo prebuild --platform ios
+  else
+    echo "Using existing generated iOS project at $IOS_DIR."
+  fi
+}
+
+install_pods_if_needed() {
+  if [[ ! -f "$IOS_DIR/Podfile" ]]; then
+    echo "ERROR: Generated iOS Podfile not found at $IOS_DIR/Podfile" >&2
+    exit 1
+  fi
+
+  if ! command -v pod >/dev/null 2>&1; then
+    echo "ERROR: CocoaPods not found. Install it with: sudo gem install cocoapods" >&2
+    exit 1
+  fi
+
+  echo "Installing CocoaPods dependencies."
+  (
+    cd "$IOS_DIR"
+    pod install
+  )
+}
+
+find_workspace() {
+  local workspace
+  workspace="$(find "$IOS_DIR" -maxdepth 1 -name "*.xcworkspace" -type d | sort | head -n 1)"
+  if [[ -z "$workspace" ]]; then
+    echo "ERROR: No .xcworkspace found in $IOS_DIR after Expo prebuild." >&2
+    exit 1
+  fi
+  printf '%s\n' "$workspace"
+}
 
 cat <<'BANNER'
 ========================================
- GoodOne iOS Simulator Build
+ MANAS iOS Simulator Build
 ========================================
 BANNER
 
-if [ "$(uname -s)" != "Darwin" ]; then
-  echo "ERROR: iOS Simulator builds require macOS with Xcode installed."
-  exit 1
-fi
-
-if [ ! -d "$CLIENT_DIR" ]; then
-  echo "ERROR: client directory not found."
-  echo "Run this script from the project root or through: cd client && npm run build:ios:simulator"
-  exit 1
-fi
-
-if [ ! -d "$IOS_APP_DIR" ]; then
-  echo "ERROR: iOS project not found at client/ios/App."
-  echo "Run: cd client && npx cap add ios"
-  exit 1
-fi
-
-if ! command -v xcodebuild >/dev/null 2>&1; then
-  echo "ERROR: xcodebuild not found. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
-  exit 1
-fi
+require_macos
+ensure_mobile_project
+require_command node "Install Node.js."
+require_command npm "Install npm with Node.js."
+require_command npx "Install npm/npx with Node.js."
+require_command xcodebuild "Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+validate_expo_identity
 
 if ! xcodebuild -version >/dev/null 2>&1; then
-  echo "ERROR: xcodebuild is installed but Xcode is not ready. Open Xcode, accept the license, and run first launch setup."
+  echo "ERROR: Xcode is not ready. Open Xcode, accept the license, and complete first launch setup." >&2
   exit 1
 fi
 
-if ! command -v pod >/dev/null 2>&1; then
-  echo "ERROR: CocoaPods not found. Install it with: sudo gem install cocoapods"
-  exit 1
-fi
+echo "Installing mobile dependencies."
+(
+  cd "$MOBILE_DIR"
+  npm ci
+)
 
-if ! command -v npm >/dev/null 2>&1; then
-  echo "ERROR: npm not found. Install Node.js and npm, then rerun this script."
-  exit 1
-fi
+ensure_ios_project
+install_pods_if_needed
 
-if ! command -v npx >/dev/null 2>&1; then
-  echo "ERROR: npx not found. Install Node.js/npm, then rerun this script."
-  exit 1
-fi
-
-echo ""
-echo "Xcode:"
-xcodebuild -version
-
-echo ""
-echo "Installing frontend dependencies..."
-echo "Using npm registry: $NPM_REGISTRY"
-cd "$CLIENT_DIR"
-if [ "${SKIP_NPM_CI:-false}" = "true" ]; then
-  echo "Skipping npm ci because SKIP_NPM_CI=true"
-else
-  npm ci --no-audit --registry="$NPM_REGISTRY"
-fi
-
-echo ""
-echo "Building React app..."
-echo "REACT_APP_USE_ADMOB_TEST_ADS=$USE_ADMOB_TEST_ADS"
-echo "GENERATE_SOURCEMAP=$GENERATE_SOURCEMAP"
-GENERATE_SOURCEMAP="$GENERATE_SOURCEMAP" REACT_APP_USE_ADMOB_TEST_ADS="$USE_ADMOB_TEST_ADS" npm run build
-
-echo ""
-echo "Syncing Capacitor iOS..."
-npx cap sync ios
-
-echo ""
-echo "Installing iOS pods..."
-cd "$IOS_APP_DIR"
-pod install --repo-update
-
-echo ""
-echo "Building iOS Simulator app without code signing..."
+WORKSPACE="$(find_workspace)"
 mkdir -p "$DERIVED_DATA_DIR"
+
+echo
+echo "Building $APP_NAME for iOS Simulator."
+echo "Workspace: $WORKSPACE"
+echo "Scheme: $IOS_SCHEME"
+echo "Destination: $IOS_SIMULATOR_DESTINATION"
+
 xcodebuild \
-  -workspace App.xcworkspace \
+  -workspace "$WORKSPACE" \
   -scheme "$IOS_SCHEME" \
-  -configuration Debug \
+  -configuration "$IOS_CONFIGURATION" \
   -sdk iphonesimulator \
   -destination "$IOS_SIMULATOR_DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
-  ENABLE_USER_SCRIPT_SANDBOXING=NO \
   CODE_SIGNING_ALLOWED=NO \
   build
 
-cat <<EOF2
+cat <<EOF
 
 ========================================
- iOS Simulator build complete
+ MANAS iOS Simulator build complete
 ========================================
 Derived data:
 $DERIVED_DATA_DIR
-EOF2
+EOF

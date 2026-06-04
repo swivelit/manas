@@ -34,6 +34,16 @@ Quick UI testing works in **Expo Go** (scan the QR from `npx expo start`). A few
 
 ## Build commands
 
+### Full repo verification
+
+From the repository root:
+
+```bash
+./scripts/verify-all.sh
+```
+
+This runs the backend Prisma/typecheck/build flow and the mobile Expo typecheck, dependency check, doctor, and Android export flow.
+
 ### Android Studio launcher icon workflow
 
 Open **`mobile/android`** in Android Studio, not the repository root and not `mobile`.
@@ -54,9 +64,28 @@ printf 'sdk.dir=/Users/hari/Library/Android/sdk\n' > android/local.properties
 
 ### Preview APK (shareable .apk, no store needed)
 
+Local debug APK from the repository root:
+
 ```bash
-cd mobile
-eas build --platform android --profile preview
+./scripts/build-android-apk.sh
+```
+
+Install and launch that APK on a connected adb device/emulator:
+
+```bash
+./scripts/launch-debug_apk.sh
+```
+
+Local release APK for QA installs:
+
+```bash
+./scripts/build-android_release-apk.sh
+```
+
+Cloud preview APK with EAS:
+
+```bash
+cd mobile && eas build --platform android --profile preview
 ```
 
 - EAS builds in the cloud (~10–20 min first time, ~5–10 min after)
@@ -67,7 +96,7 @@ eas build --platform android --profile preview
 ### Production AAB (for Play Store)
 
 ```bash
-eas build --platform android --profile production
+cd mobile && eas build --platform android --profile production
 ```
 
 Produces an `.aab` (Android App Bundle) optimised for Play Store distribution.

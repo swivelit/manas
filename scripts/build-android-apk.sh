@@ -1,141 +1,144 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-APP_ID="com.goodone.marketplace"
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLIENT_DIR="$ROOT_DIR/client"
-ANDROID_DIR="$CLIENT_DIR/android"
-OUTPUT_DIR="$ROOT_DIR/dist"
-APK_SOURCE="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
-APK_TARGET="$OUTPUT_DIR/goodone-debug.apk"
-NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org/}"
-USE_ADMOB_TEST_ADS="${REACT_APP_USE_ADMOB_TEST_ADS:-true}"
+APP_NAME="MANAS"
+APP_ID="com.jeygroups.manas"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+MOBILE_DIR="$ROOT_DIR/mobile"
+APK_PATH="$ROOT_DIR/dist/manas-debug.apk"
 
-export_android_version_env() {
-  local gradle_file="$ANDROID_DIR/app/build.gradle"
-  local version_code
-  local version_name
+MIN_NODE_VERSION="${MIN_NODE_VERSION:-22.13.1}"
 
-  if [ ! -f "$gradle_file" ]; then
-    echo "ERROR: Android Gradle file not found at $gradle_file"
+require_command() {
+  local command_name="$1"
+  local install_hint="$2"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: Required command not found: $command_name" >&2
+    echo "$install_hint" >&2
     exit 1
   fi
+}
 
-  version_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' "$gradle_file" | head -n 1)"
-  version_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*/\1/p' "$gradle_file" | head -n 1)"
+require_node_version() {
+  node - "$MIN_NODE_VERSION" <<'NODE'
+const minimum = process.argv[2].split('.').map(Number);
+const current = process.versions.node.split('.').map(Number);
+const ok = current[0] > minimum[0] ||
+  (current[0] === minimum[0] && (
+    current[1] > minimum[1] ||
+    (current[1] === minimum[1] && current[2] >= minimum[2])
+  ));
 
-  if [ -z "$version_code" ] || [ -z "$version_name" ]; then
-    echo "ERROR: Could not parse versionCode/versionName from $gradle_file"
-    exit 1
-  fi
+if (!ok) {
+  console.error(`ERROR: Node ${minimum.join('.')} or newer is required. Current: ${process.versions.node}`);
+  console.error(`Run: nvm install ${minimum.join('.')} && nvm use ${minimum.join('.')}`);
+  process.exit(1);
+}
+NODE
+}
 
-  export REACT_APP_ANDROID_VERSION_CODE="$version_code"
-  export REACT_APP_ANDROID_VERSION_NAME="$version_name"
+find_android_sdk() {
+  local candidates=()
+  [[ -n "${ANDROID_SDK_ROOT:-}" ]] && candidates+=("$ANDROID_SDK_ROOT")
+  [[ -n "${ANDROID_HOME:-}" ]] && candidates+=("$ANDROID_HOME")
+  candidates+=("$HOME/Library/Android/sdk" "$HOME/Android/Sdk")
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -d "$candidate/platform-tools" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+validate_expo_identity() {
+  node - "$MOBILE_DIR/app.json" "$APP_NAME" "$APP_ID" <<'NODE'
+const fs = require('fs');
+const [appJsonPath, expectedName, expectedPackage] = process.argv.slice(2);
+const config = JSON.parse(fs.readFileSync(appJsonPath, 'utf8')).expo || {};
+const androidPackage = config.android && config.android.package;
+
+if (config.name !== expectedName || androidPackage !== expectedPackage) {
+  console.error('ERROR: mobile/app.json does not match the MANAS Android identity.');
+  console.error(`Expected name=${expectedName}, android.package=${expectedPackage}`);
+  console.error(`Found name=${config.name || '(missing)'}, android.package=${androidPackage || '(missing)'}`);
+  process.exit(1);
+}
+NODE
 }
 
 cat <<'BANNER'
 ========================================
- GoodOne Android APK Build
+ MANAS Android Debug APK Build
 ========================================
 BANNER
 
-if [ ! -d "$CLIENT_DIR" ]; then
-  echo "ERROR: client directory not found."
-  echo "Run this script from the project root."
+if [[ ! -d "$MOBILE_DIR" ]]; then
+  echo "ERROR: mobile/ directory not found at $MOBILE_DIR" >&2
+  echo "Run this script from the MANAS repository root." >&2
   exit 1
 fi
 
-if [ ! -d "$ANDROID_DIR" ]; then
-  echo "ERROR: Android project not found at client/android."
-  echo "Run: cd client && npx cap add android"
+if [[ ! -f "$MOBILE_DIR/app.json" ]]; then
+  echo "ERROR: Expo config not found at mobile/app.json" >&2
   exit 1
 fi
 
-echo ""
-echo "Checking Java..."
-if command -v /usr/libexec/java_home >/dev/null 2>&1; then
-  use_java_version() {
-    local requested_version="$1"
-    local java_home
-    java_home="$(/usr/libexec/java_home -v "$requested_version" 2>/dev/null)" || return 1
-
-    if ! "$java_home/bin/java" -version 2>&1 | grep -Eq "version \"${requested_version}([\".+_-]|$)"; then
-      return 1
-    fi
-
-    export JAVA_HOME="$java_home"
-    export PATH="$JAVA_HOME/bin:$PATH"
-    echo "Using Java $requested_version: $JAVA_HOME"
-  }
-
-  if use_java_version 21; then
-    :
-  elif use_java_version 17; then
-    :
-  else
-    echo "WARNING: Java 21/17 not found via /usr/libexec/java_home."
-    echo "Continuing with current Java:"
-    java -version || true
-  fi
-else
-  java -version || true
+if [[ ! -x "$ROOT_DIR/build-apk.sh" ]]; then
+  echo "ERROR: build-apk.sh is missing or is not executable." >&2
+  echo "Run: chmod +x build-apk.sh" >&2
+  exit 1
 fi
 
-echo ""
-echo "Installing frontend dependencies..."
-echo "Using npm registry: $NPM_REGISTRY"
-cd "$CLIENT_DIR"
-if [ "${SKIP_NPM_CI:-false}" = "true" ]; then
-  echo "Skipping npm ci because SKIP_NPM_CI=true"
-elif ! npm ci --prefer-offline --no-audit --registry="$NPM_REGISTRY"; then
-  if [ -d node_modules ]; then
-    echo "WARNING: npm ci failed, but node_modules exists. Continuing with existing dependencies."
-    echo "For a clean build, fix npm/network access and rerun without SKIP_NPM_CI."
-  else
-    echo "ERROR: npm ci failed and node_modules is missing."
-    echo "Check your network/proxy/npm registry, then rerun."
-    exit 1
-  fi
+require_command node "Install Node.js, then use: nvm install $MIN_NODE_VERSION && nvm use $MIN_NODE_VERSION"
+require_command npm "Install npm with Node.js."
+require_command npx "Install npm/npx with Node.js."
+require_command java "Install JDK 17 or newer, then rerun this script."
+require_node_version
+validate_expo_identity
+
+ANDROID_SDK="$(find_android_sdk || true)"
+if [[ -z "$ANDROID_SDK" ]]; then
+  cat >&2 <<'EOF'
+ERROR: Android SDK not found.
+
+Install Android Studio or set ANDROID_SDK_ROOT/ANDROID_HOME to your Android SDK.
+Expected SDK contents include platform-tools and build-tools.
+EOF
+  exit 1
 fi
 
-echo ""
-echo "Building React app..."
-export_android_version_env
-export REACT_APP_USE_ADMOB_TEST_ADS="$USE_ADMOB_TEST_ADS"
-echo "REACT_APP_USE_ADMOB_TEST_ADS=$REACT_APP_USE_ADMOB_TEST_ADS"
-echo "REACT_APP_ANDROID_VERSION_CODE=$REACT_APP_ANDROID_VERSION_CODE"
-echo "REACT_APP_ANDROID_VERSION_NAME=$REACT_APP_ANDROID_VERSION_NAME"
-npm run build
+export ANDROID_SDK_ROOT="$ANDROID_SDK"
+export ANDROID_HOME="$ANDROID_SDK"
+export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator:$PATH"
 
-echo ""
-echo "Syncing Capacitor Android..."
-npx cap sync android
+echo "App: $APP_NAME"
+echo "Android package: $APP_ID"
+echo "Mobile directory: $MOBILE_DIR"
+echo "Android SDK: $ANDROID_SDK_ROOT"
+echo "Output APK: $APK_PATH"
+echo
 
-echo ""
-echo "Building debug APK..."
-cd "$ANDROID_DIR"
-./gradlew assembleDebug
+BUILD_TYPE=debug "$ROOT_DIR/build-apk.sh"
 
-echo ""
-echo "Copying APK to dist folder..."
-mkdir -p "$OUTPUT_DIR"
-cp "$APK_SOURCE" "$APK_TARGET"
+if [[ ! -f "$APK_PATH" ]]; then
+  echo "ERROR: Expected debug APK was not created at $APK_PATH" >&2
+  exit 1
+fi
 
-cat <<EOF2
+cat <<EOF
 
 ========================================
- APK build complete
+ MANAS debug APK ready
 ========================================
-APK location:
-$APK_TARGET
+APK:
+$APK_PATH
 
-To install on phone with USB debugging:
-adb install -r "$APK_TARGET"
-
-To uninstall old app first:
-adb uninstall $APP_ID
-
-For AdMob banner logs while testing:
-cd "$CLIENT_DIR" && npm run logs:android:admob
-
-EOF2
+Install manually:
+adb install -r "$APK_PATH"
+EOF

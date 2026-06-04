@@ -2,7 +2,7 @@
 
 ## Local Verification
 
-Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain.
+Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain. The root verification script checks the backend and mobile app together.
 
 ```bash
 nvm install 22.13.1
@@ -10,22 +10,40 @@ nvm use 22.13.1
 ./scripts/verify-all.sh
 ```
 
-For Android launch debugging with a development build:
+## Android Builds
+
+Build a local debug APK:
 
 ```bash
-cd mobile
-npx expo start --clear --dev-client
-npx expo run:android
-adb logcat -c
-adb logcat -d > ../android-launch-logcat.txt
-grep -iE "AndroidRuntime|FATAL|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com.jeygroups.manas" ../android-launch-logcat.txt | tail -200
+./scripts/build-android-apk.sh
 ```
 
-When testing against a backend running on the same machine from the Android emulator, start Metro with:
+Install and launch the debug APK on a connected adb device or emulator, then save startup logs to `dist/android-launch-logcat.txt`:
+
+```bash
+./scripts/launch-debug_apk.sh
+```
+
+Build a local release APK for QA installs:
+
+```bash
+./scripts/build-android_release-apk.sh
+```
+
+Build Android with EAS:
+
+```bash
+cd mobile && eas build --platform android --profile preview
+cd mobile && eas build --platform android --profile production
+```
+
+The `preview` profile produces a shareable APK. The `production` profile produces a Play Store AAB.
+
+When testing against a backend running on the same machine from the Android emulator, set the API URL to the emulator host alias:
 
 ```bash
 cd mobile
-EXPO_PUBLIC_API_URL=http://10.0.2.2:4000 npx expo start --clear --dev-client
+EXPO_PUBLIC_API_URL=http://10.0.2.2:4000 npx expo start --clear
 ```
 
 JEY GROUPS
