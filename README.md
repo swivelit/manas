@@ -1,5 +1,11 @@
 # manas
 
+## Test Credentials
+
+- Admin: `admin@manas.app` / `adminpass123`
+- User: `sarah@example.com` / `password123`
+- Coaches: `mira@manas.app` | `arjun@manas.app` | `lila@manas.app` / `coachpass123`
+
 ## Local Verification
 
 Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain. The root verification script checks the backend and mobile app together.

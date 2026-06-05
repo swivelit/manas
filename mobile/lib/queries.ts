@@ -320,6 +320,31 @@ export function useUpdateAdminVideo() {
   });
 }
 
+export function useCreateAdminVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string; description: string; url: string; thumbnailUrl?: string; subtitleUrl?: string;
+      durationSec?: number; type: string; isPremium?: boolean; approved?: boolean; topicId?: string;
+    }) => api.post('/admin/videos', data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-videos'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+export function useDeleteAdminVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/admin/videos/${id}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-videos'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
 export function useBroadcast() {
   return useMutation({
     mutationFn: (data: { title: string; body: string }) =>

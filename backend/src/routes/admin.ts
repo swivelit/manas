@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { Role, SessionStatus } from '@prisma/client';
+import { Role, SessionStatus, VideoType } from '@prisma/client';
 import { broadcastNotification } from '../lib/notifications';
 
 // NOTE: a richer web admin dashboard is a v1.1 candidate. This mobile admin
@@ -158,6 +158,46 @@ router.get('/videos', async (_req: Request, res: Response, next: NextFunction) =
   }
 });
 
+// POST /admin/videos — add a library video.
+const createVideoSchema = z.object({
+  title: z.string().trim().min(2),
+  description: z.string().trim().min(2),
+  url: z.string().url(),
+  thumbnailUrl: z.string().url().optional(),
+  subtitleUrl: z.string().url().optional(),
+  durationSec: z.number().int().positive().optional(),
+  type: z.nativeEnum(VideoType),
+  isPremium: z.boolean().optional(),
+  approved: z.boolean().optional().default(true),
+  topicId: z.string().optional(),
+});
+
+router.post('/videos', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = createVideoSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+    const d = parsed.data;
+
+    const video = await prisma.video.create({
+      data: {
+        title: d.title,
+        description: d.description,
+        url: d.url,
+        thumbnailUrl: d.thumbnailUrl ?? '',
+        subtitleUrl: d.subtitleUrl,
+        durationSec: d.durationSec ?? 0,
+        type: d.type,
+        isPremium: d.isPremium ?? false,
+        approved: d.approved,
+        topicId: d.topicId || null,
+      },
+    });
+    res.status(201).json(video);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /admin/videos/:id — approve/unapprove and light edits.
 const updateVideoSchema = z.object({
   approved: z.boolean().optional(),
@@ -174,6 +214,17 @@ router.patch('/videos/:id', async (req: Request, res: Response, next: NextFuncti
     if (!existing) { res.status(404).json({ error: 'Video not found' }); return; }
     const video = await prisma.video.update({ where: { id: req.params.id }, data: parsed.data });
     res.json(video);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/videos/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const existing = await prisma.video.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!existing) { res.status(404).json({ error: 'Video not found' }); return; }
+    await prisma.video.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
