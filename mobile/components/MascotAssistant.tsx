@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
-import { HeartMascot, HeartMascotFacing, HeartMascotShadow } from './HeartMascot';
+import { HeartMascot, HeartMascotShadow } from './HeartMascot';
 
 const contextMessages: Record<string, string> = {
   '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
@@ -57,6 +57,11 @@ const EDGE_PADDING = 12;
 const DEFAULT_RIGHT = 18;
 const TAB_BAR_CLEARANCE = 90;
 const MIN_TOP_CLEARANCE = 8;
+const BLINK_MIN_DELAY_MS = 2500;
+const BLINK_MAX_DELAY_MS = 6000;
+const BLINK_DURATION_MS = 120;
+const DOUBLE_BLINK_PAUSE_MS = 110;
+const DOUBLE_BLINK_CHANCE = 0.2;
 
 type MascotTapHandler = ((absoluteX: number, absoluteY: number) => void) | null;
 
@@ -107,19 +112,22 @@ export function MascotAssistant() {
   const [open, setOpen] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [facing, setFacing] = useState<HeartMascotFacing>('right');
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [eyesClosed, setEyesClosed] = useState(false);
   const pathname = usePathname();
   const message = getContextMessage(pathname);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const placedInitialPosition = useRef(false);
+  const blinkTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const bobProgress = useSharedValue(0);
   const breathProgress = useSharedValue(0);
   const walkProgress = useSharedValue(0);
+  const walkIntensity = useSharedValue(0);
+  const facingSign = useSharedValue(1);
 
   useEffect(() => {
     SecureStore.getItemAsync(VOICE_PREF_KEY).then(v => setVoiceEnabled(v === '1'));
@@ -212,8 +220,72 @@ export function MascotAssistant() {
     if (reducedMotion) {
       cancelAnimation(walkProgress);
       walkProgress.value = 0;
+      cancelAnimation(walkIntensity);
+      walkIntensity.value = 0;
     }
-  }, [reducedMotion, walkProgress]);
+  }, [reducedMotion, walkIntensity, walkProgress]);
+
+  useEffect(() => {
+    function clearBlinkTimers() {
+      blinkTimers.current.forEach(timer => clearTimeout(timer));
+      blinkTimers.current = [];
+    }
+
+    clearBlinkTimers();
+    setEyesClosed(false);
+
+    if (reducedMotion) {
+      return clearBlinkTimers;
+    }
+
+    let cancelled = false;
+
+    const scheduleTimer = (callback: () => void, delay: number) => {
+      const timer = setTimeout(() => {
+        blinkTimers.current = blinkTimers.current.filter(activeTimer => activeTimer !== timer);
+        callback();
+      }, delay);
+      blinkTimers.current.push(timer);
+    };
+
+    const randomDelay = () => BLINK_MIN_DELAY_MS + Math.random() * (BLINK_MAX_DELAY_MS - BLINK_MIN_DELAY_MS);
+
+    const scheduleNextBlink = () => {
+      scheduleTimer(() => {
+        if (cancelled) return;
+        setEyesClosed(true);
+        const shouldDoubleBlink = Math.random() < DOUBLE_BLINK_CHANCE;
+
+        scheduleTimer(() => {
+          if (cancelled) return;
+          setEyesClosed(false);
+
+          if (!shouldDoubleBlink) {
+            scheduleNextBlink();
+            return;
+          }
+
+          scheduleTimer(() => {
+            if (cancelled) return;
+            setEyesClosed(true);
+
+            scheduleTimer(() => {
+              if (cancelled) return;
+              setEyesClosed(false);
+              scheduleNextBlink();
+            }, BLINK_DURATION_MS);
+          }, DOUBLE_BLINK_PAUSE_MS);
+        }, BLINK_DURATION_MS);
+      }, randomDelay());
+    };
+
+    scheduleNextBlink();
+
+    return () => {
+      cancelled = true;
+      clearBlinkTimers();
+    };
+  }, [reducedMotion]);
 
   useEffect(() => {
     return () => {
@@ -223,8 +295,10 @@ export function MascotAssistant() {
       cancelAnimation(bobProgress);
       cancelAnimation(breathProgress);
       cancelAnimation(walkProgress);
+      cancelAnimation(walkIntensity);
+      cancelAnimation(facingSign);
     };
-  }, [bobProgress, breathProgress, translateX, translateY, walkProgress]);
+  }, [bobProgress, breathProgress, facingSign, translateX, translateY, walkIntensity, walkProgress]);
 
   useEffect(() => {
     if (open && voiceEnabled) {
@@ -247,38 +321,57 @@ export function MascotAssistant() {
     const nextY = clampValue(absoluteY - MASCOT_SIZE / 2, minY, maxY);
     const distance = Math.hypot(nextX - startX, nextY - startY);
 
-    if (Math.abs(nextX - startX) > 2) {
-      setFacing(nextX < startX ? 'left' : 'right');
-    }
+    const shouldFlip = Math.abs(nextX - startX) > 2;
+    const nextFacingSign = nextX < startX ? -1 : 1;
 
     cancelAnimation(translateX);
     cancelAnimation(translateY);
     cancelAnimation(walkProgress);
+    cancelAnimation(walkIntensity);
+
+    if (shouldFlip) {
+      cancelAnimation(facingSign);
+      if (reducedMotion) {
+        facingSign.value = nextFacingSign;
+      } else {
+        facingSign.value = withTiming(nextFacingSign, {
+          duration: 180,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        });
+      }
+    }
 
     if (reducedMotion || distance < 3) {
       translateX.value = nextX;
       translateY.value = nextY;
       walkProgress.value = 0;
+      walkIntensity.value = 0;
       return;
     }
 
     const duration = clampValue(distance * 2.4, 360, 1200);
     const travelConfig = {
       duration,
-      easing: Easing.out(Easing.cubic),
+      easing: Easing.inOut(Easing.cubic),
       reduceMotion: ReduceMotion.System,
     };
 
     walkProgress.value = 0;
+    walkIntensity.value = withTiming(1, {
+      duration: 140,
+      easing: Easing.out(Easing.quad),
+      reduceMotion: ReduceMotion.System,
+    });
     walkProgress.value = withRepeat(
       withSequence(
         withTiming(1, {
-          duration: 150,
+          duration: 260,
           easing: Easing.inOut(Easing.quad),
           reduceMotion: ReduceMotion.System,
         }),
         withTiming(0, {
-          duration: 150,
+          duration: 260,
           easing: Easing.inOut(Easing.quad),
           reduceMotion: ReduceMotion.System,
         })
@@ -291,13 +384,18 @@ export function MascotAssistant() {
     translateY.value = withTiming(nextY, travelConfig, finished => {
       if (finished) {
         walkProgress.value = withTiming(0, {
-          duration: 160,
+          duration: 220,
+          easing: Easing.out(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        });
+        walkIntensity.value = withTiming(0, {
+          duration: 260,
           easing: Easing.out(Easing.quad),
           reduceMotion: ReduceMotion.System,
         });
       }
     });
-  }, [height, insets.bottom, insets.top, reducedMotion, translateX, translateY, walkProgress, width]);
+  }, [facingSign, height, insets.bottom, insets.top, reducedMotion, translateX, translateY, walkIntensity, walkProgress, width]);
 
   useEffect(() => {
     const handler = (absoluteX: number, absoluteY: number) => {
@@ -322,15 +420,16 @@ export function MascotAssistant() {
   }));
 
   const characterStyle = useAnimatedStyle(() => {
-    const floatingY = bobProgress.value * -6;
+    const walkDamping = 1 - walkIntensity.value * 0.72;
+    const floatingY = bobProgress.value * -6 * walkDamping;
     const breathScale = 1 + breathProgress.value * 0.025;
     const step = walkProgress.value;
 
     return {
       transform: [
         { translateY: floatingY },
-        { scaleX: breathScale * (1 + step * 0.07) },
-        { scaleY: breathScale * (1 - step * 0.055) },
+        { scaleX: facingSign.value * breathScale * (1 + step * 0.045) },
+        { scaleY: breathScale * (1 - step * 0.04) },
       ],
     };
   });
@@ -395,7 +494,7 @@ export function MascotAssistant() {
             accessibilityRole="button"
             accessibilityLabel="Open MANAS guide"
           >
-            <HeartMascot facing={facing} size={MASCOT_SIZE} />
+            <HeartMascot size={MASCOT_SIZE} eyesClosed={eyesClosed} />
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
@@ -404,7 +503,7 @@ export function MascotAssistant() {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.overlay} onPress={e => e.stopPropagation()}>
             <View style={styles.avatarShell}>
-              <HeartMascot facing="right" size={54} />
+              <HeartMascot size={54} eyesClosed={eyesClosed} />
             </View>
             <View style={styles.bubble}>
               <View style={styles.titleRow}>

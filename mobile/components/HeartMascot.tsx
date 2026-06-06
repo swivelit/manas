@@ -13,8 +13,9 @@ import { colors } from '../theme/colors';
 export type HeartMascotFacing = 'left' | 'right';
 
 interface HeartMascotProps {
-  facing: HeartMascotFacing;
+  facing?: HeartMascotFacing;
   size: number;
+  eyesClosed?: boolean;
 }
 
 interface HeartMascotShadowProps {
@@ -30,9 +31,7 @@ export function HeartMascotShadow({ size }: HeartMascotShadowProps) {
   );
 }
 
-export function HeartMascot({ facing, size }: HeartMascotProps) {
-  const flipTransform = facing === 'left' ? 'translate(128 0) scale(-1 1)' : undefined;
-
+export function HeartMascot({ size, eyesClosed = false }: HeartMascotProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 128 148" accessibilityRole="image">
       <Defs>
@@ -57,7 +56,7 @@ export function HeartMascot({ facing, size }: HeartMascotProps) {
         </LinearGradient>
       </Defs>
 
-      <G transform={flipTransform}>
+      <G>
         <Path
           d="M30 82 C15 72 10 55 17 42 C22 33 33 35 37 45"
           fill="none"
@@ -157,16 +156,25 @@ export function HeartMascot({ facing, size }: HeartMascotProps) {
         <Path d="M44 54 C48 47 58 47 61 54" fill="none" stroke={colors.ink} strokeWidth={5} strokeLinecap="round" />
         <Path d="M81 54 C85 47 95 47 99 54" fill="none" stroke={colors.ink} strokeWidth={5} strokeLinecap="round" />
 
-        <Ellipse cx="52" cy="75" rx="12" ry="17" fill={colors.paper} stroke={colors.ink} strokeOpacity={0.2} strokeWidth={2} />
-        <Ellipse cx="88" cy="75" rx="12" ry="17" fill={colors.paper} stroke={colors.ink} strokeOpacity={0.2} strokeWidth={2} />
-        <Circle cx="55" cy="78" r="8" fill={colors.blueDeep} />
-        <Circle cx="91" cy="78" r="8" fill={colors.ink} />
-        <Circle cx="55" cy="78" r="4" fill="#080A1E" />
-        <Circle cx="91" cy="78" r="4" fill="#080A1E" />
-        <Circle cx="51" cy="70" r="3" fill={colors.paper} />
-        <Circle cx="87" cy="70" r="3" fill={colors.paper} />
-        <Circle cx="60" cy="84" r="2" fill={colors.pink} opacity={0.7} />
-        <Circle cx="96" cy="84" r="2" fill={colors.purple} opacity={0.6} />
+        {eyesClosed ? (
+          <>
+            <Path d="M41 75 C47 82 57 82 63 75" fill="none" stroke={colors.ink} strokeWidth={5} strokeLinecap="round" />
+            <Path d="M77 75 C83 82 93 82 99 75" fill="none" stroke={colors.ink} strokeWidth={5} strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <Ellipse cx="52" cy="75" rx="12" ry="17" fill={colors.paper} stroke={colors.ink} strokeOpacity={0.2} strokeWidth={2} />
+            <Ellipse cx="88" cy="75" rx="12" ry="17" fill={colors.paper} stroke={colors.ink} strokeOpacity={0.2} strokeWidth={2} />
+            <Circle cx="55" cy="78" r="8" fill={colors.blueDeep} />
+            <Circle cx="91" cy="78" r="8" fill={colors.ink} />
+            <Circle cx="55" cy="78" r="4" fill="#080A1E" />
+            <Circle cx="91" cy="78" r="4" fill="#080A1E" />
+            <Circle cx="51" cy="70" r="3" fill={colors.paper} />
+            <Circle cx="87" cy="70" r="3" fill={colors.paper} />
+            <Circle cx="60" cy="84" r="2" fill={colors.pink} opacity={0.7} />
+            <Circle cx="96" cy="84" r="2" fill={colors.purple} opacity={0.6} />
+          </>
+        )}
 
         <Path
           d="M47 91 C56 106 76 107 85 91 C83 112 50 113 47 91Z"
