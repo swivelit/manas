@@ -12,6 +12,7 @@ import { useAuthStore } from '../lib/auth';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { CrisisDisclaimerModal } from '../components/CrisisDisclaimerModal';
+import { MascotAssistant, MascotTapSurface } from '../components/MascotAssistant';
 import { hasAckedCrisis, setCrisisAck } from '../lib/crisis';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -68,12 +69,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <QueryClientProvider client={queryClient}>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }} />
-            <CrisisDisclaimerModal
-              visible={showCrisis === true}
-              onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
-            />
+            <MascotTapSurface>
+              <StatusBar style="dark" />
+              <Stack screenOptions={{ headerShown: false }} />
+              <MascotAssistant />
+              <CrisisDisclaimerModal
+                visible={showCrisis === true}
+                onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
+              />
+            </MascotTapSurface>
           </QueryClientProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

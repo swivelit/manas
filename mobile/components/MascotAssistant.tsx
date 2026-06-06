@@ -1,11 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Modal, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { usePathname } from 'expo-router';
 import * as Speech from 'expo-speech';
 import * as SecureStore from 'expo-secure-store';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
+import { HeartMascot, HeartMascotFacing, HeartMascotShadow } from './HeartMascot';
 
 const contextMessages: Record<string, string> = {
   '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
@@ -29,6 +51,16 @@ const contextMessages: Record<string, string> = {
 };
 
 const VOICE_PREF_KEY = 'manas_voice_enabled';
+const MASCOT_SIZE = 82;
+const SHADOW_HEIGHT = Math.round(MASCOT_SIZE * 0.22);
+const EDGE_PADDING = 12;
+const DEFAULT_RIGHT = 18;
+const TAB_BAR_CLEARANCE = 90;
+const MIN_TOP_CLEARANCE = 8;
+
+type MascotTapHandler = ((absoluteX: number, absoluteY: number) => void) | null;
+
+let mascotTapHandler: MascotTapHandler = null;
 
 function getContextMessage(path: string): string {
   if (contextMessages[path]) return contextMessages[path];
@@ -40,16 +72,165 @@ function getContextMessage(path: string): string {
   return prefix ? contextMessages[prefix] : contextMessages['/'];
 }
 
+function clampValue(value: number, min: number, max: number) {
+  if (max <= min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function emitMascotTap(absoluteX: number, absoluteY: number) {
+  mascotTapHandler?.(absoluteX, absoluteY);
+}
+
+export function MascotTapSurface({ children }: { children: React.ReactNode }) {
+  const tapGesture = useMemo(() => {
+    const tap = Gesture.Tap()
+      .maxDistance(24)
+      .runOnJS(true)
+      .cancelsTouchesInView(false)
+      .onEnd((event, success) => {
+        if (success) {
+          emitMascotTap(event.absoluteX, event.absoluteY);
+        }
+      });
+
+    const passiveNative = Gesture.Native()
+      .disallowInterruption(false)
+      .cancelsTouchesInView(false);
+
+    return Gesture.Simultaneous(tap, passiveNative);
+  }, []);
+
+  return (
+    <GestureDetector gesture={tapGesture}>
+      <View collapsable={false} style={styles.tapSurface}>
+        {children}
+      </View>
+    </GestureDetector>
+  );
+}
+
 export function MascotAssistant() {
   const [open, setOpen] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [facing, setFacing] = useState<HeartMascotFacing>('right');
+  const [reducedMotion, setReducedMotion] = useState(false);
   const pathname = usePathname();
   const message = getContextMessage(pathname);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const placedInitialPosition = useRef(false);
+
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const bobProgress = useSharedValue(0);
+  const breathProgress = useSharedValue(0);
+  const walkProgress = useSharedValue(0);
 
   useEffect(() => {
     SecureStore.getItemAsync(VOICE_PREF_KEY).then(v => setVoiceEnabled(v === '1'));
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then(enabled => {
+      if (mounted) setReducedMotion(enabled);
+    }).catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', enabled => {
+      setReducedMotion(enabled);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const minX = EDGE_PADDING;
+    const maxX = width - MASCOT_SIZE - EDGE_PADDING;
+    const minY = insets.top + MIN_TOP_CLEARANCE;
+    const maxY = height - MASCOT_SIZE - SHADOW_HEIGHT - insets.bottom - TAB_BAR_CLEARANCE;
+
+    if (!placedInitialPosition.current) {
+      translateX.value = clampValue(width - MASCOT_SIZE - DEFAULT_RIGHT, minX, maxX);
+      translateY.value = clampValue(maxY, minY, maxY);
+      placedInitialPosition.current = true;
+      return;
+    }
+
+    translateX.value = clampValue(translateX.value, minX, maxX);
+    translateY.value = clampValue(translateY.value, minY, maxY);
+  }, [height, insets.bottom, insets.top, translateX, translateY, width]);
+
+  useEffect(() => {
+    cancelAnimation(bobProgress);
+    cancelAnimation(breathProgress);
+
+    if (reducedMotion) {
+      bobProgress.value = 0;
+      breathProgress.value = 0;
+      return undefined;
+    }
+
+    bobProgress.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        }),
+        withTiming(0, {
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        })
+      ),
+      -1,
+      false
+    );
+
+    breathProgress.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        }),
+        withTiming(0, {
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        })
+      ),
+      -1,
+      false
+    );
+
+    return () => {
+      cancelAnimation(bobProgress);
+      cancelAnimation(breathProgress);
+    };
+  }, [bobProgress, breathProgress, reducedMotion]);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      cancelAnimation(walkProgress);
+      walkProgress.value = 0;
+    }
+  }, [reducedMotion, walkProgress]);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop().catch(() => {});
+      cancelAnimation(translateX);
+      cancelAnimation(translateY);
+      cancelAnimation(bobProgress);
+      cancelAnimation(breathProgress);
+      cancelAnimation(walkProgress);
+    };
+  }, [bobProgress, breathProgress, translateX, translateY, walkProgress]);
 
   useEffect(() => {
     if (open && voiceEnabled) {
@@ -60,6 +241,118 @@ export function MascotAssistant() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const moveToTap = useCallback((absoluteX: number, absoluteY: number) => {
+    const minX = EDGE_PADDING;
+    const maxX = width - MASCOT_SIZE - EDGE_PADDING;
+    const minY = insets.top + MIN_TOP_CLEARANCE;
+    const maxY = height - MASCOT_SIZE - SHADOW_HEIGHT - insets.bottom - TAB_BAR_CLEARANCE;
+    const startX = translateX.value;
+    const startY = translateY.value;
+    const nextX = clampValue(absoluteX - MASCOT_SIZE / 2, minX, maxX);
+    const nextY = clampValue(absoluteY - MASCOT_SIZE / 2, minY, maxY);
+    const distance = Math.hypot(nextX - startX, nextY - startY);
+
+    if (Math.abs(nextX - startX) > 2) {
+      setFacing(nextX < startX ? 'left' : 'right');
+    }
+
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(walkProgress);
+
+    if (reducedMotion || distance < 3) {
+      translateX.value = nextX;
+      translateY.value = nextY;
+      walkProgress.value = 0;
+      return;
+    }
+
+    const duration = clampValue(distance * 2.4, 360, 1200);
+    const travelConfig = {
+      duration,
+      easing: Easing.out(Easing.cubic),
+      reduceMotion: ReduceMotion.System,
+    };
+
+    walkProgress.value = 0;
+    walkProgress.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: 150,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        }),
+        withTiming(0, {
+          duration: 150,
+          easing: Easing.inOut(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        })
+      ),
+      -1,
+      false
+    );
+
+    translateX.value = withTiming(nextX, travelConfig);
+    translateY.value = withTiming(nextY, travelConfig, finished => {
+      if (finished) {
+        walkProgress.value = withTiming(0, {
+          duration: 160,
+          easing: Easing.out(Easing.quad),
+          reduceMotion: ReduceMotion.System,
+        });
+      }
+    });
+  }, [height, insets.bottom, insets.top, reducedMotion, translateX, translateY, walkProgress, width]);
+
+  useEffect(() => {
+    const handler = (absoluteX: number, absoluteY: number) => {
+      if (!open) {
+        moveToTap(absoluteX, absoluteY);
+      }
+    };
+
+    mascotTapHandler = handler;
+    return () => {
+      if (mascotTapHandler === handler) {
+        mascotTapHandler = null;
+      }
+    };
+  }, [moveToTap, open]);
+
+  const positionStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
+  const characterStyle = useAnimatedStyle(() => {
+    const floatingY = bobProgress.value * -6;
+    const breathScale = 1 + breathProgress.value * 0.025;
+    const step = walkProgress.value;
+
+    return {
+      transform: [
+        { translateY: floatingY },
+        { scaleX: breathScale * (1 + step * 0.07) },
+        { scaleY: breathScale * (1 - step * 0.055) },
+      ],
+    };
+  });
+
+  const shadowStyle = useAnimatedStyle(() => {
+    const lift = bobProgress.value;
+    const step = walkProgress.value;
+
+    return {
+      opacity: 1 - lift * 0.18,
+      transform: [
+        { scaleX: 1 - lift * 0.16 + step * 0.04 },
+        { scaleY: 1 + lift * 0.06 },
+      ],
+    };
+  });
 
   async function handleSpeak() {
     if (speaking) {
@@ -88,15 +381,37 @@ export function MascotAssistant() {
   }
 
   return (
-    <>
-      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.85} style={styles.fab}>
-        <Image source={require('../assets/mascot.jpg')} style={styles.fabImg} />
-      </TouchableOpacity>
+    <View pointerEvents="box-none" style={styles.root}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.floatingWrap,
+          { width: MASCOT_SIZE, height: MASCOT_SIZE + SHADOW_HEIGHT },
+          positionStyle,
+        ]}
+      >
+        <Animated.View pointerEvents="none" style={[styles.shadowSlot, shadowStyle]}>
+          <HeartMascotShadow size={MASCOT_SIZE} />
+        </Animated.View>
+        <Animated.View pointerEvents="box-none" style={[styles.characterSlot, characterStyle]}>
+          <TouchableOpacity
+            onPress={() => setOpen(true)}
+            activeOpacity={0.85}
+            style={styles.fab}
+            accessibilityRole="button"
+            accessibilityLabel="Open MANAS guide"
+          >
+            <HeartMascot facing={facing} size={MASCOT_SIZE} />
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.overlay} onPress={e => e.stopPropagation()}>
-            <Image source={require('../assets/mascot.jpg')} style={styles.mascotImg} />
+            <View style={styles.avatarShell}>
+              <HeartMascot facing="right" size={54} />
+            </View>
             <View style={styles.bubble}>
               <View style={styles.titleRow}>
                 <Text style={styles.guideLabel}>MANAS · GUIDE</Text>
@@ -120,28 +435,53 @@ export function MascotAssistant() {
           </Pressable>
         </Pressable>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    bottom: 90,
-    right: 18,
-    width: 52,
-    height: 52,
-    borderRadius: 99,
-    overflow: 'hidden',
-    shadowColor: colors.pink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.6)',
+  tapSurface: {
+    flex: 1,
   },
-  fabImg: { width: '100%', height: '100%', borderRadius: 99 },
+  root: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 30,
+    elevation: 30,
+  },
+  floatingWrap: {
+    position: 'absolute',
+    zIndex: 2,
+    elevation: 12,
+  },
+  shadowSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+  },
+  characterSlot: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: MASCOT_SIZE,
+    height: MASCOT_SIZE,
+  },
+  fab: {
+    width: MASCOT_SIZE,
+    height: MASCOT_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.purple,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    elevation: 10,
+  },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end', padding: 18 },
   overlay: {
     backgroundColor: colors.paper,
@@ -156,7 +496,12 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 10,
   },
-  mascotImg: { width: 54, height: 54, borderRadius: 99 },
+  avatarShell: {
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bubble: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   guideLabel: { fontFamily: fontFamilies.dmSansBold, fontSize: 8, color: colors.pink, letterSpacing: 1.5, flex: 1 },
