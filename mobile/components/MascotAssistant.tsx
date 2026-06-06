@@ -83,7 +83,7 @@ function emitMascotTap(absoluteX: number, absoluteY: number) {
 
 export function MascotTapSurface({ children }: { children: React.ReactNode }) {
   const tapGesture = useMemo(() => {
-    const tap = Gesture.Tap()
+    return Gesture.Tap()
       .maxDistance(24)
       .runOnJS(true)
       .cancelsTouchesInView(false)
@@ -92,12 +92,6 @@ export function MascotTapSurface({ children }: { children: React.ReactNode }) {
           emitMascotTap(event.absoluteX, event.absoluteY);
         }
       });
-
-    const passiveNative = Gesture.Native()
-      .disallowInterruption(false)
-      .cancelsTouchesInView(false);
-
-    return Gesture.Simultaneous(tap, passiveNative);
   }, []);
 
   return (
