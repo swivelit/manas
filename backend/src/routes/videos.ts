@@ -11,7 +11,16 @@ const progressSchema = z.object({
   completed: z.boolean().optional(),
 });
 
-router.get('/', async (req: Request, res: Response) => {
+function serializeVideoWithLikes(video: Record<string, any>) {
+  const { _count, likes, ...rest } = video;
+  return {
+    ...rest,
+    likeCount: _count?.likes ?? 0,
+    likedByMe: Array.isArray(likes) && likes.length > 0,
+  };
+}
+
+router.get('/', optionalAuth, async (req: Request, res: Response) => {
   const { type, topicId } = req.query as { type?: string; topicId?: string };
 
   const where: { type?: VideoType; topicId?: string | null; approved: boolean } = { approved: true };
@@ -22,10 +31,16 @@ router.get('/', async (req: Request, res: Response) => {
 
   const videos = await prisma.video.findMany({
     where,
-    include: { topic: { select: { name: true, slug: true } } },
+    include: {
+      topic: { select: { name: true, slug: true } },
+      _count: { select: { likes: true } },
+      likes: req.user
+        ? { where: { userId: req.user.id }, select: { id: true } }
+        : false,
+    },
     orderBy: { createdAt: 'desc' },
   });
-  res.json(videos);
+  res.json(videos.map(serializeVideoWithLikes));
 });
 
 // User's bookmarked videos. Must be declared before `/:id` so the literal
@@ -42,7 +57,13 @@ router.get('/bookmarks', requireAuth, async (req: Request, res: Response) => {
 router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
   const video = await prisma.video.findUnique({
     where: { id: req.params.id },
-    include: { topic: { select: { name: true, slug: true } } },
+    include: {
+      topic: { select: { name: true, slug: true } },
+      _count: { select: { likes: true } },
+      likes: req.user
+        ? { where: { userId: req.user.id }, select: { id: true } }
+        : false,
+    },
   });
   if (!video) { res.status(404).json({ error: 'Video not found' }); return; }
 
@@ -54,12 +75,12 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
 
   if (video.isPremium) {
     if (!req.user) {
-      res.status(402).json({ error: 'Premium content. Please upgrade.', upgradeUrl: null });
+      res.status(402).json({ error: 'Premium content. Ask an admin for access.', upgradeUrl: null });
       return;
     }
     const me = await prisma.user.findUnique({ where: { id: req.user.id }, select: { isPremium: true } });
     if (!me?.isPremium) {
-      res.status(402).json({ error: 'Premium content. Please upgrade.', upgradeUrl: null });
+      res.status(402).json({ error: 'Premium content. Ask an admin for access.', upgradeUrl: null });
       return;
     }
   }
@@ -71,7 +92,7 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
     })
     : null;
 
-  res.json({ ...video, progress });
+  res.json({ ...serializeVideoWithLikes(video), progress });
 });
 
 router.post('/:id/progress', requireAuth, async (req: Request, res: Response) => {
@@ -84,7 +105,7 @@ router.post('/:id/progress', requireAuth, async (req: Request, res: Response) =>
   if (video.isPremium) {
     const me = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isPremium: true } });
     if (!me?.isPremium) {
-      res.status(402).json({ error: 'Premium content. Please upgrade.', upgradeUrl: null });
+      res.status(402).json({ error: 'Premium content. Ask an admin for access.', upgradeUrl: null });
       return;
     }
   }
@@ -111,6 +132,37 @@ router.post('/:id/bookmark', requireAuth, async (req: Request, res: Response) =>
   }
   await prisma.videoBookmark.create({ data: { userId: req.user!.id, videoId: req.params.id } });
   res.json({ bookmarked: true });
+});
+
+router.post('/:id/like', requireAuth, async (req: Request, res: Response) => {
+  const video = await prisma.video.findUnique({ where: { id: req.params.id } });
+  if (!video || (!video.approved && req.user?.role !== 'ADMIN')) {
+    res.status(404).json({ error: 'Video not found' });
+    return;
+  }
+
+  if (video.isPremium) {
+    const me = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isPremium: true } });
+    if (!me?.isPremium) {
+      res.status(402).json({ error: 'Premium content. Ask an admin for access.', upgradeUrl: null });
+      return;
+    }
+  }
+
+  const existing = await prisma.videoLike.findUnique({
+    where: { userId_videoId: { userId: req.user!.id, videoId: req.params.id } },
+  });
+
+  let liked = true;
+  if (existing) {
+    await prisma.videoLike.delete({ where: { id: existing.id } });
+    liked = false;
+  } else {
+    await prisma.videoLike.create({ data: { userId: req.user!.id, videoId: req.params.id } });
+  }
+
+  const likeCount = await prisma.videoLike.count({ where: { videoId: req.params.id } });
+  res.json({ liked, likeCount });
 });
 
 export default router;

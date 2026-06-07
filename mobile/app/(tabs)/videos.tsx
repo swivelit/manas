@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useVideos, useBookmarkVideo, useVideoBookmarks } from '../../lib/queries';
+import { useVideos, useBookmarkVideo, useVideoBookmarks, useMe } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
 import { colors } from '../../theme/colors';
@@ -25,12 +25,15 @@ export default function VideosScreen() {
   const [activeType, setActiveType] = useState('All');
   const { data: videos, isLoading, isError } = useVideos({ type: TYPE_MAP[activeType] });
   const { data: bookmarks } = useVideoBookmarks();
+  const { data: me } = useMe();
   const bookmark = useBookmarkVideo();
   const token = useAuthStore(s => s.token);
+  const user = useAuthStore(s => s.user);
 
   const videoList = Array.isArray(videos) ? videos : [];
   const bookmarkList = Array.isArray(bookmarks) ? bookmarks : [];
   const bookmarkedIds = new Set<string>(bookmarkList.map((b: any) => b.id));
+  const hasPremiumAccess = Boolean(me?.isPremium ?? user?.isPremium);
 
   async function handleHeart(id: string) {
     if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
@@ -63,6 +66,7 @@ export default function VideosScreen() {
               <Text style={styles.featuredLabel}>FEATURED · {featured.isPremium ? 'PREMIUM' : 'FREE'}</Text>
               <Text style={styles.featuredTitle}>{featured.title}</Text>
               <Text style={styles.featuredTime}>{Math.floor(featured.durationSec / 60)} min · {featured.topic?.name ?? 'General'}</Text>
+              {featured.isPremium && !hasPremiumAccess && <Text style={styles.featuredPremium}>Premium content — ask an admin for access</Text>}
             </View>
           </TouchableOpacity>
         )}
@@ -113,6 +117,7 @@ export default function VideosScreen() {
                     <Text style={styles.vidType}>{v.type} · {v.isPremium ? 'PREMIUM' : 'FREE'}</Text>
                     <Text style={styles.vidTitle} numberOfLines={2}>{v.title}</Text>
                     <Text style={styles.vidMeta}>{Math.floor(v.durationSec / 60)} min</Text>
+                    {v.isPremium && !hasPremiumAccess && <Text style={styles.premiumNotice}>Premium content — ask an admin for access</Text>}
                   </View>
                   <TouchableOpacity onPress={() => handleHeart(v.id)} hitSlop={10} style={styles.heartBtn}>
                     <Icon
@@ -122,7 +127,7 @@ export default function VideosScreen() {
                       strokeWidth={bookmarkedIds.has(v.id) ? 2.5 : 1.5}
                     />
                   </TouchableOpacity>
-                  {v.isPremium && <Icon name="lock" size={12} color={colors.muted} />}
+                  {v.isPremium && !hasPremiumAccess && <Icon name="lock" size={12} color={colors.muted} />}
                 </TouchableOpacity>
               );
             })}
@@ -167,6 +172,7 @@ const styles = StyleSheet.create({
   featuredLabel: { fontFamily: fontFamilies.dmSans, fontSize: 9, letterSpacing: 2, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' },
   featuredTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 14, color: '#FFF', marginTop: 2, lineHeight: 17 },
   featuredTime: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 3 },
+  featuredPremium: { fontFamily: fontFamilies.dmSansMedium, fontSize: 9, color: '#FFF', marginTop: 4 },
   chips: { paddingHorizontal: 22, gap: 6, marginBottom: 12 },
   chip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 99, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
@@ -180,6 +186,7 @@ const styles = StyleSheet.create({
   vidType: { fontFamily: fontFamilies.dmSansBold, fontSize: 8, letterSpacing: 1.5, color: colors.pink, textTransform: 'uppercase' },
   vidTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 11.5, color: colors.ink, marginTop: 2, lineHeight: 14 },
   vidMeta: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: colors.muted, marginTop: 3 },
+  premiumNotice: { fontFamily: fontFamilies.dmSansMedium, fontSize: 9, color: colors.inkSoft, marginTop: 3 },
   heartBtn: { padding: 6 },
   emptyState: { backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
   emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Modal,
@@ -12,7 +12,6 @@ import {
 import { usePathname } from 'expo-router';
 import * as Speech from 'expo-speech';
 import * as SecureStore from 'expo-secure-store';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -29,29 +28,86 @@ import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
 import { HeartMascot, HeartMascotShadow } from './HeartMascot';
 
-const contextMessages: Record<string, string> = {
-  '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
-  '/onboarding': 'This is the welcome screen. Continue to sign in or create an account so your sessions, progress, and preferences can be saved.',
-  '/(auth)': 'Use this auth screen to sign in with email, Google, or mobile OTP where available. If a provider is not configured yet, use email OTP for testing.',
-  '/(auth)/login': 'Sign in here. Enter your email to request an OTP, or use Google when production credentials are configured.',
-  '/(auth)/register': 'Create your MANAS account here. Add your name and email, verify the OTP, then continue to the home tabs.',
-  '/(auth)/phone': 'Use mobile OTP here. Enter your phone number, request the code, then verify it to continue.',
-  '/(tabs)': 'This is Home. Review your mood prompt, choose Emotional Healing or Coaching, book a free demo, or open your upcoming session.',
-  '/(tabs)/topics': 'These are Emotional Healing topics. Search a feeling, open a topic, then choose a coach and booking time.',
-  '/topics/emotional-healing-list': 'These are the Emotional Healing topics. Pick the topic that fits what you want to work through, then choose a coach.',
-  '/coaching': 'This is Coaching. Pick a growth topic, review the detail page, then book a demo with an available coach.',
-  '/topics': 'This topic page explains the focus area. Use the heart to save it, review coach options, or book a free demo.',
-  '/booking': 'This booking page shows coach availability in your timezone. Select a date, time slot, and video, audio, or chat session before confirming.',
-  '/(tabs)/videos': 'The Library has free and premium videos. Public videos open without signing in; bookmarks and progress are saved after you sign in.',
-  '/video': 'This video page lets you watch, resume progress, and bookmark after signing in. Premium videos show a safe upgrade prompt.',
-  '/(tabs)/sessions': 'Your sessions live here. Review upcoming or past bookings, then join confirmed sessions inside the join window.',
-  '/session': 'This session detail shows the coach, topic, time, session type, and meeting link when it is ready.',
-  '/(tabs)/profile': "This is Profile. Review your saved journey, session history, and account actions.",
-  '/mood': "This mood page records how you're feeling today. Pick the closest option and add a note if it helps.",
+type AssistantLanguageCode = 'en' | 'hi';
+
+type AssistantDictionary = {
+  label: string;
+  guideLabel: string;
+  readAloudLabel: string;
+  voiceOn: string;
+  voiceOff: string;
+  toggleVoiceLabel: string;
+  gotIt: string;
+  maybeLater: string;
+  messages: Record<string, string>;
+};
+
+const assistantDictionaries: Record<AssistantLanguageCode, AssistantDictionary> = {
+  en: {
+    label: 'English',
+    guideLabel: 'MANAS · GUIDE',
+    readAloudLabel: 'Read aloud',
+    voiceOn: 'Voice on',
+    voiceOff: 'Voice off',
+    toggleVoiceLabel: 'Toggle voice guidance',
+    gotIt: '✿ Got it',
+    maybeLater: 'Maybe later',
+    messages: {
+      '/': "Welcome! I'm Manas, your guide. Start with Emotional Healing, Coaching, or the Library, then I can point you to the next step.",
+      '/onboarding': 'This is the welcome screen. Continue to sign in or create an account so your sessions, progress, and preferences can be saved.',
+      '/(auth)': 'Use this auth screen to sign in with an email code.',
+      '/(auth)/login': 'Sign in here. Enter your email to request an OTP, then verify the code to continue.',
+      '/(auth)/register': 'Create your MANAS account here. Add your name and email, verify the OTP, then continue to the home tabs.',
+      '/(tabs)': 'This is Home. Review your mood prompt, choose Emotional Healing or Coaching, book a free demo, or open your upcoming session.',
+      '/(tabs)/topics': 'These are Emotional Healing topics. Search a feeling, open a topic, then choose a coach and booking time.',
+      '/topics/emotional-healing-list': 'These are the Emotional Healing topics. Pick the topic that fits what you want to work through, then choose a coach.',
+      '/coaching': 'This is Coaching. Pick a growth topic, review the detail page, then book a demo with an available coach.',
+      '/topics': 'This topic page explains the focus area. Use the heart to save it, review coach options, or book a free demo.',
+      '/booking': 'This booking page shows coach availability in your timezone. Select a date, time slot, and video, audio, or chat session before confirming.',
+      '/(tabs)/videos': 'The Library has free and premium videos. Public videos open without signing in; bookmarks and progress are saved after you sign in.',
+      '/video': 'This video page lets you watch, resume progress, bookmark, and like after signing in. Premium access is managed by an admin.',
+      '/(tabs)/sessions': 'Your sessions live here. Review upcoming or past bookings, then join confirmed video and audio sessions inside the join window.',
+      '/session': 'This session detail shows the coach, topic, time, and session type. Chat sessions open an in-app message thread here.',
+      '/(tabs)/profile': "This is Profile. Review your saved journey, session history, and account actions.",
+      '/mood': "This mood page records how you're feeling today. Pick the closest option and add a note if it helps.",
+    },
+  },
+  hi: {
+    label: 'हिन्दी',
+    guideLabel: 'MANAS · मार्गदर्शक',
+    readAloudLabel: 'आवाज़ में पढ़ें',
+    voiceOn: 'आवाज़ चालू',
+    voiceOff: 'आवाज़ बंद',
+    toggleVoiceLabel: 'आवाज़ मार्गदर्शन बदलें',
+    gotIt: '✿ समझ गया',
+    maybeLater: 'बाद में',
+    messages: {
+      '/': 'नमस्ते! मैं Manas हूं, आपका मार्गदर्शक. Emotional Healing, Coaching, या Library से शुरू करें, फिर मैं अगला कदम बताऊंगा.',
+      '/onboarding': 'यह स्वागत स्क्रीन है. साइन इन करें या खाता बनाएं ताकि आपके सत्र, प्रगति और पसंद सेव हो सकें.',
+      '/(auth)': 'इस स्क्रीन पर ईमेल कोड से साइन इन करें.',
+      '/(auth)/login': 'यहां साइन इन करें. अपना ईमेल डालकर OTP मांगें, फिर कोड सत्यापित करके आगे बढ़ें.',
+      '/(auth)/register': 'यहां अपना MANAS खाता बनाएं. नाम और ईमेल जोड़ें, OTP सत्यापित करें, फिर होम टैब पर जाएं.',
+      '/(tabs)': 'यह Home है. अपना mood prompt देखें, Emotional Healing या Coaching चुनें, demo book करें, या आने वाला session खोलें.',
+      '/(tabs)/topics': 'ये Emotional Healing topics हैं. कोई feeling खोजें, topic खोलें, फिर coach और booking time चुनें.',
+      '/topics/emotional-healing-list': 'ये Emotional Healing topics हैं. जो विषय आपकी जरूरत से मेल खाता है उसे चुनें, फिर coach चुनें.',
+      '/coaching': 'यह Coaching है. Growth topic चुनें, detail page देखें, फिर available coach के साथ demo book करें.',
+      '/topics': 'यह topic page focus area समझाता है. Save करने के लिए heart इस्तेमाल करें, coach options देखें, या demo book करें.',
+      '/booking': 'यह booking page आपके timezone में coach availability दिखाता है. Confirm करने से पहले date, time slot, और video, audio, या chat session चुनें.',
+      '/(tabs)/videos': 'Library में free और premium videos हैं. Public videos बिना sign in खुलते हैं; bookmarks और progress sign in के बाद save होते हैं.',
+      '/video': 'इस video page पर आप sign in के बाद watch, resume progress, bookmark, और like कर सकते हैं. Premium access admin संभालता है.',
+      '/(tabs)/sessions': 'आपके sessions यहां हैं. Upcoming या past bookings देखें, फिर confirmed video और audio sessions join window में join करें.',
+      '/session': 'यह session detail coach, topic, time, और session type दिखाता है. Chat sessions यहां in-app message thread खोलते हैं.',
+      '/(tabs)/profile': 'यह Profile है. अपनी saved journey, session history, और account actions देखें.',
+      '/mood': 'यह mood page आज आपकी feeling record करता है. सबसे करीबी option चुनें और जरूरत हो तो note जोड़ें.',
+    },
+  },
 };
 
 const VOICE_PREF_KEY = 'manas_voice_enabled';
-const MASCOT_SIZE = 82;
+const LANGUAGE_PREF_KEY = 'manas_assistant_language';
+const DEFAULT_LANGUAGE: AssistantLanguageCode = 'en';
+const ASSISTANT_LANGUAGES: AssistantLanguageCode[] = ['en', 'hi'];
+const MASCOT_SIZE = 64;
 const SHADOW_HEIGHT = Math.round(MASCOT_SIZE * 0.22);
 const EDGE_PADDING = 12;
 const DEFAULT_RIGHT = 18;
@@ -63,11 +119,12 @@ const BLINK_DURATION_MS = 120;
 const DOUBLE_BLINK_PAUSE_MS = 110;
 const DOUBLE_BLINK_CHANCE = 0.2;
 
-type MascotTapHandler = ((absoluteX: number, absoluteY: number) => void) | null;
+function isAssistantLanguageCode(value: string | null): value is AssistantLanguageCode {
+  return value === 'en' || value === 'hi';
+}
 
-let mascotTapHandler: MascotTapHandler = null;
-
-function getContextMessage(path: string): string {
+function getContextMessage(path: string, languageCode: AssistantLanguageCode): string {
+  const contextMessages = assistantDictionaries[languageCode].messages;
   if (contextMessages[path]) return contextMessages[path];
 
   const prefix = Object.keys(contextMessages)
@@ -82,40 +139,24 @@ function clampValue(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function emitMascotTap(absoluteX: number, absoluteY: number) {
-  mascotTapHandler?.(absoluteX, absoluteY);
-}
-
 export function MascotTapSurface({ children }: { children: React.ReactNode }) {
-  const tapGesture = useMemo(() => {
-    return Gesture.Tap()
-      .maxDistance(24)
-      .runOnJS(true)
-      .cancelsTouchesInView(false)
-      .onEnd((event, success) => {
-        if (success) {
-          emitMascotTap(event.absoluteX, event.absoluteY);
-        }
-      });
-  }, []);
-
   return (
-    <GestureDetector gesture={tapGesture}>
-      <View collapsable={false} style={styles.tapSurface}>
-        {children}
-      </View>
-    </GestureDetector>
+    <View collapsable={false} style={styles.tapSurface}>
+      {children}
+    </View>
   );
 }
 
 export function MascotAssistant() {
   const [open, setOpen] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [languageCode, setLanguageCode] = useState<AssistantLanguageCode>(DEFAULT_LANGUAGE);
   const [speaking, setSpeaking] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [eyesClosed, setEyesClosed] = useState(false);
   const pathname = usePathname();
-  const message = getContextMessage(pathname);
+  const copy = assistantDictionaries[languageCode];
+  const message = getContextMessage(pathname, languageCode);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const placedInitialPosition = useRef(false);
@@ -131,6 +172,9 @@ export function MascotAssistant() {
 
   useEffect(() => {
     SecureStore.getItemAsync(VOICE_PREF_KEY).then(v => setVoiceEnabled(v === '1'));
+    SecureStore.getItemAsync(LANGUAGE_PREF_KEY).then(v => {
+      if (isAssistantLanguageCode(v)) setLanguageCode(v);
+    });
   }, []);
 
   useEffect(() => {
@@ -310,108 +354,6 @@ export function MascotAssistant() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const moveToTap = useCallback((absoluteX: number, absoluteY: number) => {
-    const minX = EDGE_PADDING;
-    const maxX = width - MASCOT_SIZE - EDGE_PADDING;
-    const minY = insets.top + MIN_TOP_CLEARANCE;
-    const maxY = height - MASCOT_SIZE - SHADOW_HEIGHT - insets.bottom - TAB_BAR_CLEARANCE;
-    const startX = translateX.value;
-    const startY = translateY.value;
-    const nextX = clampValue(absoluteX - MASCOT_SIZE / 2, minX, maxX);
-    const nextY = clampValue(absoluteY - MASCOT_SIZE / 2, minY, maxY);
-    const distance = Math.hypot(nextX - startX, nextY - startY);
-
-    const shouldFlip = Math.abs(nextX - startX) > 2;
-    const nextFacingSign = nextX < startX ? -1 : 1;
-
-    cancelAnimation(translateX);
-    cancelAnimation(translateY);
-    cancelAnimation(walkProgress);
-    cancelAnimation(walkIntensity);
-
-    if (shouldFlip) {
-      cancelAnimation(facingSign);
-      if (reducedMotion) {
-        facingSign.value = nextFacingSign;
-      } else {
-        facingSign.value = withTiming(nextFacingSign, {
-          duration: 180,
-          easing: Easing.inOut(Easing.quad),
-          reduceMotion: ReduceMotion.System,
-        });
-      }
-    }
-
-    if (reducedMotion || distance < 3) {
-      translateX.value = nextX;
-      translateY.value = nextY;
-      walkProgress.value = 0;
-      walkIntensity.value = 0;
-      return;
-    }
-
-    const duration = clampValue(distance * 2.4, 360, 1200);
-    const travelConfig = {
-      duration,
-      easing: Easing.inOut(Easing.cubic),
-      reduceMotion: ReduceMotion.System,
-    };
-
-    walkProgress.value = 0;
-    walkIntensity.value = withTiming(1, {
-      duration: 140,
-      easing: Easing.out(Easing.quad),
-      reduceMotion: ReduceMotion.System,
-    });
-    walkProgress.value = withRepeat(
-      withSequence(
-        withTiming(1, {
-          duration: 260,
-          easing: Easing.inOut(Easing.quad),
-          reduceMotion: ReduceMotion.System,
-        }),
-        withTiming(0, {
-          duration: 260,
-          easing: Easing.inOut(Easing.quad),
-          reduceMotion: ReduceMotion.System,
-        })
-      ),
-      -1,
-      false
-    );
-
-    translateX.value = withTiming(nextX, travelConfig);
-    translateY.value = withTiming(nextY, travelConfig, finished => {
-      if (finished) {
-        walkProgress.value = withTiming(0, {
-          duration: 220,
-          easing: Easing.out(Easing.quad),
-          reduceMotion: ReduceMotion.System,
-        });
-        walkIntensity.value = withTiming(0, {
-          duration: 260,
-          easing: Easing.out(Easing.quad),
-          reduceMotion: ReduceMotion.System,
-        });
-      }
-    });
-  }, [facingSign, height, insets.bottom, insets.top, reducedMotion, translateX, translateY, walkIntensity, walkProgress, width]);
-
-  useEffect(() => {
-    const handler = (absoluteX: number, absoluteY: number) => {
-      if (!open) {
-        moveToTap(absoluteX, absoluteY);
-      }
-    };
-
-    mascotTapHandler = handler;
-    return () => {
-      if (mascotTapHandler === handler) {
-        mascotTapHandler = null;
-      }
-    };
-  }, [moveToTap, open]);
-
   const positionStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
@@ -455,6 +397,7 @@ export function MascotAssistant() {
     }
     setSpeaking(true);
     Speech.speak(message, {
+      language: languageCode,
       rate: 0.95,
       pitch: 1.05,
       onDone: () => setSpeaking(false),
@@ -468,6 +411,15 @@ export function MascotAssistant() {
     setVoiceEnabled(next);
     await SecureStore.setItemAsync(VOICE_PREF_KEY, next ? '1' : '0');
     if (!next) {
+      await Speech.stop();
+      setSpeaking(false);
+    }
+  }
+
+  async function selectLanguage(nextLanguageCode: AssistantLanguageCode) {
+    setLanguageCode(nextLanguageCode);
+    await SecureStore.setItemAsync(LANGUAGE_PREF_KEY, nextLanguageCode);
+    if (speaking) {
       await Speech.stop();
       setSpeaking(false);
     }
@@ -507,22 +459,39 @@ export function MascotAssistant() {
             </View>
             <View style={styles.bubble}>
               <View style={styles.titleRow}>
-                <Text style={styles.guideLabel}>MANAS · GUIDE</Text>
-                <TouchableOpacity onPress={handleSpeak} hitSlop={8} style={styles.speakerBtn} accessibilityLabel="Read aloud">
+                <Text style={styles.guideLabel}>{copy.guideLabel}</Text>
+                <TouchableOpacity onPress={handleSpeak} hitSlop={8} style={styles.speakerBtn} accessibilityLabel={copy.readAloudLabel}>
                   <Text style={[styles.speakerGlyph, speaking && styles.speakerGlyphActive]}>
                     {speaking ? '⏹' : '♪'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={toggleVoicePref} hitSlop={8} style={styles.voiceToggle} accessibilityLabel="Toggle voice guidance">
+                <TouchableOpacity onPress={toggleVoicePref} hitSlop={8} style={styles.voiceToggle} accessibilityLabel={copy.toggleVoiceLabel}>
                   <Text style={[styles.voiceToggleText, voiceEnabled && styles.voiceToggleActive]}>
-                    Voice {voiceEnabled ? 'on' : 'off'}
+                    {voiceEnabled ? copy.voiceOn : copy.voiceOff}
                   </Text>
                 </TouchableOpacity>
               </View>
+              <View style={styles.languageRow}>
+                {ASSISTANT_LANGUAGES.map(code => {
+                  const active = languageCode === code;
+                  return (
+                    <TouchableOpacity
+                      key={code}
+                      onPress={() => { void selectLanguage(code); }}
+                      style={[styles.languageChip, active && styles.languageChipActive]}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.languageChipText, active && styles.languageChipTextActive]}>
+                        {assistantDictionaries[code].label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
               <Text style={styles.message}>{message}</Text>
               <View style={styles.actions}>
-                <Button label="✿ Got it" variant="pill-dark" onPress={() => setOpen(false)} />
-                <Button label="Maybe later" variant="pill-light" onPress={() => setOpen(false)} />
+                <Button label={copy.gotIt} variant="pill-dark" onPress={() => setOpen(false)} />
+                <Button label={copy.maybeLater} variant="pill-light" onPress={() => setOpen(false)} />
               </View>
             </View>
           </Pressable>
@@ -604,6 +573,11 @@ const styles = StyleSheet.create({
   voiceToggle: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.creamDeep },
   voiceToggleText: { fontFamily: fontFamilies.dmSans, fontSize: 8, color: colors.muted, letterSpacing: 0.5 },
   voiceToggleActive: { color: colors.ink, fontFamily: fontFamilies.dmSansMedium },
+  languageRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  languageChip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, backgroundColor: colors.creamDeep, borderWidth: 1, borderColor: colors.line },
+  languageChipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  languageChipText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 9, color: colors.inkSoft },
+  languageChipTextActive: { color: colors.cream },
   message: { fontFamily: fontFamilies.fraunces, fontSize: 12, color: colors.ink, lineHeight: 17, marginTop: 4 },
   actions: { flexDirection: 'row', gap: 6, marginTop: 10 },
 });

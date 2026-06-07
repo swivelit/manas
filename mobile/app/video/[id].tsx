@@ -4,8 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { useVideo, useVideoProgress, useBookmarkVideo } from '../../lib/queries';
-import { usePremiumUpgrade } from '../../lib/usePremiumUpgrade';
+import { useVideo, useVideoProgress, useBookmarkVideo, useLikeVideo } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
@@ -21,6 +20,8 @@ type VideoDetails = {
   durationSec: number;
   type: string;
   isPremium: boolean;
+  likeCount?: number;
+  likedByMe?: boolean;
   topic?: { name: string } | null;
   progress?: { progressSec?: number | null; completed?: boolean | null } | null;
 };
@@ -73,7 +74,7 @@ export default function VideoPlayer() {
   const videoId = Array.isArray(id) ? id[0] : id;
   const { data, isLoading, isError, error } = useVideo(videoId);
   const bookmark = useBookmarkVideo();
-  const premium = usePremiumUpgrade();
+  const like = useLikeVideo();
   const token = useAuthStore(s => s.token);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
@@ -87,6 +88,15 @@ export default function VideoPlayer() {
       setIsBookmarked(res.bookmarked);
     } catch {
       Alert.alert('Could not bookmark');
+    }
+  }
+
+  async function handleLike() {
+    if (!token) { Alert.alert('Sign in', 'Sign in to like videos.'); return; }
+    try {
+      await like.mutateAsync(videoId);
+    } catch {
+      Alert.alert('Could not update like');
     }
   }
 
@@ -121,7 +131,7 @@ export default function VideoPlayer() {
     );
   }
 
-  // Paywall view — 402 from the backend.
+  // Premium access notice — 402 from the backend.
   if (paywalled) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -133,21 +143,10 @@ export default function VideoPlayer() {
         </View>
         <View style={styles.paywallWrap}>
           <View style={styles.paywallCard}>
-            <Text style={styles.paywallEmoji}>✿</Text>
-            <Text style={styles.paywallTitle}>A premium space.</Text>
+            <Text style={styles.paywallTitle}>Premium content</Text>
             <Text style={styles.paywallBody}>
-              This video is part of MANAS Premium. Upgrade to unlock guided coaching content and unlimited library access.
+              Premium content — ask an admin for access.
             </Text>
-            <TouchableOpacity
-              style={styles.paywallBtn}
-              activeOpacity={0.85}
-              onPress={premium.upgrade}
-              disabled={premium.busy}
-            >
-              <Text style={styles.paywallBtnText}>
-                {premium.busy ? 'Please wait…' : premium.configured ? premium.priceLabel : 'Coming soon'}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={() => router.back()} style={styles.paywallBackBtn}>
               <Text style={styles.paywallBackText}>← Back to library</Text>
             </TouchableOpacity>
@@ -184,9 +183,19 @@ export default function VideoPlayer() {
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.type}>{video.type} · {video.isPremium ? 'PREMIUM' : 'FREE'}</Text>
-        <TouchableOpacity onPress={handleBookmark} style={styles.heartBtn}>
-          <Icon name="heart" size={18} color={isBookmarked ? colors.pink : colors.cream} strokeWidth={isBookmarked ? 2.5 : 1.5} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleLike}
+            disabled={like.isPending}
+            style={[styles.likeBtn, video.likedByMe && styles.likeBtnActive]}
+          >
+            <Icon name="thumbs_up" size={15} color={video.likedByMe ? colors.ink : colors.cream} strokeWidth={video.likedByMe ? 2.3 : 1.6} />
+            <Text style={[styles.likeText, video.likedByMe && styles.likeTextActive]}>{video.likeCount ?? 0}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBookmark} style={styles.heartBtn}>
+            <Icon name="heart" size={18} color={isBookmarked ? colors.pink : colors.cream} strokeWidth={isBookmarked ? 2.5 : 1.5} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <PlayableVideo video={video} videoId={videoId} />
@@ -210,6 +219,11 @@ const styles = StyleSheet.create({
   back: { width: 34, height: 34, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 18, color: colors.cream },
   type: { fontFamily: fontFamilies.dmSansBold, fontSize: 9, letterSpacing: 2, color: colors.pink, textTransform: 'uppercase', flex: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  likeBtn: { height: 34, minWidth: 58, borderRadius: 99, paddingHorizontal: 10, backgroundColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  likeBtnActive: { backgroundColor: colors.cream },
+  likeText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 11, color: colors.cream },
+  likeTextActive: { color: colors.ink },
   heartBtn: { width: 34, height: 34, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   player: { width: '100%', height: 240, backgroundColor: '#000' },
   meta: { padding: 22 },
@@ -220,11 +234,8 @@ const styles = StyleSheet.create({
   infoDot: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted },
   paywallWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   paywallCard: { backgroundColor: colors.cream, borderRadius: 22, padding: 26, alignItems: 'center', maxWidth: 360 },
-  paywallEmoji: { fontSize: 32, color: colors.pink, marginBottom: 8 },
   paywallTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink, letterSpacing: -0.4 },
   paywallBody: { fontFamily: fontFamilies.fraunces, fontSize: 14, color: colors.inkSoft, textAlign: 'center', lineHeight: 20, marginTop: 10 },
-  paywallBtn: { backgroundColor: colors.ink, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 14, marginTop: 20 },
-  paywallBtnText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.cream },
   paywallBackBtn: { marginTop: 14, paddingVertical: 4 },
   paywallBackText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.muted },
   errorWrap: { flex: 1, padding: 24, justifyContent: 'center' },

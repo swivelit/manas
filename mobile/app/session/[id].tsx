@@ -1,18 +1,112 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Linking,
+  ActivityIndicator, Alert, Linking, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { format, differenceInMinutes } from 'date-fns';
-import { useSession, useUpdateSession, useCoachAvailability, useMe } from '../../lib/queries';
+import {
+  useSession,
+  useUpdateSession,
+  useCoachAvailability,
+  useMe,
+  useSessionMessages,
+  useSendMessage,
+} from '../../lib/queries';
 import { formatInTimeZone } from 'date-fns-tz';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 const JOIN_WINDOW_MIN = 10;
+
+type ChatMessage = {
+  id: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  sender?: { name?: string | null } | null;
+};
+
+function ChatPanel({ sessionId, currentUserId }: { sessionId: string; currentUserId?: string }) {
+  const { data, isLoading, isError } = useSessionMessages(sessionId);
+  const send = useSendMessage();
+  const [draft, setDraft] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+  const messages: ChatMessage[] = Array.isArray(data) ? data : [];
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    return () => clearTimeout(timer);
+  }, [messages.length]);
+
+  async function handleSend() {
+    const body = draft.trim();
+    if (!body || send.isPending) return;
+    try {
+      await send.mutateAsync({ sessionId, body });
+      setDraft('');
+    } catch {
+      Alert.alert('Could not send message', 'Please try again.');
+    }
+  }
+
+  return (
+    <View style={styles.chatPanel}>
+      <View style={styles.chatHead}>
+        <Text style={styles.chatTitle}>Session chat</Text>
+        {isLoading && <ActivityIndicator color={colors.blue} />}
+      </View>
+      <ScrollView
+        ref={scrollRef}
+        nestedScrollEnabled
+        style={styles.messageThread}
+        contentContainerStyle={styles.messageThreadContent}
+      >
+        {isError ? (
+          <Text style={styles.chatEmpty}>Messages could not load right now.</Text>
+        ) : messages.length === 0 && !isLoading ? (
+          <Text style={styles.chatEmpty}>No messages yet.</Text>
+        ) : (
+          messages.map(message => {
+            const mine = message.senderId === currentUserId;
+            return (
+              <View key={message.id} style={[styles.messageRow, mine ? styles.messageRowMine : styles.messageRowOther]}>
+                <View style={[styles.messageBubble, mine ? styles.messageBubbleMine : styles.messageBubbleOther]}>
+                  {!mine && <Text style={styles.messageSender}>{message.sender?.name ?? 'Coach'}</Text>}
+                  <Text style={[styles.messageBody, mine && styles.messageBodyMine]}>{message.body}</Text>
+                  <Text style={[styles.messageTime, mine && styles.messageTimeMine]}>
+                    {format(new Date(message.createdAt), 'h:mm a')}
+                  </Text>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+      <View style={styles.composer}>
+        <TextInput
+          style={styles.composerInput}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Write a message"
+          placeholderTextColor={colors.muted}
+          multiline
+        />
+        <TouchableOpacity
+          onPress={handleSend}
+          disabled={!draft.trim() || send.isPending}
+          style={[styles.sendBtn, (!draft.trim() || send.isPending) && styles.sendBtnDisabled]}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.sendBtnText}>{send.isPending ? '...' : 'Send'}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function SessionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -127,16 +221,20 @@ export default function SessionDetail() {
 
         {session.status === 'CONFIRMED' && (
           <>
-            <TouchableOpacity
-              onPress={handleJoin}
-              disabled={!canJoin}
-              style={[styles.btnPrimary, !canJoin && styles.btnDisabled]}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.btnPrimaryText}>
-                {canJoin ? 'Join session →' : `Starts in ${Math.max(minsUntil, 0)} min`}
-              </Text>
-            </TouchableOpacity>
+            {session.type === 'CHAT' ? (
+              <ChatPanel sessionId={sessionId} currentUserId={me?.id} />
+            ) : (
+              <TouchableOpacity
+                onPress={handleJoin}
+                disabled={!canJoin}
+                style={[styles.btnPrimary, !canJoin && styles.btnDisabled]}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.btnPrimaryText}>
+                  {canJoin ? 'Join session →' : `Starts in ${Math.max(minsUntil, 0)} min`}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               onPress={() => setRescheduling(v => !v)}
@@ -217,6 +315,28 @@ const styles = StyleSheet.create({
   slot: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.creamDeep },
   slotText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 11, color: colors.ink },
   meetingMeta: { marginTop: 18, fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.muted },
+  chatPanel: { marginTop: 18, backgroundColor: colors.paper, borderRadius: 16, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
+  chatHead: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chatTitle: { fontFamily: fontFamilies.dmSansBold, fontSize: 10, letterSpacing: 1.2, color: colors.muted, textTransform: 'uppercase' },
+  messageThread: { maxHeight: 320 },
+  messageThreadContent: { padding: 12, gap: 8, minHeight: 160 },
+  chatEmpty: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, textAlign: 'center', paddingVertical: 36 },
+  messageRow: { flexDirection: 'row' },
+  messageRowMine: { justifyContent: 'flex-end' },
+  messageRowOther: { justifyContent: 'flex-start' },
+  messageBubble: { maxWidth: '82%', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
+  messageBubbleMine: { backgroundColor: colors.ink, borderBottomRightRadius: 4 },
+  messageBubbleOther: { backgroundColor: colors.creamDeep, borderBottomLeftRadius: 4 },
+  messageSender: { fontFamily: fontFamilies.dmSansBold, fontSize: 9, color: colors.muted, marginBottom: 3 },
+  messageBody: { fontFamily: fontFamilies.dmSans, fontSize: 13, color: colors.ink, lineHeight: 18 },
+  messageBodyMine: { color: colors.cream },
+  messageTime: { fontFamily: fontFamilies.dmSans, fontSize: 9, color: colors.muted, marginTop: 4, alignSelf: 'flex-end' },
+  messageTimeMine: { color: 'rgba(250,246,239,0.65)' },
+  composer: { borderTopWidth: 1, borderColor: colors.line, padding: 10, flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  composerInput: { flex: 1, minHeight: 40, maxHeight: 100, borderRadius: 12, backgroundColor: colors.cream, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fontFamilies.dmSans, fontSize: 13, color: colors.ink },
+  sendBtn: { minWidth: 62, minHeight: 40, borderRadius: 12, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  sendBtnDisabled: { opacity: 0.45 },
+  sendBtnText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.cream },
   errorWrap: { flex: 1, padding: 22, justifyContent: 'center' },
   errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink },
   errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },

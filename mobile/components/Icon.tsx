@@ -38,6 +38,7 @@ const paths: Record<string, React.ReactNode> = {
   home: <><Path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><Path d="M9 22V12h6v10"/></>,
   heart: <Path d="M12 21s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 11c0 5.5-7 10-7 10z"/>,
   star: <Path d="M12 2l2.4 7.4H22l-6.2 4.5L18.2 22 12 17.5 5.8 22l2.4-8.1L2 9.4h7.6z"/>,
+  thumbs_up: <><Path d="M7 10v11H4a2 2 0 01-2-2v-7a2 2 0 012-2h3z"/><Path d="M7 10l4-8a3 3 0 013 3v5h5a2 2 0 011.9 2.6l-2 7A2 2 0 0117 21H7"/></>,
   play: <Path d="M8 5v14l11-7z"/>,
   user: <><Circle cx="12" cy="8" r="4"/><Path d="M4 20c0-4 4-8 8-8s8 4 8 8"/></>,
   bell: <><Path d="M6 10a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><Path d="M10.3 21a1.94 1.94 0 003.4 0"/></>,

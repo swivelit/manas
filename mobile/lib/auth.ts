@@ -8,6 +8,7 @@ interface AuthUser {
   role: string;
   avatarUrl: string | null;
   timezone: string;
+  isPremium: boolean;
 }
 
 interface AuthState {

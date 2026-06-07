@@ -32,9 +32,9 @@ You are responsible for keeping your account credentials secure and for activity
 
 You agree not to misuse MANAS, including by attempting to disrupt the service, accessing it without authorisation, harassing practitioners or other users, or using it for unlawful purposes.
 
-## 8. Premium and payments
+## 8. Premium access
 
-Some content and features may require a paid upgrade ("MANAS Premium"). Prices are shown in the app at the point of purchase. Payments are processed by our payment provider (Razorpay); we do not store your payment instrument details. Unless required by law or stated otherwise at purchase, payments are non-refundable.
+Some content and features may require MANAS Premium access. Premium access is managed by administrators and is not sold through the app.
 
 ## 9. Account termination
 

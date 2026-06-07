@@ -244,7 +244,7 @@ async function main() {
   const decisionTopic = coachingTopicRecords.find(t => t.slug === 'decision-making')!;
 
   // NOTE: production needs real counselling content from a real CDN. These public-domain
-  // Google sample MP4s are wired so the player demonstrably works end-to-end.
+  // Public sample MP4s are wired so the player demonstrably works end-to-end.
   const SAMPLE_BASE = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample';
   const sample = (file: string) => `${SAMPLE_BASE}/${file}.mp4`;
   const sampleThumb = (file: string) => `${SAMPLE_BASE}/images/${file}.jpg`;

@@ -7,7 +7,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 ### Play Store compliance (Phase 1 — mandatory gate)
 - **Crisis disclaimer**: one-time first-launch modal (persisted via `crisis_ack` in SecureStore) with India helplines (iCall, Vandrevala, Tele-MANAS, AASRA) as tappable `tel:` links. Persistent "In crisis? Tap for help" banner on the Sessions header and Profile footer opens the same helplines.
 - **Privacy Policy + Terms of Service**: authored at `legal/privacy.md` and `legal/terms.md`, mirrored into `mobile/lib/legal.ts` and rendered offline on the in-app `/legal` screen. Linked from Profile and the signup consent.
-- **Signup consent**: mandatory checkbox on register + phone blocks account creation until the user accepts Terms/Privacy and acknowledges MANAS is not a crisis service. `User.consentAt` is recorded at account creation across every signup path.
+- **Signup consent**: mandatory checkbox on register blocks account creation until the user accepts Terms/Privacy and acknowledges MANAS is not a crisis service. `User.consentAt` is recorded at account creation.
 
 ### Coach surface (Phase 2 — PDF §4.B)
 - `/coach` API (role-guarded): appointments, accept/decline/mark-complete (notifies the client), get/replace weekly availability, add a video. `GET /topics` backs the upload picker.
@@ -18,8 +18,8 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - `app/(admin)` area: dashboard stat cards + broadcast, user management sheet, coach promotion, content approval.
 - `User.isActive` (deactivation blocks login at every auth path) and `Video.approved` (unapproved videos hidden from the public library) added. Admin seed: `admin@manas.app` / `adminpass123`.
 
-### Payments / premium enrollment (Phase 4)
-- Purchasing now flips `user.isPremium`. `POST /payments/create-order` + `POST /payments/verify` + public `GET /payments/config`, with a `Payment` model. Uses Razorpay **Payment Links** (hosted page opened via the in-app browser, verified server-side) because `react-native-razorpay` does not support this app's New Architecture — so payments work in Expo Go and every build with no native module. Returns 501 + "coming soon" when `RAZORPAY_KEY_*` are unset. `/me` now returns `isPremium`.
+### Premium access (Phase 4)
+- Premium is administrator-managed. Admins can search users by email and toggle `user.isPremium`; premium library content opens for premium users and shows a neutral admin-access notice for everyone else. `/me` returns `isPremium`.
 
 ### Deploy hardening (Phase 5)
 - Versioned Prisma migration baseline at `backend/prisma/migrations/0_init` (full current schema). `render.yaml` intentionally still uses `db push` for this transitional release; DEPLOY.md documents the exact one-time cutover to `prisma migrate deploy`.
@@ -27,13 +27,13 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - BUILD.md documents the required one-time `eas init` (for push tokens + EAS builds) and an Expo Go vs. dev-build capability matrix.
 
 ### Previously completed (carried forward, not regressed)
-- Patient app: onboarding, categories/topics, coach booking (category→topic→coach→date/time→confirm), reschedule/cancel, Jitsi join, video library with premium gating + resume + bookmarks + subtitles, mood check-in, voice guidance / mascot, notifications, timezone handling.
-- Email OTP auth, Google auth + phone OTP (graceful 501 when unconfigured), push registration (non-fatal), idempotent seed.
+- Patient app: onboarding, categories/topics, coach booking (category→topic→coach→date/time→confirm), reschedule/cancel, Jitsi join for video sessions, in-app chat sessions, video library with premium gating + resume + bookmarks + subtitles + likes, mood check-in, multilingual mascot guide, notifications, timezone handling.
+- Email OTP auth, push registration (non-fatal), idempotent seed.
 - Backend + mobile both typecheck, build/export, and pass Expo Doctor (21/21) on a clean install. Full live backend smoke of all new endpoints passed (see `VERIFY_FINAL.md`).
 
 ## Still blocked / requires the owner (not code — credentials, accounts, hosting)
 
-- **Provider credentials** (set in Render, never commit): `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (payments), `GOOGLE_CLIENT_ID_WEB/ANDROID/IOS` (Google sign-in), `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_VERIFY_SERVICE_SID` (phone OTP). All degrade gracefully (501) until set.
+- **Email credentials** (set in Render, never commit): `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email OTP delivery.
 - **Seed the Render production database** after deploy (`npm run db:seed` from Render Shell) — otherwise the app shows empty states.
 - **`eas init`** once (from the owner's Expo account) to write `extra.eas.projectId` — required for push tokens and EAS builds.
 - **Host the privacy policy at a public URL** (the Play Console data-safety form requires a URL; `legal/privacy.md` is the source text).
@@ -43,13 +43,13 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 
 ## Deferred to v1.1 (documented, not blocking v1)
 - Richer **web** admin dashboard (mobile admin satisfies the v1 role requirement).
-- In-app chat sessions and native audio-only sessions (Jitsi covers all session types today).
+- Native audio-only session polish.
 - Multi-window-per-day coach availability; coach self-service profile editor.
 - Immediate session revocation for deactivated users (currently blocked at next login; JWTs last 30d).
 - Push fan-out for broadcasts via a queue for large audiences; real counseling video content + CDN.
 
 ## Release decision
 
-**Closer — the code-side release gates are now closed.** Play Store compliance (crisis disclaimer, privacy/terms, consent), the required Coach and Admin roles, payment/enrollment, versioned-migration infrastructure, and CORS hardening are all implemented, typecheck/build/export clean, and the backend is verified end-to-end on a seeded local database.
+**Closer — the code-side release gates are now closed.** Play Store compliance (crisis disclaimer, privacy/terms, consent), the required Coach and Admin roles, admin-managed premium access, versioned-migration infrastructure, and CORS hardening are all implemented, typecheck/build/export clean, and the backend is verified end-to-end on a seeded local database.
 
 **Not yet submittable** purely because of owner-only steps that can't be done from code: provider credentials, `eas init`, hosting the privacy policy URL, seeding prod, a Play Console account, and one manual device QA pass. Shortest path to submission is in `VERIFY_FINAL.md` and the deliverable summary.

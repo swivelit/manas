@@ -21,6 +21,6 @@ Date: 2026-05-31 · Node v20.19.6 · npm 10.8.2
 
 ## Verdict
 
-**Baseline is green.** Backend and mobile both typecheck, build, and pass Expo Doctor on a clean install from lockfile. Safe to proceed with release-blocker phases (compliance → coach → admin → payments → migrations).
+**Baseline is green.** Backend and mobile both typecheck, build, and pass Expo Doctor on a clean install from lockfile. Safe to proceed with release-blocker phases (compliance → coach → admin → premium access → migrations).
 
 > The 3 high-severity npm-audit findings in the backend are in transitive dependencies and pre-existing; they are tracked but do not block the typecheck/build baseline.

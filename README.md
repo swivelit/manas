@@ -232,14 +232,12 @@ Permissions
 ● Manage coaches
 ● Approve content
 ● Analytics dashboard
-● Payment management
+● Premium access management
 ● Notifi cation management
 5. Authentication System
-Login Methods
-● Email/password
-● Google login
+Login Method
+● Email OTP
 11
-● Mobile OTP login
 6. Session Types
 Type
 Description

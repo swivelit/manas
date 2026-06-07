@@ -33,6 +33,10 @@ function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'C
     Linking.openURL(url);
   }
 
+  function openChat() {
+    router.push(`/session/${appt.id}`);
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
@@ -62,11 +66,17 @@ function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'C
         </View>
       ) : appt.status === 'CONFIRMED' ? (
         <View style={styles.actions}>
-          <TouchableOpacity style={[styles.btn, styles.btnPink]} onPress={join} activeOpacity={0.85}>
-            <Text style={styles.btnPrimaryText}>Join</Text>
+          <TouchableOpacity style={[styles.btn, styles.btnPink]} onPress={appt.type === 'CHAT' ? openChat : join} activeOpacity={0.85}>
+            <Text style={styles.btnPrimaryText}>{appt.type === 'CHAT' ? 'Open chat' : 'Join'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnGhost]} onPress={() => onSet('COMPLETED')} activeOpacity={0.85}>
             <Text style={styles.btnGhostText}>Mark complete</Text>
+          </TouchableOpacity>
+        </View>
+      ) : appt.type === 'CHAT' && appt.status === 'COMPLETED' ? (
+        <View style={styles.actions}>
+          <TouchableOpacity style={[styles.btn, styles.btnGhost]} onPress={openChat} activeOpacity={0.85}>
+            <Text style={styles.btnGhostText}>Open chat</Text>
           </TouchableOpacity>
         </View>
       ) : null}

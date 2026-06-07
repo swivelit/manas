@@ -24,7 +24,6 @@ All run against `http://localhost:4000` with seeded accounts.
 | `GET /` | ✅ 200 — MANAS API metadata |
 | `GET /categories` | ✅ 200 — 2 categories |
 | `GET /topics` (new) | ✅ 200 — 25 topics |
-| `GET /payments/config` (new) | ✅ 200 — `{configured:false, amount:49900, currency:INR}` |
 | `GET /coach/appointments` without token | ✅ 401 (auth guard) |
 | `POST /auth/login` admin@manas.app | ✅ 200 — role ADMIN |
 | `GET /admin/stats` (admin) | ✅ 200 — users/coaches/videos/premium/sessions counts |
@@ -34,7 +33,6 @@ All run against `http://localhost:4000` with seeded accounts.
 | `GET /coach/appointments` (coach) | ✅ 200 — sessions list |
 | `GET /coach/availability` (coach) | ✅ 200 — availability rows |
 | `GET /me` (user) | ✅ 200 — `isPremium:false` exposed |
-| `POST /payments/create-order` (unconfigured) | ✅ 501 — graceful "coming soon" |
 | `GET /admin/stats` as USER | ✅ 403 (role guard) |
 | Deactivate user → login blocked | ✅ PATCH isActive:false → login 403 |
 | Reactivate user → login restored | ✅ PATCH isActive:true → login 200 |
@@ -51,14 +49,14 @@ Legend: ✅ verified live · 🟦 implemented + typechecks + bundles (manual dev
 ✅ Baseline typechecks pass (backend + mobile)
 🟦 App launches past splash (bundle exports clean; prior launch verified in android-launch-logcat.txt)
 🟦 FIRST LAUNCH: crisis disclaimer modal appears, "I understand" dismisses it (crisis_ack in SecureStore)
-🟦 Register: consent checkbox blocks submit until checked (guarded in handleRequestOtp/handleGoogle/handleRequest)
+🟦 Register: consent checkbox blocks submit until checked
 🟦 Register → tabs (USER role) via routeForRole
 ✅ Profile "Privacy & Terms" → /legal screen renders bundled docs offline; "In crisis?" opens tappable helplines (code + bundle verified)
 🟦 Login as mira@manas.app → COACH appointments, NOT user tabs (routeForRole COACH; login verified live on backend)
 🟦 Coach: see appointments, accept/decline/mark complete/join, edit availability, add a video (backend routes verified live)
 🟦 Login as admin@manas.app → ADMIN dashboard (routeForRole ADMIN; login verified live)
 🟦 Admin: stat cards load, change a user's role, promote a user to coach (backend verified live; UI wired to same endpoints)
-🟦 Premium video → paywall → "Upgrade ₹499" when configured / "Coming soon" when unset (config endpoint verified: 501/flag)
+🟦 Premium video → neutral admin-access notice for non-premium users; premium users can open content after admin toggle
 🟦 Existing flows still work: book demo, reschedule, cancel, join (Jitsi), videos, bookmarks, mood, voice guidance (untouched; typecheck + bundle clean)
 🟦 No regressions in the patient app (no patient files changed except additive: crisis banner on sessions/profile, legal/upgrade rows)
 ```

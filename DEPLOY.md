@@ -92,18 +92,7 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 
-All of these degrade gracefully: if unset, the related endpoints return HTTP 501 and the app shows a friendly "coming soon" instead of crashing.
-
-| Variable | Purpose |
-|---|---|
-| `RAZORPAY_KEY_ID` | Razorpay key id — enables premium payments (`/payments/*`). |
-| `RAZORPAY_KEY_SECRET` | Razorpay key secret. Both must be set to enable payments. |
-| `GOOGLE_CLIENT_ID_WEB` | Google sign-in (web client id) — enables `/auth/google`. |
-| `GOOGLE_CLIENT_ID_ANDROID` | Google sign-in (Android client id). |
-| `GOOGLE_CLIENT_ID_IOS` | Google sign-in (iOS client id). |
-| `TWILIO_ACCOUNT_SID` | Phone OTP via Twilio Verify — enables `/auth/*-phone-otp`. |
-| `TWILIO_AUTH_TOKEN` | Twilio auth token. |
-| `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify service SID. All three Twilio vars are required together. |
+Email OTP is the only supported sign-in method. Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email delivery; local development can use the dry-run OTP response when configured.
 
 ### Free tier notes
 
@@ -121,7 +110,7 @@ Render dashboard → manas-api → Manual Deploy → Deploy latest commit
 
 ## Database migrations
 
-This repo now ships a versioned migration baseline: **`backend/prisma/migrations/0_init/migration.sql`** (generated offline with `prisma migrate diff --from-empty`, so it captures the full current schema — including `User.isActive`, `User.consentAt`, `Video.approved`, and the `Payment` table).
+This repo ships a versioned migration baseline at **`backend/prisma/migrations/0_init/migration.sql`** plus follow-up migrations for later schema changes such as in-app chat messages, video likes, and admin-managed premium access.
 
 ### Judgment call: why the Render build still uses `db push` for this release
 
@@ -130,7 +119,7 @@ The production database on Render was created and is currently managed by `prism
 - `migrate deploy` would try to apply `0_init` (which does `CREATE TABLE "User" …`) against a DB where those tables already exist → **the deploy would fail**, and
 - naively baselining with `migrate resolve --applied 0_init` would *claim* the new columns exist when they don't → **runtime errors**.
 
-So this transitional release keeps `npx prisma db push` in the build command. `db push` is idempotent and simply **adds the new columns/table** (`isActive`, `consentAt`, `approved`, `Payment`) to production with no data loss, converging prod to the current schema. `db push` ignores the `migrations/` folder, so the two coexist safely.
+So this transitional release keeps `npx prisma db push` in the build command. `db push` is idempotent and simply converges prod to the current schema with no data loss. `db push` ignores the `migrations/` folder, so the two coexist safely.
 
 ### One-time cutover to `prisma migrate deploy` (do this AFTER the next deploy)
 

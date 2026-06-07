@@ -25,10 +25,8 @@ Quick UI testing works in **Expo Go** (scan the QR from `npx expo start`). A few
 | Capability | Expo Go | Dev/Prod build |
 |---|---|---|
 | All screens, auth (email OTP), booking, videos, mood, legal, crisis, coach + admin areas | ✅ | ✅ |
-| Premium payment (opens the Razorpay hosted link in the browser) | ✅ works | ✅ works |
+| Premium access display (admin-controlled) | ✅ | ✅ |
 | **Push notification tokens** (`expo-notifications` getExpoPushToken) | ❌ needs `eas init` + a build | ✅ |
-
-> The premium payment flow deliberately uses Razorpay **Payment Links via the in-app browser**, so it works everywhere — including Expo Go — without the `react-native-razorpay` native module (which does not support this app's New Architecture). To test a real charge end-to-end you only need `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` set on the backend.
 
 ---
 

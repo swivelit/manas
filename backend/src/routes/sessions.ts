@@ -20,12 +20,19 @@ const updateSchema = z.object({
   notes: z.string().optional(),
 });
 
+const messageSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+});
+
 function meetingUrlFor(sessionId: string, type: SessionType): string | null {
-  // CHAT sessions get a Jitsi room too as a fallback until in-app chat ships in v1.1.
   // For AUDIO, the mobile client appends #config.startWithVideoMuted=true before opening.
   const base = `https://meet.jit.si/manas-${sessionId}`;
-  if (type === SessionType.CHAT) return base; // NOTE: in-app chat is a v1.1 follow-up.
+  if (type === SessionType.CHAT) return null;
   return base;
+}
+
+function canAccessSession(session: { userId: string; coach: { userId: string } }, userId: string): boolean {
+  return session.userId === userId || session.coach.userId === userId;
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
@@ -85,15 +92,70 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   res.status(201).json(session);
 });
 
+router.get('/:id/messages', requireAuth, async (req: Request, res: Response) => {
+  const session = await prisma.session.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      coach: { select: { userId: true } },
+    },
+  });
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+  if (!canAccessSession(session, req.user!.id)) { res.status(403).json({ error: 'Forbidden' }); return; }
+  if (session.type !== SessionType.CHAT) { res.status(400).json({ error: 'Messages are only available for chat sessions.' }); return; }
+
+  const messages = await prisma.chatMessage.findMany({
+    where: { sessionId: session.id },
+    include: {
+      sender: { select: { id: true, name: true, avatarUrl: true, role: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json(messages);
+});
+
+router.post('/:id/messages', requireAuth, async (req: Request, res: Response) => {
+  const parsed = messageSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const session = await prisma.session.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      coach: { select: { userId: true } },
+    },
+  });
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+  if (!canAccessSession(session, req.user!.id)) { res.status(403).json({ error: 'Forbidden' }); return; }
+  if (session.type !== SessionType.CHAT) { res.status(400).json({ error: 'Messages are only available for chat sessions.' }); return; }
+
+  const message = await prisma.chatMessage.create({
+    data: {
+      sessionId: session.id,
+      senderId: req.user!.id,
+      body: parsed.data.body,
+    },
+    include: {
+      sender: { select: { id: true, name: true, avatarUrl: true, role: true } },
+    },
+  });
+  res.status(201).json(message);
+});
+
 router.get('/:id', requireAuth, async (req: Request, res: Response) => {
-  const session = await prisma.session.findFirst({
-    where: { id: req.params.id, userId: req.user!.id },
+  const session = await prisma.session.findUnique({
+    where: { id: req.params.id },
     include: {
       coach: { include: { user: { select: { name: true, avatarUrl: true } } } },
       topic: { select: { name: true, slug: true } },
     },
   });
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+  if (!canAccessSession(session, req.user!.id)) { res.status(403).json({ error: 'Forbidden' }); return; }
   res.json(session);
 });
 

@@ -1,6 +1,6 @@
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -25,6 +25,8 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
   const loadAuth = useAuthStore(s => s.loadAuth);
   const token = useAuthStore(s => s.token);
+  const pathname = usePathname();
+  const showAssistant = Boolean(token) && pathname !== '/onboarding' && pathname !== '/login' && pathname !== '/register' && !pathname.startsWith('/(auth)');
 
   // Crisis disclaimer gate. `null` = still checking SecureStore; once resolved,
   // `true` means we must show the one-time mandatory mental-health disclaimer.
@@ -72,7 +74,7 @@ export default function RootLayout() {
             <MascotTapSurface>
               <StatusBar style="dark" />
               <Stack screenOptions={{ headerShown: false }} />
-              <MascotAssistant />
+              {showAssistant ? <MascotAssistant /> : null}
               <CrisisDisclaimerModal
                 visible={showCrisis === true}
                 onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
@@ -11,7 +11,6 @@ import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
 import { ConsentCheckbox } from '../../components/ConsentCheckbox';
-import { exchangeGoogleIdToken, isGoogleConfigured, useGoogleAuth } from '../../lib/google';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -21,31 +20,6 @@ export default function Register() {
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
-  const [, googleResponse, googlePromptAsync] = useGoogleAuth();
-
-  useEffect(() => {
-    if (googleResponse?.type === 'success' && googleResponse.params.id_token) {
-      (async () => {
-        try {
-          const { token, user } = await exchangeGoogleIdToken(googleResponse.params.id_token);
-          await setAuth(token, user);
-          router.replace(routeForRole(user.role));
-        } catch (err: unknown) {
-          const e = err as { response?: { data?: { error?: string } } };
-          Alert.alert('Google sign-in failed', e?.response?.data?.error ?? 'Please try again');
-        }
-      })();
-    }
-  }, [googleResponse, setAuth]);
-
-  async function handleGoogle() {
-    if (!consent) { Alert.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
-    if (!isGoogleConfigured()) {
-      Alert.alert('Coming soon', 'Google sign-in launches as soon as our setup is finalised.');
-      return;
-    }
-    await googlePromptAsync();
-  }
 
   function getErrorMessage(err: any, fallback: string) {
     const error = err?.response?.data?.error;
@@ -151,21 +125,6 @@ export default function Register() {
             />
           </View>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} /><Text style={styles.dividerText}>or</Text><View style={styles.dividerLine} />
-          </View>
-
-          <View style={styles.altRow}>
-            <TouchableOpacity onPress={handleGoogle} style={styles.altBtn} activeOpacity={0.85}>
-              <Text style={styles.altGlyph}>G</Text>
-              <Text style={styles.altText}>Sign up with Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(auth)/phone')} style={styles.altBtn} activeOpacity={0.85}>
-              <Text style={styles.altGlyph}>✆</Text>
-              <Text style={styles.altText}>Sign up with phone</Text>
-            </TouchableOpacity>
-          </View>
-
           <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={styles.switchRow}>
             <Text style={styles.switchText}>Already have an account? <Text style={styles.switchLink}>Sign in</Text></Text>
           </TouchableOpacity>
@@ -202,11 +161,4 @@ const styles = StyleSheet.create({
   switchRow: { alignItems: 'center', marginTop: 24 },
   switchText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted },
   switchLink: { color: colors.blue, fontFamily: fontFamilies.dmSansMedium },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 28 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dividerText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted },
-  altRow: { marginTop: 16, gap: 10 },
-  altBtn: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  altGlyph: { fontFamily: fontFamilies.frauncesMedium, fontSize: 16, color: colors.ink },
-  altText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
 });

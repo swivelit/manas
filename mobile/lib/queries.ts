@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuthStore } from './auth';
-import { purchasePremium } from './payments';
 
 // ---- Categories & Topics ----
 export function useCategories() {
@@ -73,6 +72,30 @@ export function useUpdateSession() {
   });
 }
 
+export function useSessionMessages(sessionId: string) {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['session-messages', sessionId],
+    queryFn: () => api.get(`/sessions/${sessionId}/messages`).then(r => r.data),
+    enabled: !!token && !!sessionId,
+    refetchInterval: 4000,
+  });
+}
+
+export function useSendMessage() {
+  const qc = useQueryClient();
+  const token = useAuthStore(s => s.token);
+  return useMutation({
+    mutationFn: ({ sessionId, body }: { sessionId: string; body: string }) => {
+      if (!token) throw new Error('Sign in required to send messages.');
+      return api.post(`/sessions/${sessionId}/messages`, { body }).then(r => r.data);
+    },
+    onSuccess: (_message, vars) => {
+      qc.invalidateQueries({ queryKey: ['session-messages', vars.sessionId] });
+    },
+  });
+}
+
 // ---- Videos ----
 export function useVideos(params?: { type?: string; topicId?: string }) {
   return useQuery({
@@ -122,6 +145,21 @@ export function useBookmarkVideo() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['video-bookmarks'] });
+      qc.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+export function useLikeVideo() {
+  const qc = useQueryClient();
+  const token = useAuthStore(s => s.token);
+  return useMutation({
+    mutationFn: (id: string) => {
+      if (!token) throw new Error('Sign in required to like videos.');
+      return api.post(`/videos/${id}/like`).then(r => r.data as { liked: boolean; likeCount: number });
+    },
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: ['video', id] });
       qc.invalidateQueries({ queryKey: ['videos'] });
     },
   });
@@ -349,28 +387,5 @@ export function useBroadcast() {
   return useMutation({
     mutationFn: (data: { title: string; body: string }) =>
       api.post('/admin/notifications/broadcast', data).then(r => r.data),
-  });
-}
-
-// ---- Payments ----
-export function usePaymentsConfig() {
-  return useQuery({
-    queryKey: ['payments-config'],
-    queryFn: () => api.get('/payments/config').then(r => r.data as { configured: boolean; amount: number; currency: string; name: string }),
-    staleTime: 5 * 60_000,
-  });
-}
-
-export function usePurchasePremium() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => purchasePremium(),
-    onSuccess: (res) => {
-      if (res.status === 'success') {
-        qc.invalidateQueries({ queryKey: ['me'] });
-        qc.invalidateQueries({ queryKey: ['videos'] });
-        qc.invalidateQueries({ queryKey: ['video'] });
-      }
-    },
   });
 }

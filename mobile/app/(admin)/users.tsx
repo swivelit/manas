@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Switch, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Switch, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminUsers, useUpdateAdminUser } from '../../lib/queries';
 import { colors } from '../../theme/colors';
@@ -14,11 +14,15 @@ const ROLES = ['USER', 'COACH', 'ADMIN'] as const;
 const roleTint: Record<string, string> = { USER: colors.blueSoft, COACH: colors.sageSoft, ADMIN: colors.pinkSoft };
 
 export default function AdminUsers() {
-  const { data, isLoading, isError } = useAdminUsers();
+  const { data, isLoading, isError } = useAdminUsers(1, 100);
   const update = useUpdateAdminUser();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [emailQuery, setEmailQuery] = useState('');
 
   const users: AdminUser[] = Array.isArray(data?.items) ? data.items : [];
+  const filteredUsers = emailQuery.trim()
+    ? users.filter(u => u.email.toLowerCase().includes(emailQuery.trim().toLowerCase()))
+    : users;
   const current = users.find(u => u.id === selectedId) ?? null;
 
   function change(id: string, patch: { role?: string; isPremium?: boolean; isActive?: boolean }) {
@@ -32,15 +36,29 @@ export default function AdminUsers() {
         <Text style={styles.title}>Users{data?.total ? ` · ${data.total}` : ''}</Text>
       </View>
 
+      <View style={styles.searchWrap}>
+        <TextInput
+          style={styles.searchInput}
+          value={emailQuery}
+          onChangeText={setEmailQuery}
+          placeholder="Search by email"
+          placeholderTextColor={colors.muted}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
       {isLoading ? (
         <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
       ) : isError ? (
         <View style={styles.empty}><Text style={styles.emptyTitle}>Couldn't load users</Text></View>
       ) : (
         <FlatList
-          data={users}
+          data={filteredUsers}
           keyExtractor={(u) => u.id}
           contentContainerStyle={styles.list}
+          ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>No matching users</Text></View>}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.row} activeOpacity={0.85} onPress={() => setSelectedId(item.id)}>
               <View style={{ flex: 1 }}>
@@ -106,6 +124,8 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 10 },
   kicker: { fontFamily: fontFamilies.dmSans, fontSize: 9, letterSpacing: 1.5, color: colors.muted, textTransform: 'uppercase' },
   title: { fontFamily: fontFamilies.frauncesMedium, fontSize: 24, color: colors.ink, letterSpacing: -0.5, marginTop: 2 },
+  searchWrap: { paddingHorizontal: 22, paddingBottom: 10 },
+  searchInput: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontFamily: fontFamilies.dmSans, fontSize: 13, color: colors.ink },
   list: { paddingHorizontal: 22, paddingBottom: 24 },
   row: { backgroundColor: colors.paper, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   name: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
