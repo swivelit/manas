@@ -9,14 +9,17 @@ import {
   useAllTopics,
   useCreateAdminVideo,
   useDeleteAdminVideo,
+  useUploadToyAudio,
   useUpdateAdminVideo,
 } from '../../lib/queries';
 import { Button } from '../../components/Button';
+import { ToyAudioClip, ToyAudioRecorder } from '../../components/ToyAudioRecorder';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 const VIDEO_TYPES = ['INTRO', 'TOPIC', 'THERAPY', 'COACHING', 'MOTIVATIONAL'] as const;
 type VideoTypeOption = typeof VIDEO_TYPES[number];
+const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
 
 type AdminVideo = {
   id: string; title: string; type: string; isPremium: boolean; approved: boolean;
@@ -31,12 +34,15 @@ export default function AdminContent() {
   const update = useUpdateAdminVideo();
   const create = useCreateAdminVideo();
   const remove = useDeleteAdminVideo();
+  const uploadToyAudio = useUploadToyAudio();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [toyDescription, setToyDescription] = useState('');
+  const [toyAudio, setToyAudio] = useState<ToyAudioClip | null>(null);
   const [type, setType] = useState<VideoTypeOption>('THERAPY');
   const [topicId, setTopicId] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -53,6 +59,8 @@ export default function AdminContent() {
     setDescription('');
     setUrl('');
     setThumbnailUrl('');
+    setToyDescription('');
+    setToyAudio(null);
     setType('THERAPY');
     setTopicId(null);
     setIsPremium(false);
@@ -73,11 +81,16 @@ export default function AdminContent() {
     }
 
     try {
+      const toyAudioUrl = toyAudio
+        ? (await uploadToyAudio.mutateAsync({ uri: toyAudio.uri, durationMs: toyAudio.durationMs })).url
+        : undefined;
       await create.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         url: url.trim(),
         thumbnailUrl: thumbnailUrl.trim() || undefined,
+        toyDescription: toyDescription.trim() || undefined,
+        toyAudioUrl,
         type,
         isPremium,
         topicId: topicId || undefined,
@@ -153,7 +166,7 @@ export default function AdminContent() {
 
       <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
         <View style={styles.backdrop}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
+          <KeyboardAvoidingView behavior={keyboardBehavior} style={styles.keyboard}>
             <View style={styles.sheet}>
               <View style={styles.handle} />
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -177,6 +190,15 @@ export default function AdminContent() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Thumbnail URL (optional)</Text>
                   <TextInput style={styles.input} value={thumbnailUrl} onChangeText={setThumbnailUrl} placeholder="https://example.com/thumb.jpg" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Toy description (optional)</Text>
+                  <TextInput style={[styles.input, styles.multiline]} value={toyDescription} onChangeText={setToyDescription} placeholder="What the toy should say for this video..." placeholderTextColor={colors.muted} multiline />
+                </View>
+
+                <View style={styles.field}>
+                  <ToyAudioRecorder value={toyAudio} onChange={setToyAudio} disabled={create.isPending || uploadToyAudio.isPending} />
                 </View>
 
                 <View style={styles.field}>
@@ -213,7 +235,7 @@ export default function AdminContent() {
                   <TouchableOpacity onPress={() => setModalOpen(false)} style={styles.cancelBtn} activeOpacity={0.85}>
                     <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <Button label={create.isPending ? 'Adding...' : 'Add video'} onPress={submit} loading={create.isPending} />
+                  <Button label={(create.isPending || uploadToyAudio.isPending) ? 'Adding...' : 'Add video'} onPress={submit} loading={create.isPending || uploadToyAudio.isPending} />
                 </View>
               </ScrollView>
             </View>

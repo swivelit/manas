@@ -13,9 +13,13 @@ FILTERED_LOG_PATH="${FILTERED_LOG_PATH:-$DIST_DIR/android-launch-logcat-filtered
 METRO_LOG_PATH="${METRO_LOG_PATH:-$DIST_DIR/android-launch-metro.txt}"
 FOCUS_PATH="${FOCUS_PATH:-$DIST_DIR/android-launch-focus.txt}"
 METRO_PORT="${METRO_PORT:-8081}"
+API_PORT="${API_PORT:-4000}"
+EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-http://localhost:$API_PORT}"
+export EXPO_PUBLIC_API_URL
 LAUNCH_WAIT_SECONDS="${LAUNCH_WAIT_SECONDS:-20}"
 START_METRO="${START_METRO:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
+KEEP_METRO="${KEEP_METRO:-false}"
 
 FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.jeygroups\\.manas"
 CRASH_REGEX="FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Could not connect to development server"
@@ -23,6 +27,10 @@ CRASH_REGEX="FATAL EXCEPTION|Invariant Violation|main has not been registered|ha
 METRO_PID=""
 
 cleanup() {
+  if [[ "$KEEP_METRO" == "true" ]]; then
+    return 0
+  fi
+
   if [[ -n "$METRO_PID" ]] && ps -p "$METRO_PID" >/dev/null 2>&1; then
     kill "$METRO_PID" >/dev/null 2>&1 || true
   fi
@@ -125,11 +133,20 @@ start_metro_if_needed() {
   else
     echo "Starting Expo Metro on port $METRO_PORT."
     : > "$METRO_LOG_PATH"
-    (
-      cd "$MOBILE_DIR"
-      npx expo start --port "$METRO_PORT" --non-interactive
-    ) > "$METRO_LOG_PATH" 2>&1 &
-    METRO_PID="$!"
+    if [[ "$KEEP_METRO" == "true" ]]; then
+      (
+        cd "$MOBILE_DIR"
+        nohup npx expo start --port "$METRO_PORT" > "$METRO_LOG_PATH" 2>&1 < /dev/null &
+        echo "$!" > "$DIST_DIR/android-launch-metro.pid"
+      )
+      METRO_PID="$(cat "$DIST_DIR/android-launch-metro.pid")"
+    else
+      (
+        cd "$MOBILE_DIR"
+        CI=1 npx expo start --port "$METRO_PORT"
+      ) > "$METRO_LOG_PATH" 2>&1 &
+      METRO_PID="$!"
+    fi
     wait_for_metro
   fi
 
@@ -137,6 +154,12 @@ start_metro_if_needed() {
     echo "Configured adb reverse tcp:$METRO_PORT -> tcp:$METRO_PORT."
   else
     echo "WARNING: adb reverse failed. Physical devices may not reach Metro unless networking is configured manually."
+  fi
+
+  if adb_cmd reverse "tcp:$API_PORT" "tcp:$API_PORT" >/dev/null 2>&1; then
+    echo "Configured adb reverse tcp:$API_PORT -> tcp:$API_PORT."
+  else
+    echo "WARNING: adb reverse for backend port $API_PORT failed. Physical devices may not reach the local API unless networking is configured manually."
   fi
 }
 
@@ -166,6 +189,7 @@ echo
 echo "Device: $DEVICE_ID"
 echo "APK: $APK_PATH"
 echo "Package: $APP_ID"
+echo "API URL: $EXPO_PUBLIC_API_URL"
 echo "Logcat: $LOG_PATH"
 echo
 

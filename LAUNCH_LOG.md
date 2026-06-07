@@ -25,7 +25,7 @@ Pass. No type errors.
 
 ### 5. `mobile && npx expo-doctor`
 20 / 21 checks pass. One warning:
-- `expo-av` is flagged unmaintained (replacement is `expo-video`). Keeping `expo-av` for v1 — works on SDK 56, full migration is a v1.1 task.
+- Audio playback and recording now use `expo-audio`; video playback uses `expo-video`.
 - `expo-modules-jsi` has no react-native-directory metadata — internal Expo module, safe to ignore.
 
 ### 6. `mobile && npx expo install --check`

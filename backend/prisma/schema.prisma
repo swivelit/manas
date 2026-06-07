@@ -150,6 +150,8 @@ model Video {
   url          String
   thumbnailUrl String
   subtitleUrl  String?
+  toyDescription String?
+  toyAudioUrl  String?
   durationSec  Int
   type         VideoType
   isPremium    Boolean   @default(false)

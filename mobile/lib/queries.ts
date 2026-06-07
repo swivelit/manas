@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as FileSystem from 'expo-file-system/legacy';
 import { api } from './api';
 import { useAuthStore } from './auth';
 
@@ -174,6 +175,25 @@ export function useVideoBookmarks() {
   });
 }
 
+export type ToyAudioUploadInput = {
+  uri: string;
+  durationMs: number;
+  mimeType?: string;
+};
+
+export function useUploadToyAudio() {
+  const token = useAuthStore(s => s.token);
+  return useMutation({
+    mutationFn: async ({ uri, durationMs, mimeType = 'audio/m4a' }: ToyAudioUploadInput) => {
+      if (!token) throw new Error('Sign in required to upload audio.');
+      const audioBase64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return api.post('/videos/toy-audio', { audioBase64, durationMs, mimeType }).then(r => r.data as { url: string; durationMs: number; sizeBytes: number });
+    },
+  });
+}
+
 // ---- Me ----
 export function useMe() {
   const token = useAuthStore(s => s.token);
@@ -278,6 +298,7 @@ export function useCreateCoachVideo() {
   return useMutation({
     mutationFn: (data: {
       title: string; description: string; url: string; thumbnailUrl?: string;
+      toyDescription?: string; toyAudioUrl?: string;
       type: string; isPremium?: boolean; topicId?: string; durationSec?: number;
     }) => api.post('/coach/videos', data).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
@@ -363,6 +384,7 @@ export function useCreateAdminVideo() {
   return useMutation({
     mutationFn: (data: {
       title: string; description: string; url: string; thumbnailUrl?: string; subtitleUrl?: string;
+      toyDescription?: string; toyAudioUrl?: string;
       durationSec?: number; type: string; isPremium?: boolean; approved?: boolean; topicId?: string;
     }) => api.post('/admin/videos', data).then(r => r.data),
     onSuccess: () => {

@@ -4,24 +4,29 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAllTopics, useCreateCoachVideo } from '../../lib/queries';
+import { useAllTopics, useCreateCoachVideo, useUploadToyAudio } from '../../lib/queries';
 import { Button } from '../../components/Button';
+import { ToyAudioClip, ToyAudioRecorder } from '../../components/ToyAudioRecorder';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 const VIDEO_TYPES = ['THERAPY', 'COACHING', 'MOTIVATIONAL', 'TOPIC', 'INTRO'] as const;
 type VideoTypeOption = typeof VIDEO_TYPES[number];
+const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
 
 type TopicLite = { id: string; name: string; category?: { name?: string } };
 
 export default function CoachUpload() {
   const { data: topics } = useAllTopics();
   const create = useCreateCoachVideo();
+  const uploadToyAudio = useUploadToyAudio();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [toyDescription, setToyDescription] = useState('');
+  const [toyAudio, setToyAudio] = useState<ToyAudioClip | null>(null);
   const [duration, setDuration] = useState('');
   const [type, setType] = useState<VideoTypeOption>('THERAPY');
   const [isPremium, setIsPremium] = useState(false);
@@ -40,18 +45,23 @@ export default function CoachUpload() {
     }
     const durationSec = duration.trim() ? Math.max(0, parseInt(duration.trim(), 10) || 0) : undefined;
     try {
+      const toyAudioUrl = toyAudio
+        ? (await uploadToyAudio.mutateAsync({ uri: toyAudio.uri, durationMs: toyAudio.durationMs })).url
+        : undefined;
       await create.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         url: url.trim(),
         thumbnailUrl: thumbnailUrl.trim() || undefined,
+        toyDescription: toyDescription.trim() || undefined,
+        toyAudioUrl,
         type,
         isPremium,
         topicId: topicId || undefined,
         durationSec,
       });
       Alert.alert('Published', 'Your video has been added to the library.');
-      setTitle(''); setDescription(''); setUrl(''); setThumbnailUrl(''); setDuration('');
+      setTitle(''); setDescription(''); setUrl(''); setThumbnailUrl(''); setToyDescription(''); setToyAudio(null); setDuration('');
       setType('THERAPY'); setIsPremium(false); setTopicId(null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } };
@@ -62,7 +72,7 @@ export default function CoachUpload() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={keyboardBehavior} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.kicker}>NEW CONTENT</Text>
           <Text style={styles.title}>Add a{'\n'}<Text style={styles.titleItalic}>video.</Text></Text>
@@ -85,6 +95,15 @@ export default function CoachUpload() {
           <View style={styles.field}>
             <Text style={styles.label}>Thumbnail URL (optional)</Text>
             <TextInput style={styles.input} value={thumbnailUrl} onChangeText={setThumbnailUrl} placeholder="https://…/thumb.jpg" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Toy description (optional)</Text>
+            <TextInput style={[styles.input, styles.multiline]} value={toyDescription} onChangeText={setToyDescription} placeholder="What the toy should say for this video..." placeholderTextColor={colors.muted} multiline />
+          </View>
+
+          <View style={styles.field}>
+            <ToyAudioRecorder value={toyAudio} onChange={setToyAudio} disabled={create.isPending || uploadToyAudio.isPending} />
           </View>
 
           <View style={styles.field}>
@@ -126,7 +145,7 @@ export default function CoachUpload() {
           </View>
 
           <View style={{ flexDirection: 'row', marginTop: 18 }}>
-            <Button label={create.isPending ? 'Publishing…' : 'Publish video'} onPress={submit} loading={create.isPending} />
+            <Button label={(create.isPending || uploadToyAudio.isPending) ? 'Publishing…' : 'Publish video'} onPress={submit} loading={create.isPending || uploadToyAudio.isPending} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

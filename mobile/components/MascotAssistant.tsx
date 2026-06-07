@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Modal,
@@ -12,6 +12,7 @@ import {
 import { usePathname } from 'expo-router';
 import * as Speech from 'expo-speech';
 import * as SecureStore from 'expo-secure-store';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -28,7 +29,34 @@ import { fontFamilies } from '../theme/fonts';
 import { Button } from './Button';
 import { HeartMascot, HeartMascotShadow } from './HeartMascot';
 
-type AssistantLanguageCode = 'en' | 'hi';
+type AssistantLanguageCode = 'en' | 'ta';
+
+export type MascotBriefingOverride = {
+  text: string;
+  audioUrl?: string | null;
+};
+
+type MascotBriefingController = {
+  briefingOverride: MascotBriefingOverride | null;
+  setBriefingOverride: (override: MascotBriefingOverride) => void;
+  clearBriefingOverride: () => void;
+};
+
+let mascotBriefingListener: ((override: MascotBriefingOverride | null) => void) | null = null;
+
+export function setMascotBriefingOverride(override: MascotBriefingOverride) {
+  mascotBriefingListener?.(override);
+}
+
+export function clearMascotBriefingOverride() {
+  mascotBriefingListener?.(null);
+}
+
+export const MascotBriefingContext = React.createContext<MascotBriefingController>({
+  briefingOverride: null,
+  setBriefingOverride: setMascotBriefingOverride,
+  clearBriefingOverride: clearMascotBriefingOverride,
+});
 
 type AssistantDictionary = {
   label: string;
@@ -72,33 +100,33 @@ const assistantDictionaries: Record<AssistantLanguageCode, AssistantDictionary> 
       '/mood': "This mood page records how you're feeling today. Pick the closest option and add a note if it helps.",
     },
   },
-  hi: {
-    label: 'हिन्दी',
-    guideLabel: 'MANAS · मार्गदर्शक',
-    readAloudLabel: 'आवाज़ में पढ़ें',
-    voiceOn: 'आवाज़ चालू',
-    voiceOff: 'आवाज़ बंद',
-    toggleVoiceLabel: 'आवाज़ मार्गदर्शन बदलें',
-    gotIt: '✿ समझ गया',
-    maybeLater: 'बाद में',
+  ta: {
+    label: 'தமிழ்',
+    guideLabel: 'MANAS · வழிகாட்டி',
+    readAloudLabel: 'ஒலியாக வாசிக்க',
+    voiceOn: 'குரல் இயக்கம்',
+    voiceOff: 'குரல் நிறுத்தம்',
+    toggleVoiceLabel: 'குரல் வழிகாட்டலை மாற்று',
+    gotIt: '✿ புரிந்தது',
+    maybeLater: 'பிறகு பார்க்கலாம்',
     messages: {
-      '/': 'नमस्ते! मैं Manas हूं, आपका मार्गदर्शक. Emotional Healing, Coaching, या Library से शुरू करें, फिर मैं अगला कदम बताऊंगा.',
-      '/onboarding': 'यह स्वागत स्क्रीन है. साइन इन करें या खाता बनाएं ताकि आपके सत्र, प्रगति और पसंद सेव हो सकें.',
-      '/(auth)': 'इस स्क्रीन पर ईमेल कोड से साइन इन करें.',
-      '/(auth)/login': 'यहां साइन इन करें. अपना ईमेल डालकर OTP मांगें, फिर कोड सत्यापित करके आगे बढ़ें.',
-      '/(auth)/register': 'यहां अपना MANAS खाता बनाएं. नाम और ईमेल जोड़ें, OTP सत्यापित करें, फिर होम टैब पर जाएं.',
-      '/(tabs)': 'यह Home है. अपना mood prompt देखें, Emotional Healing या Coaching चुनें, demo book करें, या आने वाला session खोलें.',
-      '/(tabs)/topics': 'ये Emotional Healing topics हैं. कोई feeling खोजें, topic खोलें, फिर coach और booking time चुनें.',
-      '/topics/emotional-healing-list': 'ये Emotional Healing topics हैं. जो विषय आपकी जरूरत से मेल खाता है उसे चुनें, फिर coach चुनें.',
-      '/coaching': 'यह Coaching है. Growth topic चुनें, detail page देखें, फिर available coach के साथ demo book करें.',
-      '/topics': 'यह topic page focus area समझाता है. Save करने के लिए heart इस्तेमाल करें, coach options देखें, या demo book करें.',
-      '/booking': 'यह booking page आपके timezone में coach availability दिखाता है. Confirm करने से पहले date, time slot, और video, audio, या chat session चुनें.',
-      '/(tabs)/videos': 'Library में free और premium videos हैं. Public videos बिना sign in खुलते हैं; bookmarks और progress sign in के बाद save होते हैं.',
-      '/video': 'इस video page पर आप sign in के बाद watch, resume progress, bookmark, और like कर सकते हैं. Premium access admin संभालता है.',
-      '/(tabs)/sessions': 'आपके sessions यहां हैं. Upcoming या past bookings देखें, फिर confirmed video और audio sessions join window में join करें.',
-      '/session': 'यह session detail coach, topic, time, और session type दिखाता है. Chat sessions यहां in-app message thread खोलते हैं.',
-      '/(tabs)/profile': 'यह Profile है. अपनी saved journey, session history, और account actions देखें.',
-      '/mood': 'यह mood page आज आपकी feeling record करता है. सबसे करीबी option चुनें और जरूरत हो तो note जोड़ें.',
+      '/': 'வரவேற்கிறோம்! நான் Manas, உங்கள் வழிகாட்டி. Emotional Healing, Coaching அல்லது Library-யில் தொடங்குங்கள்; அடுத்த படியை நான் காட்டுவேன்.',
+      '/onboarding': 'இது வரவேற்பு திரை. உங்கள் sessions, progress, preferences சேமிக்க sign in செய்யவும் அல்லது account உருவாக்கவும்.',
+      '/(auth)': 'இந்த auth திரையில் email code மூலம் sign in செய்யலாம்.',
+      '/(auth)/login': 'இங்கே sign in செய்யுங்கள். Email உள்ளிட்டு OTP கேட்டு, code verify செய்து தொடருங்கள்.',
+      '/(auth)/register': 'இங்கே உங்கள் MANAS account உருவாக்குங்கள். பெயர், email சேர்த்து, OTP verify செய்து home tabs-க்கு செல்லுங்கள்.',
+      '/(tabs)': 'இது Home. Mood prompt பார்க்கவும், Emotional Healing அல்லது Coaching தேர்வு செய்யவும், free demo book செய்யவும், அல்லது upcoming session திறக்கவும்.',
+      '/(tabs)/topics': 'இவை Emotional Healing topics. ஒரு feeling தேடி, topic திறந்து, coach மற்றும் booking time தேர்வு செய்யுங்கள்.',
+      '/topics/emotional-healing-list': 'இவை Emotional Healing topics. உங்களுக்கு பொருந்தும் topic-ஐ தேர்வு செய்து, பிறகு coach தேர்வு செய்யுங்கள்.',
+      '/coaching': 'இது Coaching. Growth topic தேர்வு செய்து, detail page பார்த்து, available coach உடன் demo book செய்யுங்கள்.',
+      '/topics': 'இந்த topic page focus area-வை விளக்குகிறது. Save செய்ய heart பயன்படுத்தவும், coach options பார்க்கவும், அல்லது demo book செய்யவும்.',
+      '/booking': 'இந்த booking page உங்கள் timezone-ல் coach availability காட்டுகிறது. Confirm செய்வதற்கு முன் date, time slot, video, audio அல்லது chat session தேர்வு செய்யுங்கள்.',
+      '/(tabs)/videos': 'Library-யில் free மற்றும் premium videos உள்ளன. Public videos sign in இல்லாமலே திறக்கும்; bookmarks மற்றும் progress sign in பிறகு save ஆகும்.',
+      '/video': 'இந்த video page-ல் sign in பிறகு watch, resume progress, bookmark மற்றும் like செய்யலாம். Premium access admin மூலம் நிர்வகிக்கப்படுகிறது.',
+      '/(tabs)/sessions': 'உங்கள் sessions இங்கே இருக்கும். Upcoming அல்லது past bookings பாருங்கள்; confirmed video மற்றும் audio sessions-ஐ join window-ல் join செய்யுங்கள்.',
+      '/session': 'இந்த session detail coach, topic, time மற்றும் session type காட்டுகிறது. Chat sessions இங்கே in-app message thread திறக்கும்.',
+      '/(tabs)/profile': 'இது Profile. உங்கள் saved journey, session history மற்றும் account actions பார்க்கலாம்.',
+      '/mood': 'இந்த mood page இன்று நீங்கள் எப்படி உணர்கிறீர்கள் என்பதை பதிவு செய்கிறது. அருகிலான option தேர்வு செய்து, உதவினால் note சேர்க்கவும்.',
     },
   },
 };
@@ -106,7 +134,7 @@ const assistantDictionaries: Record<AssistantLanguageCode, AssistantDictionary> 
 const VOICE_PREF_KEY = 'manas_voice_enabled';
 const LANGUAGE_PREF_KEY = 'manas_assistant_language';
 const DEFAULT_LANGUAGE: AssistantLanguageCode = 'en';
-const ASSISTANT_LANGUAGES: AssistantLanguageCode[] = ['en', 'hi'];
+const ASSISTANT_LANGUAGES: AssistantLanguageCode[] = ['en', 'ta'];
 const MASCOT_SIZE = 64;
 const SHADOW_HEIGHT = Math.round(MASCOT_SIZE * 0.22);
 const EDGE_PADDING = 12;
@@ -120,7 +148,7 @@ const DOUBLE_BLINK_PAUSE_MS = 110;
 const DOUBLE_BLINK_CHANCE = 0.2;
 
 function isAssistantLanguageCode(value: string | null): value is AssistantLanguageCode {
-  return value === 'en' || value === 'hi';
+  return value === 'en' || value === 'ta';
 }
 
 function getContextMessage(path: string, languageCode: AssistantLanguageCode): string {
@@ -140,10 +168,26 @@ function clampValue(value: number, min: number, max: number) {
 }
 
 export function MascotTapSurface({ children }: { children: React.ReactNode }) {
+  const [briefingOverride, setBriefingOverrideState] = useState<MascotBriefingOverride | null>(null);
+  const controller = useMemo<MascotBriefingController>(() => ({
+    briefingOverride,
+    setBriefingOverride: setBriefingOverrideState,
+    clearBriefingOverride: () => setBriefingOverrideState(null),
+  }), [briefingOverride]);
+
+  useEffect(() => {
+    mascotBriefingListener = setBriefingOverrideState;
+    return () => {
+      mascotBriefingListener = null;
+    };
+  }, []);
+
   return (
-    <View collapsable={false} style={styles.tapSurface}>
-      {children}
-    </View>
+    <MascotBriefingContext.Provider value={controller}>
+      <View collapsable={false} style={styles.tapSurface}>
+        {children}
+      </View>
+    </MascotBriefingContext.Provider>
   );
 }
 
@@ -154,13 +198,16 @@ export function MascotAssistant() {
   const [speaking, setSpeaking] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [eyesClosed, setEyesClosed] = useState(false);
+  const { briefingOverride } = useContext(MascotBriefingContext);
   const pathname = usePathname();
   const copy = assistantDictionaries[languageCode];
-  const message = getContextMessage(pathname, languageCode);
+  const message = briefingOverride?.text || getContextMessage(pathname, languageCode);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const placedInitialPosition = useRef(false);
   const blinkTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const audioPlayerRef = useRef<AudioPlayer | null>(null);
+  const audioPlayerSubscriptionRef = useRef<{ remove: () => void } | null>(null);
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -334,6 +381,7 @@ export function MascotAssistant() {
   useEffect(() => {
     return () => {
       Speech.stop().catch(() => {});
+      stopAudioPlayback();
       cancelAnimation(translateX);
       cancelAnimation(translateY);
       cancelAnimation(bobProgress);
@@ -350,6 +398,8 @@ export function MascotAssistant() {
     }
     return () => {
       Speech.stop().catch(() => {});
+      stopAudioPlayback();
+      setSpeaking(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -389,13 +439,44 @@ export function MascotAssistant() {
     };
   });
 
+  function stopAudioPlayback() {
+    audioPlayerSubscriptionRef.current?.remove();
+    audioPlayerSubscriptionRef.current = null;
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.remove();
+      audioPlayerRef.current = null;
+    }
+  }
+
   async function handleSpeak() {
     if (speaking) {
       await Speech.stop();
+      stopAudioPlayback();
       setSpeaking(false);
       return;
     }
+
     setSpeaking(true);
+    if (briefingOverride?.audioUrl) {
+      try {
+        await Speech.stop();
+        stopAudioPlayback();
+        const player = createAudioPlayer({ uri: briefingOverride.audioUrl });
+        audioPlayerSubscriptionRef.current = player.addListener('playbackStatusUpdate', status => {
+          if (status.didJustFinish || status.error) {
+            stopAudioPlayback();
+            setSpeaking(false);
+          }
+        });
+        audioPlayerRef.current = player;
+        player.play();
+      } catch {
+        setSpeaking(false);
+      }
+      return;
+    }
+
     Speech.speak(message, {
       language: languageCode,
       rate: 0.95,
@@ -412,6 +493,7 @@ export function MascotAssistant() {
     await SecureStore.setItemAsync(VOICE_PREF_KEY, next ? '1' : '0');
     if (!next) {
       await Speech.stop();
+      stopAudioPlayback();
       setSpeaking(false);
     }
   }
@@ -421,6 +503,7 @@ export function MascotAssistant() {
     await SecureStore.setItemAsync(LANGUAGE_PREF_KEY, nextLanguageCode);
     if (speaking) {
       await Speech.stop();
+      stopAudioPlayback();
       setSpeaking(false);
     }
   }

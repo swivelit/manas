@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -9,6 +9,7 @@ import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Icon } from '../../components/Icon';
+import { clearMascotBriefingOverride, setMascotBriefingOverride } from '../../components/MascotAssistant';
 
 type VideoDetails = {
   id: string;
@@ -17,6 +18,8 @@ type VideoDetails = {
   url: string;
   thumbnailUrl?: string | null;
   subtitleUrl?: string | null;
+  toyDescription?: string | null;
+  toyAudioUrl?: string | null;
   durationSec: number;
   type: string;
   isPremium: boolean;
@@ -80,6 +83,22 @@ export default function VideoPlayer() {
 
   const video = data?.video as VideoDetails | undefined;
   const paywalled = data?.paywalled === true;
+
+  useEffect(() => {
+    if (!video || (!video.toyDescription && !video.toyAudioUrl)) {
+      clearMascotBriefingOverride();
+      return undefined;
+    }
+
+    setMascotBriefingOverride({
+      text: video.toyDescription?.trim() || video.description,
+      audioUrl: video.toyAudioUrl ?? undefined,
+    });
+
+    return () => {
+      clearMascotBriefingOverride();
+    };
+  }, [video]);
 
   async function handleBookmark() {
     if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }

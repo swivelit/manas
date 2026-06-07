@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 
 import authRoutes from './routes/auth';
 import meRoutes from './routes/me';
@@ -38,7 +39,8 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan('dev'));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {

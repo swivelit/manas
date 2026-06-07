@@ -9,6 +9,8 @@ MOBILE_DIR="$ROOT_DIR/mobile"
 APK_PATH="$ROOT_DIR/dist/manas-debug.apk"
 
 MIN_NODE_VERSION="${MIN_NODE_VERSION:-22.13.1}"
+EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-http://localhost:4000}"
+export EXPO_PUBLIC_API_URL
 
 require_command() {
   local command_name="$1"
@@ -121,6 +123,7 @@ echo "App: $APP_NAME"
 echo "Android package: $APP_ID"
 echo "Mobile directory: $MOBILE_DIR"
 echo "Android SDK: $ANDROID_SDK_ROOT"
+echo "API URL: $EXPO_PUBLIC_API_URL"
 echo "Output APK: $APK_PATH"
 echo
 

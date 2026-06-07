@@ -175,7 +175,7 @@ async function main() {
       bio: 'Dr. Arjun Iyer combines cognitive behavioural therapy with trauma-sensitive approaches. 8 years of practice helping clients break free from negative thinking cycles.',
       yearsExp: 8,
       rating: 4.8,
-      languages: ['EN', 'HI'],
+      languages: ['EN', 'TA'],
       hourlyRate: 120000,
     },
     create: {
@@ -184,7 +184,7 @@ async function main() {
       bio: 'Dr. Arjun Iyer combines cognitive behavioural therapy with trauma-sensitive approaches. 8 years of practice helping clients break free from negative thinking cycles.',
       yearsExp: 8,
       rating: 4.8,
-      languages: ['EN', 'HI'],
+      languages: ['EN', 'TA'],
       hourlyRate: 120000,
     },
   });
