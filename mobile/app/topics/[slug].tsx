@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTopic, useCoaches, useVideos, useBookmarkVideo } from '../../lib/queries';
@@ -7,8 +7,10 @@ import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 
 export default function TopicDetail() {
+  const dialog = useDialog();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const topicSlug = Array.isArray(slug) ? slug[0] : slug;
   const { data: topic, isLoading, isError } = useTopic(topicSlug);
@@ -22,15 +24,15 @@ export default function TopicDetail() {
   // NOTE: v1.1 should introduce a TopicBookmark model so users can save topics
   // directly without a representative video.
   async function handleTopicHeart() {
-    if (!token) { Alert.alert('Sign in', 'Sign in to save topics.'); return; }
+    if (!token) { void dialog.alert('Sign in', 'Sign in to save topics.'); return; }
     const videoList = Array.isArray(topicVideos) ? topicVideos : [];
     const v = videoList[0];
-    if (!v) { Alert.alert('Not available', 'No video yet to save for this topic.'); return; }
+    if (!v) { void dialog.alert('Not available', 'No video yet to save for this topic.'); return; }
     try {
       const res = await bookmark.mutateAsync(v.id);
       setSavedFirstVideo(res.bookmarked);
     } catch {
-      Alert.alert('Could not save');
+      void dialog.alert('Could not save');
     }
   }
 

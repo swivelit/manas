@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
 import { useCoachAppointments, useUpdateCoachSession, useMe } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -20,17 +21,18 @@ type Appt = {
 };
 
 function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => void; busy: boolean }) {
+  const dialog = useDialog();
   const date = new Date(appt.scheduledAt);
   const safe = Number.isNaN(date.getTime()) ? new Date() : date;
   const client = appt.user?.name ?? 'Client';
   const topic = appt.topic?.name ?? 'Session';
 
   async function join() {
-    if (!appt.meetingUrl) { Alert.alert('No meeting link', 'This session has no meeting link yet.'); return; }
+    if (!appt.meetingUrl) { void dialog.alert('No meeting link', 'This session has no meeting link yet.'); return; }
     const url = appt.type === 'AUDIO' ? `${appt.meetingUrl}#config.startWithVideoMuted=true` : appt.meetingUrl;
     const can = await Linking.canOpenURL(url);
-    if (!can) { Alert.alert('Cannot open link', url); return; }
-    Linking.openURL(url);
+    if (!can) { void dialog.alert('Cannot open link', url); return; }
+    void Linking.openURL(url);
   }
 
   function openChat() {
@@ -85,6 +87,7 @@ function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'C
 }
 
 export default function CoachAppointments() {
+  const dialog = useDialog();
   const { data: me } = useMe();
   const { data, isLoading, isError } = useCoachAppointments();
   const update = useUpdateCoachSession();
@@ -98,17 +101,22 @@ export default function CoachAppointments() {
     try {
       await update.mutateAsync({ id, status });
     } catch {
-      Alert.alert('Could not update', 'Please try again.');
+      void dialog.alert('Could not update', 'Please try again.');
     } finally {
       setBusyId(null);
     }
   }
 
-  function logout() {
-    Alert.alert('Sign out', 'Sign out of your coach account?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await clearAuth(); router.replace('/onboarding'); } },
-    ]);
+  async function logout() {
+    const confirmed = await dialog.confirm({
+      title: 'Sign out',
+      message: 'Sign out of your coach account?',
+      confirmLabel: 'Sign out',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await clearAuth();
+    router.replace('/onboarding');
   }
 
   return (

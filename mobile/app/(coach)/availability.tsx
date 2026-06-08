@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Switch, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Switch, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMyAvailability, useReplaceAvailability, AvailabilityRow } from '../../lib/queries';
 import { Button } from '../../components/Button';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -35,6 +36,7 @@ function buildInitial(rows: AvailabilityRow[] | undefined): Record<number, DaySt
 }
 
 export default function CoachAvailability() {
+  const dialog = useDialog();
   const { data, isLoading } = useMyAvailability();
   const replace = useReplaceAvailability();
   const [days, setDays] = useState<Record<number, DayState>>(() => buildInitial(undefined));
@@ -53,20 +55,20 @@ export default function CoachAvailability() {
       const s = days[d.value];
       if (!s.enabled) continue;
       if (!TIME_RE.test(s.startTime) || !TIME_RE.test(s.endTime)) {
-        Alert.alert('Check times', `${d.label}: use 24-hour HH:MM (e.g. 09:00).`);
+        void dialog.alert('Check times', `${d.label}: use 24-hour HH:MM (e.g. 09:00).`);
         return;
       }
       if (s.startTime >= s.endTime) {
-        Alert.alert('Check times', `${d.label}: end time must be after start time.`);
+        void dialog.alert('Check times', `${d.label}: end time must be after start time.`);
         return;
       }
       out.push({ dayOfWeek: d.value, startTime: s.startTime, endTime: s.endTime });
     }
     try {
       await replace.mutateAsync(out);
-      Alert.alert('Saved', 'Your weekly availability has been updated.');
+      void dialog.alert('Saved', 'Your weekly availability has been updated.');
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      void dialog.alert('Could not save', 'Please try again.');
     }
   }
 

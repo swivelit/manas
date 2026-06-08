@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Switch, Alert, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Switch, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminUsers, useUpdateAdminUser } from '../../lib/queries';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -14,6 +15,7 @@ const ROLES = ['USER', 'COACH', 'ADMIN'] as const;
 const roleTint: Record<string, string> = { USER: colors.blueSoft, COACH: colors.sageSoft, ADMIN: colors.pinkSoft };
 
 export default function AdminUsers() {
+  const dialog = useDialog();
   const { data, isLoading, isError } = useAdminUsers(1, 100);
   const update = useUpdateAdminUser();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function AdminUsers() {
   const current = users.find(u => u.id === selectedId) ?? null;
 
   function change(id: string, patch: { role?: string; isPremium?: boolean; isActive?: boolean }) {
-    update.mutate({ id, ...patch }, { onError: () => Alert.alert('Could not update', 'Please try again.') });
+    update.mutate({ id, ...patch }, { onError: () => { void dialog.alert('Could not update', 'Please try again.'); } });
   }
 
   return (

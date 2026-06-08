@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { format, formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Icon } from './Icon';
+import { useDialog } from './AppDialog';
 
 const PRE_START_JOIN_WINDOW_MIN = 10;
 const POST_START_JOIN_WINDOW_MIN = 30;
@@ -25,6 +26,7 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session, accentColor = colors.ink, onPress }: SessionCardProps) {
+  const dialog = useDialog();
   const date = new Date(session.scheduledAt);
   const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
   const now = new Date();
@@ -40,15 +42,15 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
 
   async function handleJoin() {
     if (!session.meetingUrl) {
-      Alert.alert('No meeting link', 'Please refresh — the meeting link is being set up.');
+      void dialog.alert('No meeting link', 'Please refresh — the meeting link is being set up.');
       return;
     }
     const url = session.type === 'AUDIO'
       ? `${session.meetingUrl}#config.startWithVideoMuted=true`
       : session.meetingUrl;
     const can = await Linking.canOpenURL(url);
-    if (!can) { Alert.alert('Cannot open link', url); return; }
-    Linking.openURL(url);
+    if (!can) { void dialog.alert('Cannot open link', url); return; }
+    void Linking.openURL(url);
   }
 
   return (

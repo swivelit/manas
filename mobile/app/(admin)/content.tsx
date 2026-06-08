@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, ActivityIndicator, Switch, Alert, TouchableOpacity,
+  View, Text, FlatList, StyleSheet, ActivityIndicator, Switch, TouchableOpacity,
   Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import {
 } from '../../lib/queries';
 import { Button } from '../../components/Button';
 import { ToyAudioClip, ToyAudioRecorder } from '../../components/ToyAudioRecorder';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -29,6 +30,7 @@ type AdminVideo = {
 type TopicLite = { id: string; name: string; category?: { name?: string } };
 
 export default function AdminContent() {
+  const dialog = useDialog();
   const { data, isLoading, isError } = useAdminVideos();
   const { data: topics } = useAllTopics();
   const update = useUpdateAdminVideo();
@@ -51,7 +53,7 @@ export default function AdminContent() {
   const topicList: TopicLite[] = Array.isArray(topics) ? topics : [];
 
   function set(id: string, patch: { approved?: boolean; isPremium?: boolean }) {
-    update.mutate({ id, ...patch }, { onError: () => Alert.alert('Could not update', 'Please try again.') });
+    update.mutate({ id, ...patch }, { onError: () => { void dialog.alert('Could not update', 'Please try again.'); } });
   }
 
   function resetForm() {
@@ -68,15 +70,15 @@ export default function AdminContent() {
 
   async function submit() {
     if (!title.trim() || !description.trim() || !url.trim()) {
-      Alert.alert('Missing details', 'Title, description, and video URL are required.');
+      void dialog.alert('Missing details', 'Title, description, and video URL are required.');
       return;
     }
     if (!/^https?:\/\//i.test(url.trim())) {
-      Alert.alert('Check the URL', 'Enter a full video URL starting with http(s)://');
+      void dialog.alert('Check the URL', 'Enter a full video URL starting with http(s)://');
       return;
     }
     if (thumbnailUrl.trim() && !/^https?:\/\//i.test(thumbnailUrl.trim())) {
-      Alert.alert('Check the thumbnail URL', 'Enter a full thumbnail URL starting with http(s)://');
+      void dialog.alert('Check the thumbnail URL', 'Enter a full thumbnail URL starting with http(s)://');
       return;
     }
 
@@ -100,21 +102,19 @@ export default function AdminContent() {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } };
       const msg = typeof e?.response?.data?.error === 'string' ? e.response!.data!.error as string : 'Please check the fields and try again.';
-      Alert.alert('Could not add video', msg);
+      void dialog.alert('Could not add video', msg);
     }
   }
 
-  function confirmDelete(video: AdminVideo) {
-    Alert.alert('Delete video', `Remove "${video.title}" from the library?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          remove.mutate(video.id, { onError: () => Alert.alert('Could not delete', 'Please try again.') });
-        },
-      },
-    ]);
+  async function confirmDelete(video: AdminVideo) {
+    const confirmed = await dialog.confirm({
+      title: 'Delete video',
+      message: `Remove "${video.title}" from the library?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    remove.mutate(video.id, { onError: () => { void dialog.alert('Could not delete', 'Please try again.'); } });
   }
 
   return (

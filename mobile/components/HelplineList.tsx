@@ -1,26 +1,29 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { HELPLINES } from '../lib/crisis';
+import { useDialog } from './AppDialog';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
-
-async function dial(tel: string) {
-  const url = `tel:${tel}`;
-  try {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      Alert.alert('Call', `Dial ${tel} from your phone to reach this helpline.`);
-      return;
-    }
-    await Linking.openURL(url);
-  } catch {
-    Alert.alert('Call', `Dial ${tel} from your phone to reach this helpline.`);
-  }
-}
 
 // Renders the India crisis helplines with tappable numbers. Shared by the
 // first-launch CrisisDisclaimerModal and the persistent CrisisBanner.
 export function HelplineList() {
+  const dialog = useDialog();
+
+  async function dial(tel: string) {
+    const url = `tel:${tel}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        void dialog.alert('Call', `Dial ${tel} from your phone to reach this helpline.`);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      void dialog.alert('Call', `Dial ${tel} from your phone to reach this helpline.`);
+    }
+  }
+
   return (
     <View style={styles.wrap}>
       {HELPLINES.map((h) => (
@@ -33,7 +36,7 @@ export function HelplineList() {
                 key={n.tel}
                 style={styles.numberBtn}
                 activeOpacity={0.85}
-                onPress={() => dial(n.tel)}
+                onPress={() => { void dial(n.tel); }}
                 accessibilityRole="button"
                 accessibilityLabel={`Call ${h.name} at ${n.label}`}
               >

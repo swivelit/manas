@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput, StyleSheet, Alert,
+  View, Text, TouchableOpacity, TextInput, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useCreateMoodEntry } from '../lib/queries';
 import { useAuthStore } from '../lib/auth';
+import { useDialog } from '../components/AppDialog';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 
@@ -19,6 +20,7 @@ const MOODS = [
 ];
 
 export default function MoodScreen() {
+  const dialog = useDialog();
   const token = useAuthStore(s => s.token);
   const [selected, setSelected] = useState<number | null>(null);
   const [note, setNote] = useState('');
@@ -26,16 +28,16 @@ export default function MoodScreen() {
   const create = useCreateMoodEntry();
 
   async function handleSubmit() {
-    if (selected == null) { Alert.alert('Pick how you\'re feeling'); return; }
+    if (selected == null) { void dialog.alert('Pick how you\'re feeling'); return; }
     if (!token) {
-      Alert.alert(
-        'Sign in to save',
-        'Create an account to keep a record of how you\'re feeling over time.',
-        [
-          { text: 'Maybe later', style: 'cancel', onPress: () => router.back() },
-          { text: 'Sign in', onPress: () => router.replace('/(auth)/login') },
-        ]
-      );
+      void dialog.show({
+        title: 'Sign in to save',
+        message: 'Create an account to keep a record of how you\'re feeling over time.',
+        actions: [
+          { label: 'Maybe later', variant: 'cancel', onPress: () => router.back() },
+          { label: 'Sign in', onPress: () => router.replace('/(auth)/login') },
+        ],
+      });
       return;
     }
     try {
@@ -43,7 +45,7 @@ export default function MoodScreen() {
       setSubmitted(true);
       setTimeout(() => router.back(), 1100);
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      void dialog.alert('Could not save', 'Please try again.');
     }
   }
 

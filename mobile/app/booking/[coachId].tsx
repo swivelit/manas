@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useCoach, useCoachAvailability, useBookSession, useTopic, useMe } from '../../lib/queries';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 export default function BookingScreen() {
+  const dialog = useDialog();
   const { coachId, topicSlug } = useLocalSearchParams<{ coachId: string; topicSlug: string }>();
   const coachParam = Array.isArray(coachId) ? coachId[0] : coachId;
   const topicParam = Array.isArray(topicSlug) ? topicSlug[0] : topicSlug;
@@ -40,11 +42,13 @@ export default function BookingScreen() {
         scheduledAt: selectedStartsAt,
         type: sessionType,
       });
-      Alert.alert('Booked!', 'Your free demo session is confirmed.', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/sessions') },
-      ]);
+      await dialog.show({
+        title: 'Booked!',
+        message: 'Your free demo session is confirmed.',
+        actions: [{ label: 'OK', onPress: () => router.replace('/(tabs)/sessions') }],
+      });
     } catch {
-      Alert.alert('Booking failed', 'Please try again.');
+      void dialog.alert('Booking failed', 'Please try again.');
     }
   }
 

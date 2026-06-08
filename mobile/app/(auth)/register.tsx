@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,8 +11,10 @@ import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
 import { ConsentCheckbox } from '../../components/ConsentCheckbox';
+import { useDialog } from '../../components/AppDialog';
 
 export default function Register() {
+  const dialog = useDialog();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -27,8 +29,8 @@ export default function Register() {
   }
 
   async function handleRequestOtp() {
-    if (!name.trim() || !email.trim()) { Alert.alert('Please enter your name and email'); return; }
-    if (!consent) { Alert.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
+    if (!name.trim() || !email.trim()) { void dialog.alert('Please enter your name and email'); return; }
+    if (!consent) { void dialog.alert('One quick step', 'Please agree to the Terms & Privacy Policy to continue.'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/request-email-otp', {
@@ -39,16 +41,16 @@ export default function Register() {
       const devOtp = data?.devOnly?.otp;
       if (devOtp) setOtp(devOtp);
       setOtpSent(true);
-      Alert.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS verification code.');
+      void dialog.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS verification code.');
     } catch (err: any) {
-      Alert.alert('Code request failed', getErrorMessage(err, 'Please try again'));
+      void dialog.alert('Code request failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleVerifyOtp() {
-    if (!otp.trim()) { Alert.alert('Enter the code from your email'); return; }
+    if (!otp.trim()) { void dialog.alert('Enter the code from your email'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/verify-email-otp', {
@@ -60,7 +62,7 @@ export default function Register() {
       await setAuth(data.token, data.user);
       router.replace(routeForRole(data.user.role));
     } catch (err: any) {
-      Alert.alert('Registration failed', getErrorMessage(err, 'Please try again'));
+      void dialog.alert('Registration failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }

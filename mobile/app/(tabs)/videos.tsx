@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useVideos, useBookmarkVideo, useVideoBookmarks, useMe } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -22,6 +23,7 @@ const thumbColors = [
 ];
 
 export default function VideosScreen() {
+  const dialog = useDialog();
   const [activeType, setActiveType] = useState('All');
   const { data: videos, isLoading, isError } = useVideos({ type: TYPE_MAP[activeType] });
   const { data: bookmarks } = useVideoBookmarks();
@@ -36,7 +38,7 @@ export default function VideosScreen() {
   const hasPremiumAccess = Boolean(me?.isPremium ?? user?.isPremium);
 
   async function handleHeart(id: string) {
-    if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
+    if (!token) { void dialog.alert('Sign in', 'Sign in to bookmark videos.'); return; }
     try { await bookmark.mutateAsync(id); } catch { /* swallow — list still re-renders on next fetch */ }
   }
 

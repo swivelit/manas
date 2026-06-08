@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminCoaches, useAdminUsers, usePromoteCoach } from '../../lib/queries';
 import { Button } from '../../components/Button';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -10,6 +11,7 @@ type Coach = { id: string; specialty: string; user: { id: string; name: string; 
 type AdminUser = { id: string; name: string; email: string; role: string };
 
 export default function AdminCoaches() {
+  const dialog = useDialog();
   const { data: coachesData, isLoading } = useAdminCoaches();
   const { data: usersData } = useAdminUsers();
   const promote = usePromoteCoach();
@@ -25,15 +27,15 @@ export default function AdminCoaches() {
   const picked = candidates.find(u => u.id === userId) ?? null;
 
   async function doPromote() {
-    if (!userId) { Alert.alert('Pick a user', 'Select the user to promote.'); return; }
+    if (!userId) { void dialog.alert('Pick a user', 'Select the user to promote.'); return; }
     try {
       await promote.mutateAsync({ userId, specialty: specialty.trim() || undefined });
-      Alert.alert('Done', `${picked?.name ?? 'User'} is now a coach.`);
+      void dialog.alert('Done', `${picked?.name ?? 'User'} is now a coach.`);
       setPickerOpen(false); setUserId(null); setSpecialty('');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } };
       const msg = typeof e?.response?.data?.error === 'string' ? e.response!.data!.error as string : 'Please try again.';
-      Alert.alert('Could not promote', msg);
+      void dialog.alert('Could not promote', msg);
     }
   }
 

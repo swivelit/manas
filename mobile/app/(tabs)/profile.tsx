@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
@@ -9,10 +9,12 @@ import { useAuthStore } from '../../lib/auth';
 import { SessionCard } from '../../components/SessionCard';
 import { CrisisBanner } from '../../components/CrisisBanner';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
 export default function ProfileScreen() {
+  const dialog = useDialog();
   const { data: me } = useMe();
   const { data: sessions } = useSessions();
   const clearAuth = useAuthStore(s => s.clearAuth);
@@ -21,11 +23,16 @@ export default function ProfileScreen() {
   const upcoming = sessionList.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status));
   const completed = sessionList.filter((s: any) => s.status === 'COMPLETED');
 
-  function handleLogout() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await clearAuth(); router.replace('/onboarding'); } },
-    ]);
+  async function handleLogout() {
+    const confirmed = await dialog.confirm({
+      title: 'Sign out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign out',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await clearAuth();
+    router.replace('/onboarding');
   }
 
   return (

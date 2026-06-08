@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useEventListener } from 'expo';
@@ -9,6 +9,7 @@ import { useAuthStore } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { clearMascotBriefingOverride, setMascotBriefingOverride } from '../../components/MascotAssistant';
 
 type VideoDetails = {
@@ -73,6 +74,7 @@ function PlayableVideo({ video, videoId }: { video: VideoDetails; videoId: strin
 }
 
 export default function VideoPlayer() {
+  const dialog = useDialog();
   const { id } = useLocalSearchParams<{ id: string }>();
   const videoId = Array.isArray(id) ? id[0] : id;
   const { data, isLoading, isError, error } = useVideo(videoId);
@@ -101,21 +103,21 @@ export default function VideoPlayer() {
   }, [video]);
 
   async function handleBookmark() {
-    if (!token) { Alert.alert('Sign in', 'Sign in to bookmark videos.'); return; }
+    if (!token) { void dialog.alert('Sign in', 'Sign in to bookmark videos.'); return; }
     try {
       const res = await bookmark.mutateAsync(videoId);
       setIsBookmarked(res.bookmarked);
     } catch {
-      Alert.alert('Could not bookmark');
+      void dialog.alert('Could not bookmark');
     }
   }
 
   async function handleLike() {
-    if (!token) { Alert.alert('Sign in', 'Sign in to like videos.'); return; }
+    if (!token) { void dialog.alert('Sign in', 'Sign in to like videos.'); return; }
     try {
       await like.mutateAsync(videoId);
     } catch {
-      Alert.alert('Could not update like');
+      void dialog.alert('Could not update like');
     }
   }
 

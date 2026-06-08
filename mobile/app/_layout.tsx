@@ -13,6 +13,7 @@ import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { CrisisDisclaimerModal } from '../components/CrisisDisclaimerModal';
 import { MascotAssistant, MascotTapSurface } from '../components/MascotAssistant';
+import { DialogProvider } from '../components/AppDialog';
 import { hasAckedCrisis, setCrisisAck } from '../lib/crisis';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -71,15 +72,17 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <QueryClientProvider client={queryClient}>
-            <MascotTapSurface>
-              <StatusBar style="dark" />
-              <Stack screenOptions={{ headerShown: false }} />
-              {showAssistant ? <MascotAssistant /> : null}
-              <CrisisDisclaimerModal
-                visible={showCrisis === true}
-                onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
-              />
-            </MascotTapSurface>
+            <DialogProvider>
+              <MascotTapSurface>
+                <StatusBar style="dark" />
+                <Stack screenOptions={{ headerShown: false }} />
+                {showAssistant ? <MascotAssistant /> : null}
+                <CrisisDisclaimerModal
+                  visible={showCrisis === true}
+                  onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
+                />
+              </MascotTapSurface>
+            </DialogProvider>
           </QueryClientProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

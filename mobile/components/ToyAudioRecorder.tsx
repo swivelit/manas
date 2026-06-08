@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   createAudioPlayer,
   RecordingPresets,
@@ -10,6 +10,7 @@ import {
 } from 'expo-audio';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
+import { useDialog } from './AppDialog';
 
 const MAX_RECORDING_MS = 60_000;
 
@@ -30,6 +31,7 @@ function formatSeconds(ms: number) {
 }
 
 export function ToyAudioRecorder({ value, onChange, disabled }: Props) {
+  const dialog = useDialog();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [recording, setRecording] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -71,7 +73,7 @@ export function ToyAudioRecorder({ value, onChange, disabled }: Props) {
       const statusAfterStop = recorder.getStatus();
       const uri = recorder.uri ?? statusAfterStop.url;
       if (!uri) {
-        Alert.alert('Recording unavailable', 'Try recording the clip again.');
+        void dialog.alert('Recording unavailable', 'Try recording the clip again.');
         return;
       }
       onChange({
@@ -79,7 +81,7 @@ export function ToyAudioRecorder({ value, onChange, disabled }: Props) {
         durationMs: Math.min(statusBeforeStop.durationMillis || elapsedMs, MAX_RECORDING_MS),
       });
     } catch {
-      Alert.alert('Could not save recording', 'Try recording the clip again.');
+      void dialog.alert('Could not save recording', 'Try recording the clip again.');
     } finally {
       setElapsedMs(0);
     }
@@ -92,7 +94,7 @@ export function ToyAudioRecorder({ value, onChange, disabled }: Props) {
       unloadPlayer();
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Microphone required', 'Allow microphone access to record a toy briefing.');
+        void dialog.alert('Microphone required', 'Allow microphone access to record a toy briefing.');
         return;
       }
 
@@ -121,7 +123,7 @@ export function ToyAudioRecorder({ value, onChange, disabled }: Props) {
       clearTimers();
       recordingRef.current = false;
       setRecording(false);
-      Alert.alert('Could not start recording', 'Check microphone permissions and try again.');
+      void dialog.alert('Could not start recording', 'Check microphone permissions and try again.');
     }
   }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Linking, TextInput,
+  ActivityIndicator, Linking, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -16,6 +16,7 @@ import {
   useSendMessage,
 } from '../../lib/queries';
 import { formatInTimeZone } from 'date-fns-tz';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -30,6 +31,7 @@ type ChatMessage = {
 };
 
 function ChatPanel({ sessionId, currentUserId }: { sessionId: string; currentUserId?: string }) {
+  const dialog = useDialog();
   const { data, isLoading, isError } = useSessionMessages(sessionId);
   const send = useSendMessage();
   const [draft, setDraft] = useState('');
@@ -49,7 +51,7 @@ function ChatPanel({ sessionId, currentUserId }: { sessionId: string; currentUse
       await send.mutateAsync({ sessionId, body });
       setDraft('');
     } catch {
-      Alert.alert('Could not send message', 'Please try again.');
+      void dialog.alert('Could not send message', 'Please try again.');
     }
   }
 
@@ -109,6 +111,7 @@ function ChatPanel({ sessionId, currentUserId }: { sessionId: string; currentUse
 }
 
 export default function SessionDetail() {
+  const dialog = useDialog();
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = Array.isArray(id) ? id[0] : id;
   const { data: session, isLoading, isError } = useSession(sessionId);
@@ -150,11 +153,11 @@ export default function SessionDetail() {
   const canJoin = session.status === 'CONFIRMED' && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -30;
 
   async function handleJoin() {
-    if (!session.meetingUrl) { Alert.alert('No link yet', 'Try refreshing.'); return; }
+    if (!session.meetingUrl) { void dialog.alert('No link yet', 'Try refreshing.'); return; }
     const url = session.type === 'AUDIO'
       ? `${session.meetingUrl}#config.startWithVideoMuted=true`
       : session.meetingUrl;
-    Linking.openURL(url);
+    void Linking.openURL(url);
   }
 
   async function handlePickSlot(slot: { startsAt: string }) {
@@ -162,32 +165,27 @@ export default function SessionDetail() {
       await update.mutateAsync({ id: sessionId, scheduledAt: slot.startsAt });
       setRescheduling(false);
       setNewDate(null);
-      Alert.alert('Rescheduled', `New time: ${format(new Date(slot.startsAt), 'EEE, d MMM · h:mm a')}`);
+      void dialog.alert('Rescheduled', `New time: ${format(new Date(slot.startsAt), 'EEE, d MMM · h:mm a')}`);
     } catch {
-      Alert.alert('Could not reschedule', 'Please try a different slot.');
+      void dialog.alert('Could not reschedule', 'Please try a different slot.');
     }
   }
 
-  function handleCancel() {
-    Alert.alert(
-      'Cancel session?',
-      'You can always book another time.',
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Cancel session',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await update.mutateAsync({ id: sessionId, status: 'CANCELLED' });
-              router.back();
-            } catch {
-              Alert.alert('Could not cancel', 'Please try again.');
-            }
-          },
-        },
-      ],
-    );
+  async function handleCancel() {
+    const confirmed = await dialog.confirm({
+      title: 'Cancel session?',
+      message: 'You can always book another time.',
+      cancelLabel: 'Keep it',
+      confirmLabel: 'Cancel session',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await update.mutateAsync({ id: sessionId, status: 'CANCELLED' });
+      router.back();
+    } catch {
+      void dialog.alert('Could not cancel', 'Please try again.');
+    }
   }
 
   return (
@@ -224,16 +222,19 @@ export default function SessionDetail() {
             {session.type === 'CHAT' ? (
               <ChatPanel sessionId={sessionId} currentUserId={me?.id} />
             ) : (
-              <TouchableOpacity
-                onPress={handleJoin}
-                disabled={!canJoin}
-                style={[styles.btnPrimary, !canJoin && styles.btnDisabled]}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.btnPrimaryText}>
-                  {canJoin ? 'Join session →' : `Starts in ${Math.max(minsUntil, 0)} min`}
-                </Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={handleJoin}
+                  disabled={!canJoin}
+                  style={[styles.btnPrimary, !canJoin && styles.btnDisabled]}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnPrimaryText}>
+                    {canJoin ? 'Join session →' : `Starts in ${Math.max(minsUntil, 0)} min`}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.callHint}>Calls open in your browser or the Jitsi Meet app.</Text>
+              </>
             )}
 
             <TouchableOpacity
@@ -303,6 +304,7 @@ const styles = StyleSheet.create({
   metaVal: { fontFamily: fontFamilies.fraunces, fontSize: 13, color: colors.ink },
   btnPrimary: { marginTop: 18, backgroundColor: colors.ink, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   btnPrimaryText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.cream },
+  callHint: { marginTop: 8, fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, textAlign: 'center' },
   btnDisabled: { opacity: 0.45 },
   btnSecondary: { marginTop: 10, backgroundColor: colors.paper, paddingVertical: 13, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.line },
   btnSecondaryText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },

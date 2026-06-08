@@ -6,8 +6,8 @@ REPO_ROOT="$SCRIPT_DIR"
 MOBILE_DIR="$REPO_ROOT/mobile"
 BUILD_TYPE="${BUILD_TYPE:-release}"
 
-if [[ "$BUILD_TYPE" != "release" && "$BUILD_TYPE" != "debug" ]]; then
-  echo "BUILD_TYPE must be release or debug" >&2
+if [[ "$BUILD_TYPE" != "release" && "$BUILD_TYPE" != "debug" && "$BUILD_TYPE" != "bundle" ]]; then
+  echo "BUILD_TYPE must be release, debug, or bundle" >&2
   exit 1
 fi
 
@@ -75,7 +75,7 @@ load_env_file() {
 }
 
 load_env_file "$MOBILE_DIR/.env"
-if [[ "$BUILD_TYPE" == "release" ]]; then
+if [[ "$BUILD_TYPE" == "release" || "$BUILD_TYPE" == "bundle" ]]; then
   load_env_file "$MOBILE_DIR/.env.production"
 fi
 load_env_file "$MOBILE_DIR/.env.local"
@@ -85,7 +85,7 @@ if [[ -n "${API_BASE_URL:-}" ]] && ! is_original_env "EXPO_PUBLIC_API_URL"; then
 fi
 
 if [[ -z "${NODE_ENV:-}" ]]; then
-  if [[ "$BUILD_TYPE" == "release" ]]; then
+  if [[ "$BUILD_TYPE" == "release" || "$BUILD_TYPE" == "bundle" ]]; then
     export NODE_ENV=production
   else
     export NODE_ENV=development
@@ -139,21 +139,32 @@ EOF
 
 if [[ "$BUILD_TYPE" == "debug" ]]; then
   (cd android && ./gradlew assembleDebug)
-  APK_SOURCE="$MOBILE_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
-  APK_DEST="$REPO_ROOT/dist/manas-debug.apk"
-else
+  ARTIFACT_SOURCE="$MOBILE_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
+  ARTIFACT_DEST="$REPO_ROOT/dist/manas-debug.apk"
+  ARTIFACT_KIND="APK"
+elif [[ "$BUILD_TYPE" == "release" ]]; then
   (cd android && ./gradlew assembleRelease)
-  APK_SOURCE="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
-  APK_DEST="$REPO_ROOT/dist/manas-release.apk"
+  ARTIFACT_SOURCE="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
+  ARTIFACT_DEST="$REPO_ROOT/dist/manas-release.apk"
+  ARTIFACT_KIND="APK"
+else
+  (cd android && ./gradlew bundleRelease)
+  ARTIFACT_SOURCE="$MOBILE_DIR/android/app/build/outputs/bundle/release/app-release.aab"
+  ARTIFACT_DEST="$REPO_ROOT/dist/manas-release.aab"
+  ARTIFACT_KIND="AAB"
 fi
 
 mkdir -p "$REPO_ROOT/dist"
-cp "$APK_SOURCE" "$APK_DEST"
+cp "$ARTIFACT_SOURCE" "$ARTIFACT_DEST"
 
-if [[ ! -f "$APK_DEST" ]]; then
-  echo "APK was not created at $APK_DEST" >&2
+if [[ ! -f "$ARTIFACT_DEST" ]]; then
+  echo "$ARTIFACT_KIND was not created at $ARTIFACT_DEST" >&2
   exit 1
 fi
 
-echo "APK created: $APK_DEST"
-echo "Install with: adb install -r ${APK_DEST#$REPO_ROOT/}"
+echo "$ARTIFACT_KIND created: $ARTIFACT_DEST"
+if [[ "$ARTIFACT_KIND" == "APK" ]]; then
+  echo "Install with: adb install -r ${ARTIFACT_DEST#$REPO_ROOT/}"
+else
+  echo "Bundle output: ${ARTIFACT_DEST#$REPO_ROOT/}"
+fi

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAdminStats, useBroadcast } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -19,30 +20,36 @@ function StatCard({ label, value, tint }: { label: string; value: number | strin
 }
 
 export default function AdminDashboard() {
+  const dialog = useDialog();
   const { data, isLoading, isError } = useAdminStats();
   const broadcast = useBroadcast();
   const clearAuth = useAuthStore(s => s.clearAuth);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
-  function logout() {
-    Alert.alert('Sign out', 'Sign out of the admin account?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await clearAuth(); router.replace('/onboarding'); } },
-    ]);
+  async function logout() {
+    const confirmed = await dialog.confirm({
+      title: 'Sign out',
+      message: 'Sign out of the admin account?',
+      confirmLabel: 'Sign out',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await clearAuth();
+    router.replace('/onboarding');
   }
 
   async function sendBroadcast() {
     if (title.trim().length < 2 || body.trim().length < 2) {
-      Alert.alert('Add a message', 'Enter a title and body to broadcast.');
+      void dialog.alert('Add a message', 'Enter a title and body to broadcast.');
       return;
     }
     try {
       const res = await broadcast.mutateAsync({ title: title.trim(), body: body.trim() });
-      Alert.alert('Sent', `Delivered to ${res.recipients} member${res.recipients === 1 ? '' : 's'}.`);
+      void dialog.alert('Sent', `Delivered to ${res.recipients} member${res.recipients === 1 ? '' : 's'}.`);
       setTitle(''); setBody('');
     } catch {
-      Alert.alert('Could not send', 'Please try again.');
+      void dialog.alert('Could not send', 'Please try again.');
     }
   }
 

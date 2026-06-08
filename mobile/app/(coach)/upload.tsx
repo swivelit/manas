@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, ScrollView, StyleSheet, Switch, TouchableOpacity, Alert,
+  View, Text, TextInput, ScrollView, StyleSheet, Switch, TouchableOpacity,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAllTopics, useCreateCoachVideo, useUploadToyAudio } from '../../lib/queries';
 import { Button } from '../../components/Button';
 import { ToyAudioClip, ToyAudioRecorder } from '../../components/ToyAudioRecorder';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -17,6 +18,7 @@ const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
 type TopicLite = { id: string; name: string; category?: { name?: string } };
 
 export default function CoachUpload() {
+  const dialog = useDialog();
   const { data: topics } = useAllTopics();
   const create = useCreateCoachVideo();
   const uploadToyAudio = useUploadToyAudio();
@@ -36,11 +38,11 @@ export default function CoachUpload() {
 
   async function submit() {
     if (!title.trim() || !description.trim() || !url.trim()) {
-      Alert.alert('Missing details', 'Title, description, and video URL are required.');
+      void dialog.alert('Missing details', 'Title, description, and video URL are required.');
       return;
     }
     if (!/^https?:\/\//i.test(url.trim())) {
-      Alert.alert('Check the URL', 'Enter a full video URL starting with http(s)://');
+      void dialog.alert('Check the URL', 'Enter a full video URL starting with http(s)://');
       return;
     }
     const durationSec = duration.trim() ? Math.max(0, parseInt(duration.trim(), 10) || 0) : undefined;
@@ -60,13 +62,13 @@ export default function CoachUpload() {
         topicId: topicId || undefined,
         durationSec,
       });
-      Alert.alert('Published', 'Your video has been added to the library.');
+      void dialog.alert('Published', 'Your video has been added to the library.');
       setTitle(''); setDescription(''); setUrl(''); setThumbnailUrl(''); setToyDescription(''); setToyAudio(null); setDuration('');
       setType('THERAPY'); setIsPremium(false); setTopicId(null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } };
       const msg = typeof e?.response?.data?.error === 'string' ? e.response!.data!.error as string : 'Please check the fields and try again.';
-      Alert.alert('Could not publish', msg);
+      void dialog.alert('Could not publish', msg);
     }
   }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Alert,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,8 +10,10 @@ import { useAuthStore, routeForRole } from '../../lib/auth';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 import { Button } from '../../components/Button';
+import { useDialog } from '../../components/AppDialog';
 
 export default function Login() {
+  const dialog = useDialog();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -24,7 +26,7 @@ export default function Login() {
   }
 
   async function handleRequestOtp() {
-    if (!email.trim()) { Alert.alert('Enter your email'); return; }
+    if (!email.trim()) { void dialog.alert('Enter your email'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/request-email-otp', {
@@ -34,16 +36,16 @@ export default function Login() {
       const devOtp = data?.devOnly?.otp;
       if (devOtp) setOtp(devOtp);
       setOtpSent(true);
-      Alert.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS login code.');
+      void dialog.alert('Code sent', devOtp ? `Development code: ${devOtp}` : 'Check your email for your MANAS login code.');
     } catch (err: any) {
-      Alert.alert('Code request failed', getErrorMessage(err, 'Please try again'));
+      void dialog.alert('Code request failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleVerifyOtp() {
-    if (!otp.trim()) { Alert.alert('Enter the code from your email'); return; }
+    if (!otp.trim()) { void dialog.alert('Enter the code from your email'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/verify-email-otp', {
@@ -54,7 +56,7 @@ export default function Login() {
       await setAuth(data.token, data.user);
       router.replace(routeForRole(data.user.role));
     } catch (err: any) {
-      Alert.alert('Login failed', getErrorMessage(err, 'Please try again'));
+      void dialog.alert('Login failed', getErrorMessage(err, 'Please try again'));
     } finally {
       setLoading(false);
     }
