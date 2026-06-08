@@ -181,6 +181,12 @@ export type ToyAudioUploadInput = {
   mimeType?: string;
 };
 
+export type ToyAudioUploadResult = {
+  url: string;
+  durationMs: number;
+  sizeBytes: number;
+};
+
 export function useUploadToyAudio() {
   const token = useAuthStore(s => s.token);
   return useMutation({
@@ -189,7 +195,7 @@ export function useUploadToyAudio() {
       const audioBase64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      return api.post('/videos/toy-audio', { audioBase64, durationMs, mimeType }).then(r => r.data as { url: string; durationMs: number; sizeBytes: number });
+      return api.post('/videos/toy-audio', { audioBase64, durationMs, mimeType }).then(r => r.data as ToyAudioUploadResult);
     },
   });
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, Switch, TouchableOpacity,
-  Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform,
+  Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -66,6 +66,10 @@ export default function AdminContent() {
     setType('THERAPY');
     setTopicId(null);
     setIsPremium(false);
+  }
+
+  function handleModalRequestClose() {
+    Keyboard.dismiss();
   }
 
   async function submit() {
@@ -164,7 +168,7 @@ export default function AdminContent() {
         />
       )}
 
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={handleModalRequestClose}>
         <View style={styles.backdrop}>
           <KeyboardAvoidingView behavior={keyboardBehavior} style={styles.keyboard}>
             <View style={styles.sheet}>

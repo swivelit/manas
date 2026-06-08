@@ -1,5 +1,6 @@
 const {
   withAppBuildGradle,
+  withGradleProperties,
   withProjectBuildGradle,
   withSettingsGradle,
 } = require('@expo/config-plugins');
@@ -81,7 +82,28 @@ ext.NODE_BINARY = System.getenv("NODE_BINARY") ?: [
   );
 }
 
+function setGradleProperty(properties, key, value) {
+  const existing = properties.find(prop => prop.type === 'property' && prop.key === key);
+  if (existing) {
+    existing.value = value;
+    return properties;
+  }
+  properties.push({ type: 'property', key, value });
+  return properties;
+}
+
 module.exports = function withAndroidGradleNode(config) {
+  config = withGradleProperties(config, gradleConfig => {
+    // Loading native libs directly from the APK can exceed Android's
+    // bindApplication timeout on slower emulators during debug cold starts.
+    gradleConfig.modResults = setGradleProperty(
+      gradleConfig.modResults,
+      'expo.useLegacyPackaging',
+      'true'
+    );
+    return gradleConfig;
+  });
+
   config = withSettingsGradle(config, gradleConfig => {
     gradleConfig.modResults.contents = patchSettingsGradle(gradleConfig.modResults.contents);
     return gradleConfig;

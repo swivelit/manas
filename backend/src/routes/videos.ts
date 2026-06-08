@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { v2 as cloudinary, type UploadApiOptions } from 'cloudinary';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { optionalAuth, requireAuth } from '../middleware/auth';
@@ -11,6 +12,7 @@ const router = Router();
 const AUDIO_UPLOAD_MAX_DURATION_MS = 60_000;
 const AUDIO_UPLOAD_MAX_BYTES = 6 * 1024 * 1024;
 const AUDIO_UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'toy-audio');
+const TOY_AUDIO_CLOUDINARY_FOLDER = 'manas/toy-audio';
 const AUDIO_EXTENSION_BY_MIME: Record<string, string> = {
   'audio/aac': 'aac',
   'audio/m4a': 'm4a',
@@ -21,6 +23,8 @@ const AUDIO_EXTENSION_BY_MIME: Record<string, string> = {
   'audio/webm': 'webm',
   'audio/3gpp': '3gp',
 };
+let warnedAboutLocalToyAudioFallback = false;
+let loggedCloudinaryToyAudioStorage = false;
 
 const progressSchema = z.object({
   progressSec: z.number().int().min(0),
@@ -40,6 +44,75 @@ function serializeVideoWithLikes(video: Record<string, any>) {
     likeCount: _count?.likes ?? 0,
     likedByMe: Array.isArray(likes) && likes.length > 0,
   };
+}
+
+function hasCloudinaryConfig() {
+  return Boolean(
+    process.env.CLOUDINARY_URL
+    || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+  );
+}
+
+function configureCloudinary() {
+  if (process.env.CLOUDINARY_URL) return;
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+}
+
+function warnAboutLocalToyAudioFallback() {
+  if (warnedAboutLocalToyAudioFallback) return;
+  warnedAboutLocalToyAudioFallback = true;
+  console.warn(
+    'Cloudinary is not configured; toy audio uploads will be stored on local disk under uploads/toy-audio. '
+    + 'This is for local development only and is not durable on Render.',
+  );
+}
+
+function logCloudinaryToyAudioStorage() {
+  if (loggedCloudinaryToyAudioStorage) return;
+  loggedCloudinaryToyAudioStorage = true;
+  console.info('Cloudinary is configured; toy audio uploads will be stored in Cloudinary.');
+}
+
+async function uploadToyAudioToCloudinary(bytes: Buffer, mimeType: string) {
+  configureCloudinary();
+  logCloudinaryToyAudioStorage();
+  const dataUri = `data:${mimeType};base64,${bytes.toString('base64')}`;
+  const options: UploadApiOptions = {
+    folder: TOY_AUDIO_CLOUDINARY_FOLDER,
+    resource_type: 'video',
+    type: 'upload',
+    use_filename: false,
+    unique_filename: true,
+    overwrite: false,
+  };
+  let result;
+  try {
+    result = await cloudinary.uploader.upload(dataUri, options);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Cloudinary toy audio upload failed: ${message}`);
+  }
+  if (!result.secure_url) {
+    throw new Error('Cloudinary upload did not return a secure URL.');
+  }
+  return result.secure_url;
+}
+
+async function saveToyAudioLocally(req: Request, bytes: Buffer, mimeType: string) {
+  warnAboutLocalToyAudioFallback();
+  await fs.mkdir(AUDIO_UPLOAD_DIR, { recursive: true });
+  const ext = AUDIO_EXTENSION_BY_MIME[mimeType] ?? 'm4a';
+  const fileName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const filePath = path.join(AUDIO_UPLOAD_DIR, fileName);
+  await fs.writeFile(filePath, bytes);
+
+  const publicPath = `/uploads/toy-audio/${fileName}`;
+  return `${req.protocol}://${req.get('host')}${publicPath}`;
 }
 
 router.get('/', optionalAuth, async (req: Request, res: Response) => {
@@ -102,14 +175,9 @@ router.post('/toy-audio', requireAuth, async (req: Request, res: Response, next:
       return;
     }
 
-    await fs.mkdir(AUDIO_UPLOAD_DIR, { recursive: true });
-    const ext = AUDIO_EXTENSION_BY_MIME[parsed.data.mimeType] ?? 'm4a';
-    const fileName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
-    const filePath = path.join(AUDIO_UPLOAD_DIR, fileName);
-    await fs.writeFile(filePath, bytes);
-
-    const publicPath = `/uploads/toy-audio/${fileName}`;
-    const url = `${req.protocol}://${req.get('host')}${publicPath}`;
+    const url = hasCloudinaryConfig()
+      ? await uploadToyAudioToCloudinary(bytes, parsed.data.mimeType)
+      : await saveToyAudioLocally(req, bytes, parsed.data.mimeType);
     res.status(201).json({ url, durationMs: parsed.data.durationMs, sizeBytes: bytes.length });
   } catch (err) {
     next(err);
