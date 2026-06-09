@@ -19,10 +19,10 @@ export EXPO_PUBLIC_API_URL
 LAUNCH_WAIT_SECONDS="${LAUNCH_WAIT_SECONDS:-20}"
 START_METRO="${START_METRO:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
-KEEP_METRO="${KEEP_METRO:-false}"
+KEEP_METRO="${KEEP_METRO:-true}"
 
 FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.jeygroups\\.manas"
-CRASH_REGEX="FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Could not connect to development server"
+CRASH_REGEX="ANR in $APP_ID|failed to complete startup|FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Exception in native call|Could not connect to development server"
 
 METRO_PID=""
 
@@ -94,18 +94,58 @@ adb_cmd() {
   adb -s "$DEVICE_ID" "$@"
 }
 
+configure_debug_server_host() {
+  local prefs_xml="$DIST_DIR/android-debug-host.xml"
+  local device_xml="/data/local/tmp/$APP_ID-debug-host.xml"
+
+  cat > "$prefs_xml" <<EOF
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<map>
+    <string name="debug_http_host">localhost:$METRO_PORT</string>
+</map>
+EOF
+
+  if adb_cmd push "$prefs_xml" "$device_xml" >/dev/null &&
+    adb_cmd shell chmod 644 "$device_xml" >/dev/null &&
+    adb_cmd shell run-as "$APP_ID" mkdir -p shared_prefs >/dev/null 2>&1 &&
+    adb_cmd shell run-as "$APP_ID" cp "$device_xml" "shared_prefs/${APP_ID}_preferences.xml" >/dev/null 2>&1; then
+    echo "Configured Expo debug host localhost:$METRO_PORT for $APP_ID."
+  else
+    echo "WARNING: Could not configure Expo debug host. Dev builds may look for Metro on the emulator default host." >&2
+  fi
+
+  adb_cmd shell rm -f "$device_xml" >/dev/null 2>&1 || true
+  rm -f "$prefs_xml"
+}
+
 metro_is_running() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fsS "http://127.0.0.1:$METRO_PORT/status" 2>/dev/null | grep -q "packager-status:running"
-    return $?
+    local host
+    for host in "127.0.0.1" "[::1]"; do
+      if curl -fsS "http://$host:$METRO_PORT/status" 2>/dev/null | grep -q "packager-status:running"; then
+        return 0
+      fi
+    done
+    return 1
   fi
 
   node - "$METRO_PORT" <<'NODE'
 const port = process.argv[2];
-fetch(`http://127.0.0.1:${port}/status`)
-  .then((response) => response.text())
-  .then((text) => process.exit(text.includes('packager-status:running') ? 0 : 1))
-  .catch(() => process.exit(1));
+async function main() {
+  for (const host of ['127.0.0.1', '[::1]']) {
+    try {
+      const response = await fetch(`http://${host}:${port}/status`);
+      const text = await response.text();
+      if (text.includes('packager-status:running')) {
+        process.exit(0);
+      }
+    } catch {
+      // Try the next loopback address.
+    }
+  }
+  process.exit(1);
+}
+main();
 NODE
 }
 
@@ -134,16 +174,15 @@ start_metro_if_needed() {
     echo "Starting Expo Metro on port $METRO_PORT."
     : > "$METRO_LOG_PATH"
     if [[ "$KEEP_METRO" == "true" ]]; then
-      (
-        cd "$MOBILE_DIR"
-        nohup npx expo start --port "$METRO_PORT" > "$METRO_LOG_PATH" 2>&1 < /dev/null &
-        echo "$!" > "$DIST_DIR/android-launch-metro.pid"
-      )
-      METRO_PID="$(cat "$DIST_DIR/android-launch-metro.pid")"
+      MOBILE_DIR="$MOBILE_DIR" METRO_PORT="$METRO_PORT" \
+        nohup bash -lc 'cd "$MOBILE_DIR" && tail -f /dev/null | npx expo start --dev-client --port "$METRO_PORT"' \
+        > "$METRO_LOG_PATH" 2>&1 < /dev/null &
+      METRO_PID="$!"
+      echo "$METRO_PID" > "$DIST_DIR/android-launch-metro.pid"
     else
       (
         cd "$MOBILE_DIR"
-        CI=1 npx expo start --port "$METRO_PORT"
+        tail -f /dev/null | npx expo start --dev-client --port "$METRO_PORT"
       ) > "$METRO_LOG_PATH" 2>&1 &
       METRO_PID="$!"
     fi
@@ -198,18 +237,23 @@ start_metro_if_needed
 echo "Installing debug APK."
 adb_cmd install -r "$APK_PATH"
 
+configure_debug_server_host
+
 echo "Clearing logcat."
 adb_cmd logcat -c || true
 
 echo "Launching $APP_ID."
 adb_cmd shell am force-stop "$APP_ID" || true
-if ! adb_cmd shell am start -W \
+START_OUTPUT=""
+if ! START_OUTPUT="$(adb_cmd shell am start -W \
   -n "$APP_ID/.MainActivity" \
   -a android.intent.action.MAIN \
-  -c android.intent.category.LAUNCHER; then
+  -c android.intent.category.LAUNCHER 2>&1)"; then
+  printf '%s\n' "$START_OUTPUT" >&2
   echo "ERROR: Failed to start $APP_ID/.MainActivity" >&2
   exit 1
 fi
+printf '%s\n' "$START_OUTPUT"
 
 echo "Waiting ${LAUNCH_WAIT_SECONDS}s for startup logs."
 sleep "$LAUNCH_WAIT_SECONDS"
@@ -229,6 +273,22 @@ EOF
   exit 1
 fi
 
+if grep -iq "Status: timeout" <<<"$START_OUTPUT" && ! grep -q 'ReactNativeJS.*Running "main"' "$LOG_PATH"; then
+  cat <<EOF >&2
+ERROR: Android reported a launch timeout and React did not finish starting.
+
+am start output:
+$START_OUTPUT
+
+Full log:
+$LOG_PATH
+
+Filtered log:
+$FILTERED_LOG_PATH
+EOF
+  exit 1
+fi
+
 if grep -iE "$CRASH_REGEX" "$LOG_PATH" > "$DIST_DIR/android-launch-fatal.txt"; then
   cat <<EOF >&2
 ERROR: Fatal Android/React Native startup log found.
@@ -241,6 +301,9 @@ $LOG_PATH
 
 Filtered log:
 $FILTERED_LOG_PATH
+
+Metro:
+$(if [[ "$KEEP_METRO" == "true" && -n "$METRO_PID" ]]; then echo "kept running on port $METRO_PORT (pid $METRO_PID)"; else echo "$METRO_LOG_PATH"; fi)
 EOF
   exit 1
 fi

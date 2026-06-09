@@ -10,6 +10,10 @@
     "android": {
       "package": "com.jeygroups.manas",
       "versionCode": 1,
+      "permissions": [
+        "READ_MEDIA_VIDEO",
+        "READ_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#FAF6EF"
@@ -48,7 +52,20 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MANAS needs access to your videos so coaches and admins can upload library content.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-document-picker",
+      [
+        "expo-video",
+        {
+          "supportsPictureInPicture": true
+        }
+      ],
       "expo-audio"
     ],
     "experiments": {

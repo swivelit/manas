@@ -11,8 +11,11 @@ import { Role, VideoType } from '@prisma/client';
 const router = Router();
 const AUDIO_UPLOAD_MAX_DURATION_MS = 60_000;
 const AUDIO_UPLOAD_MAX_BYTES = 6 * 1024 * 1024;
+const VIDEO_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 const AUDIO_UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'toy-audio');
+const VIDEO_UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'videos');
 const TOY_AUDIO_CLOUDINARY_FOLDER = 'manas/toy-audio';
+const VIDEO_CLOUDINARY_FOLDER = 'manas/videos';
 const AUDIO_EXTENSION_BY_MIME: Record<string, string> = {
   'audio/aac': 'aac',
   'audio/m4a': 'm4a',
@@ -23,8 +26,25 @@ const AUDIO_EXTENSION_BY_MIME: Record<string, string> = {
   'audio/webm': 'webm',
   'audio/3gpp': '3gp',
 };
+const VIDEO_EXTENSION_BY_MIME: Record<string, string> = {
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/x-m4v': 'm4v',
+  'video/webm': 'webm',
+  'video/x-matroska': 'mkv',
+  'video/3gpp': '3gp',
+  'video/3gpp2': '3g2',
+  'video/avi': 'avi',
+  'video/msvideo': 'avi',
+  'video/x-msvideo': 'avi',
+  'video/x-ms-wmv': 'wmv',
+  'video/mpeg': 'mpeg',
+  'video/ogg': 'ogv',
+};
 let warnedAboutLocalToyAudioFallback = false;
+let warnedAboutLocalVideoFallback = false;
 let loggedCloudinaryToyAudioStorage = false;
+let loggedCloudinaryVideoStorage = false;
 
 const progressSchema = z.object({
   progressSec: z.number().int().min(0),
@@ -35,6 +55,12 @@ const audioUploadSchema = z.object({
   audioBase64: z.string().min(1),
   mimeType: z.enum(['audio/aac', 'audio/m4a', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/3gpp']),
   durationMs: z.number().int().positive().max(AUDIO_UPLOAD_MAX_DURATION_MS),
+});
+
+const videoUploadSchema = z.object({
+  videoBase64: z.string().min(1),
+  mimeType: z.string().trim().min(1),
+  fileName: z.string().trim().max(255).optional(),
 });
 
 function serializeVideoWithLikes(video: Record<string, any>) {
@@ -78,6 +104,31 @@ function logCloudinaryToyAudioStorage() {
   console.info('Cloudinary is configured; toy audio uploads will be stored in Cloudinary.');
 }
 
+function warnAboutLocalVideoFallback() {
+  if (warnedAboutLocalVideoFallback) return;
+  warnedAboutLocalVideoFallback = true;
+  console.warn(
+    'Cloudinary is not configured; video uploads will be stored on local disk under uploads/videos. '
+    + 'This is for local development only and is not durable on Render.',
+  );
+}
+
+function logCloudinaryVideoStorage() {
+  if (loggedCloudinaryVideoStorage) return;
+  loggedCloudinaryVideoStorage = true;
+  console.info('Cloudinary is configured; video uploads will be stored in Cloudinary.');
+}
+
+function extractBase64Payload(payload: string) {
+  const trimmed = payload.trim();
+  const dataUriMatch = trimmed.match(/^data:([^;]+);base64,(.*)$/is);
+  if (!dataUriMatch) return { base64: trimmed.replace(/\s/g, ''), mimeType: null };
+  return {
+    base64: dataUriMatch[2].replace(/\s/g, ''),
+    mimeType: dataUriMatch[1].toLowerCase(),
+  };
+}
+
 async function uploadToyAudioToCloudinary(bytes: Buffer, mimeType: string) {
   configureCloudinary();
   logCloudinaryToyAudioStorage();
@@ -103,6 +154,40 @@ async function uploadToyAudioToCloudinary(bytes: Buffer, mimeType: string) {
   return result.secure_url;
 }
 
+async function uploadVideoToCloudinary(bytes: Buffer, mimeType: string) {
+  configureCloudinary();
+  logCloudinaryVideoStorage();
+  const dataUri = `data:${mimeType};base64,${bytes.toString('base64')}`;
+  const options: UploadApiOptions = {
+    folder: VIDEO_CLOUDINARY_FOLDER,
+    resource_type: 'video',
+    type: 'upload',
+    use_filename: false,
+    unique_filename: true,
+    overwrite: false,
+  };
+  let result;
+  try {
+    result = await cloudinary.uploader.upload(dataUri, options);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Cloudinary video upload failed: ${message}`);
+  }
+  if (!result.secure_url) {
+    throw new Error('Cloudinary upload did not return a secure URL.');
+  }
+  const thumbnailUrl = result.public_id
+    ? cloudinary.url(result.public_id, {
+      resource_type: 'video',
+      type: 'upload',
+      secure: true,
+      format: 'jpg',
+      transformation: [{ start_offset: '0', width: 640, crop: 'scale', quality: 'auto' }],
+    })
+    : null;
+  return { url: result.secure_url, thumbnailUrl };
+}
+
 async function saveToyAudioLocally(req: Request, bytes: Buffer, mimeType: string) {
   warnAboutLocalToyAudioFallback();
   await fs.mkdir(AUDIO_UPLOAD_DIR, { recursive: true });
@@ -113,6 +198,18 @@ async function saveToyAudioLocally(req: Request, bytes: Buffer, mimeType: string
 
   const publicPath = `/uploads/toy-audio/${fileName}`;
   return `${req.protocol}://${req.get('host')}${publicPath}`;
+}
+
+async function saveVideoLocally(req: Request, bytes: Buffer, mimeType: string) {
+  warnAboutLocalVideoFallback();
+  await fs.mkdir(VIDEO_UPLOAD_DIR, { recursive: true });
+  const ext = VIDEO_EXTENSION_BY_MIME[mimeType] ?? 'mp4';
+  const fileName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const filePath = path.join(VIDEO_UPLOAD_DIR, fileName);
+  await fs.writeFile(filePath, bytes);
+
+  const publicPath = `/uploads/videos/${fileName}`;
+  return { url: `${req.protocol}://${req.get('host')}${publicPath}`, thumbnailUrl: null };
 }
 
 router.get('/', optionalAuth, async (req: Request, res: Response) => {
@@ -179,6 +276,56 @@ router.post('/toy-audio', requireAuth, async (req: Request, res: Response, next:
       ? await uploadToyAudioToCloudinary(bytes, parsed.data.mimeType)
       : await saveToyAudioLocally(req, bytes, parsed.data.mimeType);
     res.status(201).json({ url, durationMs: parsed.data.durationMs, sizeBytes: bytes.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/upload', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.user!.role !== Role.COACH && req.user!.role !== Role.ADMIN) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    const parsed = videoUploadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Video payload and MIME type are required.' });
+      return;
+    }
+
+    const mimeType = parsed.data.mimeType.toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(VIDEO_EXTENSION_BY_MIME, mimeType)) {
+      res.status(400).json({
+        error: 'Unsupported video type. Upload an MP4, MOV, M4V, WEBM, MKV, 3GP, AVI, WMV, MPEG, or OGV video file.',
+      });
+      return;
+    }
+
+    const payload = extractBase64Payload(parsed.data.videoBase64);
+    if (payload.mimeType && payload.mimeType !== mimeType) {
+      res.status(400).json({ error: 'Video payload MIME type does not match the provided MIME type.' });
+      return;
+    }
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(payload.base64)) {
+      res.status(400).json({ error: 'Invalid video payload.' });
+      return;
+    }
+
+    const bytes = Buffer.from(payload.base64, 'base64');
+    if (bytes.length === 0) {
+      res.status(400).json({ error: 'Video payload is empty.' });
+      return;
+    }
+    if (bytes.length > VIDEO_UPLOAD_MAX_BYTES) {
+      res.status(413).json({ error: 'Video file is too large. Uploads are limited to about 100 MB.' });
+      return;
+    }
+
+    const upload = hasCloudinaryConfig()
+      ? await uploadVideoToCloudinary(bytes, mimeType)
+      : await saveVideoLocally(req, bytes, mimeType);
+    res.status(201).json({ ...upload, sizeBytes: bytes.length });
   } catch (err) {
     next(err);
   }

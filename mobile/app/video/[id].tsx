@@ -68,6 +68,7 @@ function PlayableVideo({ video, videoId }: { video: VideoDetails; videoId: strin
       style={styles.player}
       nativeControls
       contentFit="contain"
+      allowsPictureInPicture={false}
       buttonOptions={{ showSubtitles: video.subtitleUrl ? undefined : false }}
     />
   );

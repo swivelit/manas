@@ -39,7 +39,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan('dev'));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '140mb' }));
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Health check

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as FileSystem from 'expo-file-system/legacy';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import { VIDEO_UPLOAD_MAX_BYTES } from './videoUpload';
 
 // ---- Categories & Topics ----
 export function useCategories() {
@@ -196,6 +197,40 @@ export function useUploadToyAudio() {
         encoding: FileSystem.EncodingType.Base64,
       });
       return api.post('/videos/toy-audio', { audioBase64, durationMs, mimeType }).then(r => r.data as ToyAudioUploadResult);
+    },
+  });
+}
+
+export type VideoUploadInput = {
+  uri: string;
+  mimeType: string;
+  sizeBytes?: number;
+  fileName?: string;
+};
+
+export type VideoUploadResult = {
+  url: string;
+  thumbnailUrl: string | null;
+  sizeBytes: number;
+};
+
+export function useUploadVideo() {
+  const token = useAuthStore(s => s.token);
+  return useMutation({
+    mutationFn: async ({ uri, mimeType, sizeBytes, fileName }: VideoUploadInput) => {
+      if (!token) throw new Error('Sign in required to upload video.');
+      if (sizeBytes && sizeBytes > VIDEO_UPLOAD_MAX_BYTES) {
+        throw new Error('Choose a video smaller than 100 MB.');
+      }
+      const info = await FileSystem.getInfoAsync(uri);
+      if (!info.exists) throw new Error('Could not read the selected video file.');
+      if (info.size && info.size > VIDEO_UPLOAD_MAX_BYTES) {
+        throw new Error('Choose a video smaller than 100 MB.');
+      }
+      const videoBase64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return api.post('/videos/upload', { videoBase64, mimeType, fileName }).then(r => r.data as VideoUploadResult);
     },
   });
 }
