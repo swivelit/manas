@@ -92,7 +92,7 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 
-Email OTP is the only supported sign-in method. Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email delivery; local development can use the dry-run OTP response when configured.
+Email OTP is the primary production sign-in method. Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email delivery; local development can use the dry-run OTP response when configured. Seeded demo/test accounts can also use password login through `POST /auth/login` and the mobile app's Password mode.
 
 ### Free tier notes
 

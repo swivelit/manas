@@ -2,6 +2,10 @@
 
 ## Test Credentials
 
+The mobile app supports both email OTP login and password login. Use **Email code**
+for the normal OTP flow. Use **Password** mode when signing in with these seeded
+demo/test accounts:
+
 - Admin: `admin@manas.app` / `adminpass123`
 - User: `sarah@example.com` / `password123`
 - Coaches: `mira@manas.app` | `arjun@manas.app` | `lila@manas.app` / `coachpass123`
@@ -236,7 +240,9 @@ Permissions
 ● Notifi cation management
 5. Authentication System
 Login Method
-● Email OTP
+● Email OTP as the primary sign-in method
+● Password login for seeded QA/demo accounts through `/auth/login` and the
+  mobile app's Password mode
 11
 6. Session Types
 Type

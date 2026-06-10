@@ -80,6 +80,7 @@ async function main() {
     where: { email: 'sarah@example.com' },
     update: {
       name: 'Sarah Mathew',
+      passwordHash: sarahHash,
       role: Role.USER,
       timezone: 'Asia/Kolkata',
     },
@@ -97,8 +98,8 @@ async function main() {
   const adminPassword = await bcrypt.hash('adminpass123', 10);
   await prisma.user.upsert({
     where: { email: 'admin@manas.app' },
-    update: { name: 'MANAS Admin', role: Role.ADMIN },
-    create: { email: 'admin@manas.app', name: 'MANAS Admin', passwordHash: adminPassword, role: Role.ADMIN },
+    update: { name: 'MANAS Admin', passwordHash: adminPassword, role: Role.ADMIN, isActive: true },
+    create: { email: 'admin@manas.app', name: 'MANAS Admin', passwordHash: adminPassword, role: Role.ADMIN, isActive: true },
   });
 
   // Coach users
@@ -108,6 +109,7 @@ async function main() {
     where: { email: 'mira@manas.app' },
     update: {
       name: 'Dr. Mira Sundaram',
+      passwordHash: coachPassword,
       role: Role.COACH,
     },
     create: {
@@ -122,6 +124,7 @@ async function main() {
     where: { email: 'arjun@manas.app' },
     update: {
       name: 'Dr. Arjun Iyer',
+      passwordHash: coachPassword,
       role: Role.COACH,
     },
     create: {
@@ -136,6 +139,7 @@ async function main() {
     where: { email: 'lila@manas.app' },
     update: {
       name: 'Dr. Lila Roy',
+      passwordHash: coachPassword,
       role: Role.COACH,
     },
     create: {
