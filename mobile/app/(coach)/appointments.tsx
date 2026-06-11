@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { format } from 'date-fns';
+import { differenceInMinutes, format } from 'date-fns';
 import { useCoachAppointments, useUpdateCoachSession, useMe } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
@@ -20,14 +20,31 @@ type Appt = {
   topic?: { name?: string | null } | null;
 };
 
-function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => void; busy: boolean }) {
+const JOIN_WINDOW_MIN = 10;
+const JOIN_GRACE_MIN = 30;
+
+function AppointmentCard({ appt, onSet, busy, now }: { appt: Appt; onSet: (status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => void; busy: boolean; now: Date }) {
   const dialog = useDialog();
   const date = new Date(appt.scheduledAt);
   const safe = Number.isNaN(date.getTime()) ? new Date() : date;
   const client = appt.user?.name ?? 'Client';
   const topic = appt.topic?.name ?? 'Session';
+  const isCallSession = appt.type === 'VIDEO' || appt.type === 'AUDIO';
+  const minsUntil = differenceInMinutes(safe, now);
+  const canJoinCall = appt.status === 'CONFIRMED' && isCallSession && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -JOIN_GRACE_MIN;
+  const actionLabel = appt.type === 'CHAT'
+    ? 'Open chat'
+    : canJoinCall
+      ? 'Join'
+      : minsUntil < -JOIN_GRACE_MIN
+        ? 'Join ended'
+        : `Starts in ${Math.max(minsUntil, 0)} min`;
 
   async function join() {
+    if (!canJoinCall) {
+      void dialog.alert('Session not ready', 'The meeting opens 10 minutes before start and remains available for 30 minutes after.');
+      return;
+    }
     if (!appt.meetingUrl) { void dialog.alert('No meeting link', 'This session has no meeting link yet.'); return; }
     const url = appt.type === 'AUDIO' ? `${appt.meetingUrl}#config.startWithVideoMuted=true` : appt.meetingUrl;
     const can = await Linking.canOpenURL(url);
@@ -68,8 +85,13 @@ function AppointmentCard({ appt, onSet, busy }: { appt: Appt; onSet: (status: 'C
         </View>
       ) : appt.status === 'CONFIRMED' ? (
         <View style={styles.actions}>
-          <TouchableOpacity style={[styles.btn, styles.btnPink]} onPress={appt.type === 'CHAT' ? openChat : join} activeOpacity={0.85}>
-            <Text style={styles.btnPrimaryText}>{appt.type === 'CHAT' ? 'Open chat' : 'Join'}</Text>
+          <TouchableOpacity
+            style={[styles.btn, styles.btnPink, isCallSession && !canJoinCall && styles.btnDisabled]}
+            onPress={appt.type === 'CHAT' ? openChat : join}
+            disabled={isCallSession && !canJoinCall}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnPrimaryText}>{actionLabel}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnGhost]} onPress={() => onSet('COMPLETED')} activeOpacity={0.85}>
             <Text style={styles.btnGhostText}>Mark complete</Text>
@@ -93,8 +115,14 @@ export default function CoachAppointments() {
   const update = useUpdateCoachSession();
   const clearAuth = useAuthStore(s => s.clearAuth);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   const appts: Appt[] = Array.isArray(data) ? data : [];
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function setStatus(id: string, status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') {
     setBusyId(id);
@@ -143,7 +171,7 @@ export default function CoachAppointments() {
           keyExtractor={(a) => a.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <AppointmentCard appt={item} busy={busyId === item.id} onSet={(s) => setStatus(item.id, s)} />
+            <AppointmentCard appt={item} busy={busyId === item.id} now={now} onSet={(s) => setStatus(item.id, s)} />
           )}
         />
       )}
@@ -173,6 +201,7 @@ const styles = StyleSheet.create({
   btnPrimary: { backgroundColor: colors.ink },
   btnPink: { backgroundColor: colors.pink },
   btnPrimaryText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.cream },
+  btnDisabled: { opacity: 0.48 },
   btnGhost: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.line },
   btnGhostText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.ink },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },

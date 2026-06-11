@@ -119,6 +119,7 @@ export default function SessionDetail() {
 
   const [rescheduling, setRescheduling] = useState(false);
   const [newDate, setNewDate] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const { data: availability } = useCoachAvailability(session?.coachId ?? '', newDate ?? '');
   const { data: me } = useMe();
   const userTz = me?.timezone ?? 'Asia/Kolkata';
@@ -129,6 +130,11 @@ export default function SessionDetail() {
       label: formatInTimeZone(new Date(s.startsAt), userTz, 'HH:mm'),
       available: true,
     }));
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (isLoading) {
     return <SafeAreaView style={styles.screen}><ActivityIndicator color={colors.blue} style={{ marginTop: 80 }} /></SafeAreaView>;
@@ -149,7 +155,7 @@ export default function SessionDetail() {
 
   const at = new Date(session.scheduledAt);
   const safeAt = Number.isNaN(at.getTime()) ? new Date() : at;
-  const minsUntil = differenceInMinutes(safeAt, new Date());
+  const minsUntil = differenceInMinutes(safeAt, now);
   const canJoin = session.status === 'CONFIRMED' && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -30;
 
   async function handleJoin() {
@@ -157,7 +163,13 @@ export default function SessionDetail() {
     const url = session.type === 'AUDIO'
       ? `${session.meetingUrl}#config.startWithVideoMuted=true`
       : session.meetingUrl;
-    void Linking.openURL(url);
+    try {
+      const can = await Linking.canOpenURL(url);
+      if (!can) { void dialog.alert('Cannot open link', url); return; }
+      void Linking.openURL(url);
+    } catch {
+      void dialog.alert('Could not open meeting', 'Please try again or install a browser/Jitsi Meet.');
+    }
   }
 
   async function handlePickSlot(slot: { startsAt: string }) {

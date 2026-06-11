@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { format } from 'date-fns';
+import { differenceInMinutes, format } from 'date-fns';
 import { useSessions } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { MoodCheckIn } from '../../components/MoodCheckIn';
@@ -13,16 +13,41 @@ import { Icon } from '../../components/Icon';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
+const PRE_START_JOIN_WINDOW_MIN = 10;
+const POST_START_JOIN_WINDOW_MIN = 30;
+
 export default function HomeScreen() {
   const user = useAuthStore(s => s.user);
   const { data: sessions } = useSessions();
   const sessionList = Array.isArray(sessions) ? sessions : [];
 
-  const upcoming = sessionList.find((s: any) => s.status === 'CONFIRMED' || s.status === 'PENDING');
+  const now = new Date();
+  const upcoming = sessionList.find((s: any) => {
+    if (s.status !== 'CONFIRMED' && s.status !== 'PENDING') return false;
+    const scheduledAt = new Date(s.scheduledAt);
+    if (Number.isNaN(scheduledAt.getTime())) return false;
+    return differenceInMinutes(scheduledAt, now) >= -POST_START_JOIN_WINDOW_MIN;
+  });
   const upcomingDate = upcoming ? new Date(upcoming.scheduledAt) : null;
   const upcomingTime = upcomingDate && !Number.isNaN(upcomingDate.getTime())
     ? format(upcomingDate, 'h:mm a')
     : 'time pending';
+  const upcomingMinsUntil = upcomingDate && !Number.isNaN(upcomingDate.getTime())
+    ? differenceInMinutes(upcomingDate, now)
+    : Number.POSITIVE_INFINITY;
+  const upcomingIsCall = upcoming?.type === 'VIDEO' || upcoming?.type === 'AUDIO';
+  const upcomingCanJoin = Boolean(
+    upcoming &&
+    upcomingIsCall &&
+    upcoming.status === 'CONFIRMED' &&
+    upcomingMinsUntil <= PRE_START_JOIN_WINDOW_MIN &&
+    upcomingMinsUntil >= -POST_START_JOIN_WINDOW_MIN
+  );
+  const upcomingActionLabel = upcoming?.type === 'CHAT'
+    ? 'Chat'
+    : upcomingCanJoin
+      ? 'Join'
+      : 'View';
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning,';
@@ -91,18 +116,20 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.upcomingCard}
             activeOpacity={0.85}
-            onPress={() => router.push('/(tabs)/sessions')}
+            onPress={() => router.push(`/session/${upcoming.id}`)}
           >
             <View>
-              <Text style={styles.upcomingLabel}>UP NEXT · TOMORROW</Text>
+              <Text style={styles.upcomingLabel}>
+                UP NEXT · {upcomingDate && !Number.isNaN(upcomingDate.getTime()) ? format(upcomingDate, 'EEE, d MMM').toUpperCase() : 'DATE PENDING'}
+              </Text>
               <Text style={styles.upcomingText}>
                 Demo with{' '}
                 <Text style={styles.upcomingCoach}>{upcoming.coach?.user?.name?.replace('Dr. ', 'Dr. ') ?? 'your MANAS coach'}</Text>
                 {' '}· {upcomingTime}
               </Text>
             </View>
-            <TouchableOpacity style={styles.joinBtn}>
-              <Text style={styles.joinBtnText}>Join</Text>
+            <TouchableOpacity style={styles.joinBtn} onPress={() => router.push(`/session/${upcoming.id}`)}>
+              <Text style={styles.joinBtnText}>{upcomingActionLabel}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         )}

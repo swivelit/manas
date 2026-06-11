@@ -33,7 +33,9 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
   const minsUntil = differenceInMinutes(safeDate, now);
   const topicName = session.topic?.name ?? 'Session';
   const coachName = session.coach?.user?.name ?? 'MANAS coach';
+  const isCallSession = session.type === 'VIDEO' || session.type === 'AUDIO';
   const joinable =
+    isCallSession &&
     session.status === 'CONFIRMED' &&
     minsUntil <= PRE_START_JOIN_WINDOW_MIN &&
     minsUntil >= -POST_START_JOIN_WINDOW_MIN;
@@ -73,7 +75,11 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
       </View>
 
       {!completed && !cancelled && (
-        joinable ? (
+        session.type === 'CHAT' ? (
+          <TouchableOpacity onPress={onPress} style={styles.joinBtn} activeOpacity={0.85}>
+            <Text style={styles.joinBtnText}>Chat</Text>
+          </TouchableOpacity>
+        ) : joinable ? (
           <TouchableOpacity onPress={handleJoin} style={styles.joinBtn} activeOpacity={0.85}>
             <Text style={styles.joinBtnText}>Join</Text>
           </TouchableOpacity>
