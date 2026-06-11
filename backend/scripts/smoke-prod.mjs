@@ -1,4 +1,6 @@
 const baseUrl = (process.env.API_URL ?? process.argv[2] ?? '').replace(/\/$/, '');
+const adminEmail = (process.env.ADMIN_EMAIL || 'admin@manas.app').trim().toLowerCase();
+const adminPassword = process.env.ADMIN_PASSWORD || 'adminpass123';
 
 if (!baseUrl) {
   console.error('Usage: API_URL=https://manas-api-dlj7.onrender.com npm run smoke:prod');
@@ -18,6 +20,22 @@ async function getJson(path) {
     throw new Error(`${path} returned ${res.status}: ${text}`);
   }
   return body;
+}
+
+async function postJson(path, payload) {
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let body;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+  return { ok: res.ok, status: res.status, body, text };
 }
 
 function assert(condition, message) {
@@ -46,5 +64,17 @@ assert(coaching.length === 10, `coaching returned ${coaching.length}, expected 1
 const videos = await getJson('/videos');
 assert(Array.isArray(videos), '/videos did not return an array');
 assert(videos.some(video => video && video.isPremium === false), '/videos returned no public videos');
+
+const adminLogin = await postJson('/auth/login', { email: adminEmail, password: adminPassword });
+if (!adminLogin.ok) {
+  throw new Error(
+    `Admin password smoke failed with ${adminLogin.status}. `
+    + 'If ADMIN_EMAIL or ADMIN_PASSWORD changed in Render, open Render Shell and run `npm run db:seed` once. '
+    + `Response: ${adminLogin.text}`
+  );
+}
+
+assert(adminLogin.body?.user?.role === 'ADMIN', `/auth/login returned role ${adminLogin.body?.user?.role}, expected ADMIN`);
+assert(Boolean(adminLogin.body?.token), '/auth/login did not return a token');
 
 console.log(`MANAS production smoke passed for ${baseUrl}`);

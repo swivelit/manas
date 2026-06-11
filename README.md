@@ -10,6 +10,12 @@ demo/test accounts:
 - User: `sarah@example.com` / `password123`
 - Coaches: `mira@manas.app` | `arjun@manas.app` | `lila@manas.app` / `coachpass123`
 
+Admin password login is still database-based through `POST /auth/login`; there is
+no env-based login backdoor. On Render you do not need generic username/password
+environment variables. If you want different seeded admin credentials, set
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and/or `ADMIN_NAME` before running the seed, then
+run `npm run db:seed` once in Render Shell.
+
 ## Local Verification
 
 Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain. The root verification script checks the backend and mobile app together.

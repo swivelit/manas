@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView,
+  Keyboard, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -16,13 +16,33 @@ type LoginMode = 'otp' | 'password';
 
 export default function Login() {
   const dialog = useDialog();
+  const scrollRef = useRef<ScrollView>(null);
   const [mode, setMode] = useState<LoginMode>('otp');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
+  const trimmedEmail = email.trim();
+  const passwordEmailNeedsDomain = mode === 'password' && trimmedEmail.length > 0 && !trimmedEmail.includes('@');
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+      if (mode === 'password') {
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+      }
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [mode]);
 
   function getErrorMessage(err: any, fallback: string) {
     const error = err?.response?.data?.error;
@@ -67,12 +87,16 @@ export default function Login() {
   }
 
   async function handlePasswordLogin() {
-    if (!email.trim()) { void dialog.alert('Enter your email'); return; }
+    if (!trimmedEmail) { void dialog.alert('Enter your email'); return; }
+    if (!trimmedEmail.includes('@')) {
+      void dialog.alert('Use full email', 'Enter the full email address, for example admin@manas.app.');
+      return;
+    }
     if (!password) { void dialog.alert('Enter your password'); return; }
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', {
-        email: email.trim(),
+        email: trimmedEmail,
         password,
       });
       await setAuth(data.token, data.user);
@@ -95,12 +119,33 @@ export default function Login() {
     setOtpSent(false);
     setOtp('');
     setPassword('');
+    setPasswordVisible(false);
+    if (nextMode === 'password') {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }
+
+  function scrollPasswordIntoView() {
+    if (Platform.OS === 'android') {
+      [100, 350, 700].forEach(delay => {
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), delay);
+      });
+    }
   }
 
   return (
     <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        style={styles.keyboard}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
           <TouchableOpacity onPress={() => router.back()} style={styles.back}>
             <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
@@ -149,22 +194,35 @@ export default function Login() {
               <>
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Use the README password"
-                    placeholderTextColor={colors.muted}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textContentType="password"
-                  />
+                  <View style={styles.passwordRow}>
+                    <TextInput
+                      style={[styles.input, styles.passwordInput]}
+                      value={password}
+                      onChangeText={setPassword}
+                      onFocus={scrollPasswordIntoView}
+                      placeholder="Use the README password"
+                      placeholderTextColor={colors.muted}
+                      secureTextEntry={!passwordVisible}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="password"
+                    />
+                    <TouchableOpacity
+                      onPress={() => setPasswordVisible(v => !v)}
+                      style={styles.passwordToggle}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.passwordToggleText}>{passwordVisible ? 'Hide' : 'Show'}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <Text style={styles.modeHint}>
-                  For seeded QA accounts, choose Password mode and enter the README credentials.
+                  Admin: use the full email, for example admin@manas.app.
                 </Text>
+                {passwordEmailNeedsDomain ? (
+                  <Text style={styles.validationText}>Enter the full email address, not just "{trimmedEmail}".</Text>
+                ) : null}
               </>
             ) : otpSent ? (
               <>
@@ -198,6 +256,10 @@ export default function Login() {
           <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.switchRow}>
             <Text style={styles.switchText}>Don't have an account? <Text style={styles.switchLink}>Begin →</Text></Text>
           </TouchableOpacity>
+
+          {Platform.OS === 'android' && keyboardVisible && mode === 'password' ? (
+            <View style={styles.keyboardSpacer} />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -206,7 +268,9 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  scroll: { padding: 24, flexGrow: 1 },
+  keyboard: { flex: 1 },
+  scroll: { padding: 24, paddingBottom: 140, flexGrow: 1 },
+  keyboardSpacer: { height: 220 },
   back: { width: 34, height: 34, borderRadius: 99, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
   backText: { fontSize: 18, color: colors.ink },
   heading: { fontFamily: fontFamilies.fraunces, fontSize: 34, color: colors.ink, letterSpacing: -0.5, lineHeight: 36 },
@@ -231,6 +295,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.ink,
   },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 14 },
+  passwordInput: { flex: 1, borderWidth: 0, backgroundColor: 'transparent', paddingRight: 8 },
+  passwordToggle: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  passwordToggleText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.blue },
+  validationText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, lineHeight: 17, color: colors.pink, marginTop: -8 },
   otpInput: { letterSpacing: 4, textAlign: 'center', fontFamily: fontFamilies.dmSansMedium },
   inlineAction: { alignSelf: 'center', paddingVertical: 2 },
   inlineActionText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.blue },

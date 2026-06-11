@@ -89,10 +89,25 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 | `EMAIL_PASS` | Add manually in Render; backend-only app password |
 | `EMAIL_FROM` | Optional sender display address |
 | `OTP_EXPIRY_MINUTES` | `10` |
+| `ADMIN_EMAIL` | Optional seed-only admin email. Default: `admin@manas.app` |
+| `ADMIN_PASSWORD` | Optional seed-only admin password, minimum 8 chars. Default: `adminpass123` |
+| `ADMIN_NAME` | Optional seed-only admin display name. Default: `MANAS Admin` |
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 
 Email OTP is the primary production sign-in method. Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email delivery; local development can use the dry-run OTP response when configured. Seeded demo/test accounts can also use password login through `POST /auth/login` and the mobile app's Password mode.
+
+Render does not need generic username/password environment variables for login. Password login remains database-based. The optional `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` variables only control what `npm run db:seed` creates or updates for the seeded admin account. After changing `ADMIN_EMAIL` or `ADMIN_PASSWORD` in Render, open Render Shell and run:
+
+```bash
+npm run db:seed
+```
+
+Run the production smoke test with matching admin seed values if you changed them locally:
+
+```bash
+API_URL=https://manas-api-dlj7.onrender.com ADMIN_EMAIL=admin@manas.app ADMIN_PASSWORD=adminpass123 npm run smoke:prod
+```
 
 ### Free tier notes
 
