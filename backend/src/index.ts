@@ -17,6 +17,7 @@ import moodRoutes from './routes/mood';
 import coachRoutes from './routes/coach';
 import adminRoutes from './routes/admin';
 import { startReminderCron } from './lib/reminders';
+import { ensureConfiguredAdmin } from './lib/adminBootstrap';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -90,9 +91,24 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 MANAS API listening on port ${PORT}`);
-  startReminderCron();
-});
+async function startServer() {
+  try {
+    await ensureConfiguredAdmin();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`[admin-bootstrap] failed: ${message}`);
+      process.exit(1);
+    }
+    console.warn(`[admin-bootstrap] skipped in non-production: ${message}`);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`🚀 MANAS API listening on port ${PORT}`);
+    startReminderCron();
+  });
+}
+
+void startServer();
 
 export default app;

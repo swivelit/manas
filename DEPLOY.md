@@ -59,7 +59,7 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
    npm run db:setup
    ```
 
-   The seed is written to be safe to rerun, but do not add it to the Render build command unless you intentionally want every deploy to reconcile seed data. If `/categories` returns `[]`, the mobile app can open but the product will look empty because the production database has not been seeded.
+   The seed is written to be safe to rerun, but do not add it to the Render build command unless you intentionally want every deploy to reconcile seed data. If `/categories` returns `[]`, the mobile app can open but the product will look empty because the production database has not been seeded. The configured admin account is also ensured at backend startup from `ADMIN_EMAIL`/`ADMIN_PASSWORD`, so admin password login does not depend on manually rerunning the seed after credential changes.
 
 5. **Copy the live URL**
    - Your API lives at: `https://manas-api-dlj7.onrender.com`
@@ -89,21 +89,18 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 | `EMAIL_PASS` | Add manually in Render; backend-only app password |
 | `EMAIL_FROM` | Optional sender display address |
 | `OTP_EXPIRY_MINUTES` | `10` |
-| `ADMIN_EMAIL` | Optional seed-only admin email. Default: `admin@manas.app` |
-| `ADMIN_PASSWORD` | Optional seed-only admin password, minimum 8 chars. Default: `adminpass123` |
-| `ADMIN_NAME` | Optional seed-only admin display name. Default: `MANAS Admin` |
+| `ADMIN_EMAIL` | Required in production for startup admin bootstrap; defaults to `admin@manas.app` only outside production. |
+| `ADMIN_PASSWORD` | Required in production for startup admin bootstrap; minimum 8 chars, defaults to `adminpass123` only outside production. |
+| `ADMIN_NAME` | Optional admin display name. Default: `MANAS Admin` |
+| `MEETING_SERVER_URL` | Meeting provider base URL for VIDEO/AUDIO sessions. Default: `https://meet.jit.si` |
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 
 Email OTP is the primary production sign-in method. Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email delivery; local development can use the dry-run OTP response when configured. Seeded demo/test accounts can also use password login through `POST /auth/login` and the mobile app's Password mode.
 
-Render does not need generic username/password environment variables for login. Password login remains database-based. The optional `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` variables only control what `npm run db:seed` creates or updates for the seeded admin account. After changing `ADMIN_EMAIL` or `ADMIN_PASSWORD` in Render, open Render Shell and run:
+Render does not need generic username/password environment variables for login. Password login remains database-based. `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` control the admin account that backend startup creates or updates in the database. After changing `ADMIN_EMAIL` or `ADMIN_PASSWORD` in Render, redeploy or restart `manas-api`; the startup admin bootstrap will hash the new password, set the admin active, and update the database row. You can still run `npm run db:seed` for categories, topics, demo users, videos, and QA coach/user accounts.
 
-```bash
-npm run db:seed
-```
-
-Run the production smoke test with matching admin seed values if you changed them locally:
+Run the production smoke test with matching admin env values if you changed them locally:
 
 ```bash
 API_URL=https://manas-api-dlj7.onrender.com ADMIN_EMAIL=admin@manas.app ADMIN_PASSWORD=adminpass123 npm run smoke:prod

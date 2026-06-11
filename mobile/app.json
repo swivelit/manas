@@ -11,6 +11,19 @@
       "package": "com.jeygroups.manas",
       "versionCode": 1,
       "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "MODIFY_AUDIO_SETTINGS",
+        "WAKE_LOCK",
+        "BLUETOOTH",
+        "BLUETOOTH_CONNECT",
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_CAMERA",
+        "FOREGROUND_SERVICE_MICROPHONE",
         "READ_MEDIA_VIDEO",
         "READ_EXTERNAL_STORAGE"
       ],
@@ -21,7 +34,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.jeygroups.manas"
+      "bundleIdentifier": "com.jeygroups.manas",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MANAS needs camera access for in-app video sessions.",
+        "NSMicrophoneUsageDescription": "MANAS needs microphone access for in-app audio and video sessions."
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

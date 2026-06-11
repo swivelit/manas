@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Linking, TextInput,
+  ActivityIndicator, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -17,10 +17,9 @@ import {
 } from '../../lib/queries';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useDialog } from '../../components/AppDialog';
+import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN, PRE_START_JOIN_WINDOW_MIN } from '../../lib/sessionCall';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
-
-const JOIN_WINDOW_MIN = 10;
 
 type ChatMessage = {
   id: string;
@@ -156,20 +155,18 @@ export default function SessionDetail() {
   const at = new Date(session.scheduledAt);
   const safeAt = Number.isNaN(at.getTime()) ? new Date() : at;
   const minsUntil = differenceInMinutes(safeAt, now);
-  const canJoin = session.status === 'CONFIRMED' && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -30;
+  const isCall = isCallSession(session.type);
+  const canJoin = canJoinSession(session, now);
 
-  async function handleJoin() {
-    if (!session.meetingUrl) { void dialog.alert('No link yet', 'Try refreshing.'); return; }
-    const url = session.type === 'AUDIO'
-      ? `${session.meetingUrl}#config.startWithVideoMuted=true`
-      : session.meetingUrl;
-    try {
-      const can = await Linking.canOpenURL(url);
-      if (!can) { void dialog.alert('Cannot open link', url); return; }
-      void Linking.openURL(url);
-    } catch {
-      void dialog.alert('Could not open meeting', 'Please try again or install a browser/Jitsi Meet.');
+  function handleJoin() {
+    if (!canJoin) {
+      void dialog.alert(
+        'Session not ready',
+        `The meeting opens ${PRE_START_JOIN_WINDOW_MIN} minutes before start and remains available for ${POST_START_JOIN_WINDOW_MIN} minutes after.`
+      );
+      return;
     }
+    router.push(`/call/${sessionId}` as any);
   }
 
   async function handlePickSlot(slot: { startsAt: string }) {
@@ -233,7 +230,7 @@ export default function SessionDetail() {
           <>
             {session.type === 'CHAT' ? (
               <ChatPanel sessionId={sessionId} currentUserId={me?.id} />
-            ) : (
+            ) : isCall ? (
               <>
                 <TouchableOpacity
                   onPress={handleJoin}
@@ -242,12 +239,16 @@ export default function SessionDetail() {
                   activeOpacity={0.85}
                 >
                   <Text style={styles.btnPrimaryText}>
-                    {canJoin ? 'Join session →' : `Starts in ${Math.max(minsUntil, 0)} min`}
+                    {canJoin
+                      ? 'Join session →'
+                      : minsUntil < -POST_START_JOIN_WINDOW_MIN
+                        ? 'Join window closed'
+                        : `Starts in ${Math.max(minsUntil, 0)} min`}
                   </Text>
                 </TouchableOpacity>
-                <Text style={styles.callHint}>Calls open in your browser or the Jitsi Meet app.</Text>
+                <Text style={styles.callHint}>Calls open securely inside MANAS.</Text>
               </>
-            )}
+            ) : null}
 
             <TouchableOpacity
               onPress={() => setRescheduling(v => !v)}

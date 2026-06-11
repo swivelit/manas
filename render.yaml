@@ -32,6 +32,14 @@ services:
         value: MANAS <no-reply@manas.app>
       - key: OTP_EXPIRY_MINUTES
         value: 10
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: MANAS Admin
+      - key: MEETING_SERVER_URL
+        value: https://meet.jit.si
 
 databases:
   - name: manas-db

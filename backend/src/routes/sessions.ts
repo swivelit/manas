@@ -25,10 +25,9 @@ const messageSchema = z.object({
 });
 
 function meetingUrlFor(sessionId: string, type: SessionType): string | null {
-  // For AUDIO, the mobile client appends #config.startWithVideoMuted=true before opening.
-  const base = `https://meet.jit.si/manas-${sessionId}`;
   if (type === SessionType.CHAT) return null;
-  return base;
+  const serverUrl = (process.env.MEETING_SERVER_URL || 'https://meet.jit.si').trim().replace(/\/+$/, '');
+  return `${serverUrl}/manas-${sessionId}`;
 }
 
 function canAccessSession(session: { userId: string; coach: { userId: string } }, userId: string): boolean {

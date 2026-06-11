@@ -69,7 +69,7 @@ const adminLogin = await postJson('/auth/login', { email: adminEmail, password: 
 if (!adminLogin.ok) {
   throw new Error(
     `Admin password smoke failed with ${adminLogin.status}. `
-    + 'If ADMIN_EMAIL or ADMIN_PASSWORD changed in Render, open Render Shell and run `npm run db:seed` once. '
+    + 'Check Render ADMIN_EMAIL/ADMIN_PASSWORD and restart or redeploy the backend so startup admin bootstrap can ensure the database user. '
     + `Response: ${adminLogin.text}`
   );
 }

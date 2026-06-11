@@ -10,11 +10,9 @@ import { useAuthStore } from '../../lib/auth';
 import { MoodCheckIn } from '../../components/MoodCheckIn';
 import { SessionCard } from '../../components/SessionCard';
 import { Icon } from '../../components/Icon';
+import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN } from '../../lib/sessionCall';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
-
-const PRE_START_JOIN_WINDOW_MIN = 10;
-const POST_START_JOIN_WINDOW_MIN = 30;
 
 export default function HomeScreen() {
   const user = useAuthStore(s => s.user);
@@ -35,14 +33,8 @@ export default function HomeScreen() {
   const upcomingMinsUntil = upcomingDate && !Number.isNaN(upcomingDate.getTime())
     ? differenceInMinutes(upcomingDate, now)
     : Number.POSITIVE_INFINITY;
-  const upcomingIsCall = upcoming?.type === 'VIDEO' || upcoming?.type === 'AUDIO';
-  const upcomingCanJoin = Boolean(
-    upcoming &&
-    upcomingIsCall &&
-    upcoming.status === 'CONFIRMED' &&
-    upcomingMinsUntil <= PRE_START_JOIN_WINDOW_MIN &&
-    upcomingMinsUntil >= -POST_START_JOIN_WINDOW_MIN
-  );
+  const upcomingIsCall = isCallSession(upcoming?.type);
+  const upcomingCanJoin = Boolean(upcoming && canJoinSession(upcoming, now));
   const upcomingActionLabel = upcoming?.type === 'CHAT'
     ? 'Chat'
     : upcomingCanJoin
@@ -128,7 +120,10 @@ export default function HomeScreen() {
                 {' '}· {upcomingTime}
               </Text>
             </View>
-            <TouchableOpacity style={styles.joinBtn} onPress={() => router.push(`/session/${upcoming.id}`)}>
+            <TouchableOpacity
+              style={styles.joinBtn}
+              onPress={() => router.push((upcomingCanJoin && upcomingIsCall ? `/call/${upcoming.id}` : `/session/${upcoming.id}`) as any)}
+            >
               <Text style={styles.joinBtnText}>{upcomingActionLabel}</Text>
             </TouchableOpacity>
           </TouchableOpacity>

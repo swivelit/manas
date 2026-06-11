@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { differenceInMinutes, format } from 'date-fns';
@@ -7,6 +7,7 @@ import { useCoachAppointments, useUpdateCoachSession, useMe } from '../../lib/qu
 import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
 import { useDialog } from '../../components/AppDialog';
+import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN, PRE_START_JOIN_WINDOW_MIN } from '../../lib/sessionCall';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -20,36 +21,29 @@ type Appt = {
   topic?: { name?: string | null } | null;
 };
 
-const JOIN_WINDOW_MIN = 10;
-const JOIN_GRACE_MIN = 30;
-
 function AppointmentCard({ appt, onSet, busy, now }: { appt: Appt; onSet: (status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => void; busy: boolean; now: Date }) {
   const dialog = useDialog();
   const date = new Date(appt.scheduledAt);
   const safe = Number.isNaN(date.getTime()) ? new Date() : date;
   const client = appt.user?.name ?? 'Client';
   const topic = appt.topic?.name ?? 'Session';
-  const isCallSession = appt.type === 'VIDEO' || appt.type === 'AUDIO';
+  const isCall = isCallSession(appt.type);
   const minsUntil = differenceInMinutes(safe, now);
-  const canJoinCall = appt.status === 'CONFIRMED' && isCallSession && minsUntil <= JOIN_WINDOW_MIN && minsUntil >= -JOIN_GRACE_MIN;
+  const canJoinCall = canJoinSession(appt, now);
   const actionLabel = appt.type === 'CHAT'
     ? 'Open chat'
     : canJoinCall
       ? 'Join'
-      : minsUntil < -JOIN_GRACE_MIN
+      : minsUntil < -POST_START_JOIN_WINDOW_MIN
         ? 'Join ended'
         : `Starts in ${Math.max(minsUntil, 0)} min`;
 
   async function join() {
     if (!canJoinCall) {
-      void dialog.alert('Session not ready', 'The meeting opens 10 minutes before start and remains available for 30 minutes after.');
+      void dialog.alert('Session not ready', `The meeting opens ${PRE_START_JOIN_WINDOW_MIN} minutes before start and remains available for ${POST_START_JOIN_WINDOW_MIN} minutes after.`);
       return;
     }
-    if (!appt.meetingUrl) { void dialog.alert('No meeting link', 'This session has no meeting link yet.'); return; }
-    const url = appt.type === 'AUDIO' ? `${appt.meetingUrl}#config.startWithVideoMuted=true` : appt.meetingUrl;
-    const can = await Linking.canOpenURL(url);
-    if (!can) { void dialog.alert('Cannot open link', url); return; }
-    void Linking.openURL(url);
+    router.push(`/call/${appt.id}` as any);
   }
 
   function openChat() {
@@ -86,9 +80,9 @@ function AppointmentCard({ appt, onSet, busy, now }: { appt: Appt; onSet: (statu
       ) : appt.status === 'CONFIRMED' ? (
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.btn, styles.btnPink, isCallSession && !canJoinCall && styles.btnDisabled]}
+            style={[styles.btn, styles.btnPink, isCall && !canJoinCall && styles.btnDisabled]}
             onPress={appt.type === 'CHAT' ? openChat : join}
-            disabled={isCallSession && !canJoinCall}
+            disabled={isCall && !canJoinCall}
             activeOpacity={0.85}
           >
             <Text style={styles.btnPrimaryText}>{actionLabel}</Text>

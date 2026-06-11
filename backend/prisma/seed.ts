@@ -1,28 +1,13 @@
 import 'dotenv/config';
 import { PrismaClient, Role, VideoType, SessionType, SessionStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { getAdminCredentialConfig } from '../src/lib/adminConfig';
 
 const prisma = new PrismaClient();
 
-const DEFAULT_ADMIN_EMAIL = 'admin@manas.app';
-const DEFAULT_ADMIN_PASSWORD = 'adminpass123';
-const DEFAULT_ADMIN_NAME = 'MANAS Admin';
-
-function getAdminSeedConfig() {
-  const email = (process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
-  const name = (process.env.ADMIN_NAME || DEFAULT_ADMIN_NAME).trim() || DEFAULT_ADMIN_NAME;
-
-  if (password.length < 8) {
-    throw new Error('ADMIN_PASSWORD must be at least 8 characters for seeded admin login.');
-  }
-
-  return { email, password, name };
-}
-
 async function main() {
   console.log('🌱 Seeding database…');
-  const adminSeed = getAdminSeedConfig();
+  const adminSeed = getAdminCredentialConfig({ allowDefaults: true });
 
   // Categories
   const healing = await prisma.category.upsert({

@@ -12,9 +12,10 @@ demo/test accounts:
 
 Admin password login is still database-based through `POST /auth/login`; there is
 no env-based login backdoor. On Render you do not need generic username/password
-environment variables. If you want different seeded admin credentials, set
-`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and/or `ADMIN_NAME` before running the seed, then
-run `npm run db:seed` once in Render Shell.
+environment variables. If you want different production admin credentials, set
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and/or `ADMIN_NAME` on the backend service and
+redeploy or restart it. Startup bootstrap hashes those env credentials and
+creates/updates the database admin user.
 
 ## Local Verification
 

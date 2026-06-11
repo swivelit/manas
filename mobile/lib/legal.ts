@@ -13,14 +13,14 @@ MANAS ("MANAS", "we", "us") provides a virtual emotional-wellbeing and coaching 
 
 - **Account details:** your name and email address.
 - **Profile & preferences:** your timezone and any profile information you add.
-- **Session metadata:** which coach, topic, date/time, type (video/audio/chat), and status of sessions you book. We do not record the audio or video of your counseling calls.
+- **Session metadata:** which coach, topic, date/time, type (video/audio/chat), and status of sessions you book. Video/audio calls open inside MANAS using a third-party meeting provider. We do not record the audio or video of your counseling calls.
 - **Mood check-ins:** the mood ratings and optional notes you log.
 - **Learning activity:** which videos you watch, your playback progress, and your bookmarks.
 - **Notifications:** your device push token (so we can send session reminders and confirmations).
 
 ## 2. Information we do NOT collect
 
-- We do not record or store the content of your counseling calls. Video/audio sessions run on a third-party meeting service (Jitsi); the call media does not flow through or get stored by MANAS.
+- We do not record or store the content of your counseling calls. Video/audio sessions open inside MANAS and run on a third-party meeting service (Jitsi); the call media is handled by the meeting provider and is not recorded by MANAS.
 - We do not sell your personal data to third parties.
 
 ## 3. How your data is protected and stored

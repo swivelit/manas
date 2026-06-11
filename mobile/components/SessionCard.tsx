@@ -1,13 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { format, formatDistanceToNowStrict, differenceInMinutes } from 'date-fns';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 import { Icon } from './Icon';
-import { useDialog } from './AppDialog';
-
-const PRE_START_JOIN_WINDOW_MIN = 10;
-const POST_START_JOIN_WINDOW_MIN = 30;
+import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN } from '../lib/sessionCall';
 
 interface Session {
   id: string;
@@ -26,33 +24,19 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session, accentColor = colors.ink, onPress }: SessionCardProps) {
-  const dialog = useDialog();
   const date = new Date(session.scheduledAt);
   const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
   const now = new Date();
   const minsUntil = differenceInMinutes(safeDate, now);
   const topicName = session.topic?.name ?? 'Session';
   const coachName = session.coach?.user?.name ?? 'MANAS coach';
-  const isCallSession = session.type === 'VIDEO' || session.type === 'AUDIO';
-  const joinable =
-    isCallSession &&
-    session.status === 'CONFIRMED' &&
-    minsUntil <= PRE_START_JOIN_WINDOW_MIN &&
-    minsUntil >= -POST_START_JOIN_WINDOW_MIN;
+  const isCall = isCallSession(session.type);
+  const joinable = canJoinSession(session);
   const completed = session.status === 'COMPLETED';
   const cancelled = session.status === 'CANCELLED';
 
-  async function handleJoin() {
-    if (!session.meetingUrl) {
-      void dialog.alert('No meeting link', 'Please refresh — the meeting link is being set up.');
-      return;
-    }
-    const url = session.type === 'AUDIO'
-      ? `${session.meetingUrl}#config.startWithVideoMuted=true`
-      : session.meetingUrl;
-    const can = await Linking.canOpenURL(url);
-    if (!can) { void dialog.alert('Cannot open link', url); return; }
-    void Linking.openURL(url);
+  function handleJoin() {
+    router.push(`/call/${session.id}` as any);
   }
 
   return (
@@ -79,7 +63,7 @@ export function SessionCard({ session, accentColor = colors.ink, onPress }: Sess
           <TouchableOpacity onPress={onPress} style={styles.joinBtn} activeOpacity={0.85}>
             <Text style={styles.joinBtnText}>Chat</Text>
           </TouchableOpacity>
-        ) : joinable ? (
+        ) : isCall && joinable ? (
           <TouchableOpacity onPress={handleJoin} style={styles.joinBtn} activeOpacity={0.85}>
             <Text style={styles.joinBtnText}>Join</Text>
           </TouchableOpacity>
