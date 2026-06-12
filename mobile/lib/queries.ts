@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as FileSystem from 'expo-file-system/legacy';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import type { SessionCallConfig } from './sessionCall';
 import { VIDEO_UPLOAD_MAX_BYTES } from './videoUpload';
 
 // ---- Categories & Topics ----
@@ -95,6 +96,17 @@ export function useSendMessage() {
     onSuccess: (_message, vars) => {
       qc.invalidateQueries({ queryKey: ['session-messages', vars.sessionId] });
     },
+  });
+}
+
+export function useSessionCallConfig(sessionId: string, enabled = true) {
+  const token = useAuthStore(s => s.token);
+  return useQuery({
+    queryKey: ['session-call-config', sessionId],
+    queryFn: () => api.get(`/sessions/${sessionId}/call-config`).then(r => r.data as SessionCallConfig),
+    enabled: !!token && !!sessionId && enabled,
+    staleTime: 30_000,
+    retry: false,
   });
 }
 

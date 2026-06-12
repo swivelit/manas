@@ -294,10 +294,6 @@ export default function SessionDetail() {
             )}
           </View>
         )}
-
-        {session.meetingUrl && session.status === 'CONFIRMED' && (
-          <Text style={styles.meetingMeta}>Meeting room: {session.meetingUrl}</Text>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -329,7 +325,6 @@ const styles = StyleSheet.create({
   slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   slot: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.creamDeep },
   slotText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 11, color: colors.ink },
-  meetingMeta: { marginTop: 18, fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.muted },
   chatPanel: { marginTop: 18, backgroundColor: colors.paper, borderRadius: 16, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
   chatHead: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chatTitle: { fontFamily: fontFamilies.dmSansBold, fontSize: 10, letterSpacing: 1.2, color: colors.muted, textTransform: 'uppercase' },

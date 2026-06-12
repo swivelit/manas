@@ -1,8 +1,8 @@
-export const DEFAULT_MEETING_SERVER_URL = 'https://meet.jit.si';
 export const PRE_START_JOIN_WINDOW_MIN = 10;
 export const POST_START_JOIN_WINDOW_MIN = 30;
 
 export type CallSessionType = 'VIDEO' | 'AUDIO';
+export type MeetingProvider = 'jaas' | 'self_hosted_jitsi' | 'open_jitsi';
 
 export type SessionCallLike = {
   id?: string;
@@ -12,10 +12,16 @@ export type SessionCallLike = {
   meetingUrl?: string | null;
 };
 
-export type CallRoomConfig = {
-  serverURL: string;
+export type SessionCallConfig = {
+  sessionId: string;
   room: string;
+  serverURL: string;
+  joinUrl: string;
+  jwt: string | null;
+  expiresAt: string;
+  type: CallSessionType;
   isAudioOnly: boolean;
+  provider: MeetingProvider;
 };
 
 export function isCallSession(type?: string | null): type is CallSessionType {
@@ -32,40 +38,4 @@ export function canJoinSession(session?: SessionCallLike | null, now = new Date(
 
   const minsUntil = Math.floor((scheduledAt.getTime() - now.getTime()) / 60_000);
   return minsUntil <= PRE_START_JOIN_WINDOW_MIN && minsUntil >= -POST_START_JOIN_WINDOW_MIN;
-}
-
-export function getCallRoomConfig(session: SessionCallLike): CallRoomConfig {
-  if (!isCallSession(session.type)) {
-    throw new Error('Only video and audio sessions can open a call.');
-  }
-  if (!session.meetingUrl?.trim()) {
-    throw new Error('This session does not have a meeting room yet. Please refresh and try again.');
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(session.meetingUrl.trim(), DEFAULT_MEETING_SERVER_URL);
-  } catch {
-    throw new Error('This session has an invalid meeting room link.');
-  }
-
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('This session has an unsupported meeting room link.');
-  }
-
-  let room: string;
-  try {
-    room = decodeURIComponent(parsed.pathname.replace(/^\/+|\/+$/g, ''));
-  } catch {
-    throw new Error('This session has an invalid meeting room name.');
-  }
-  if (!room) {
-    throw new Error('This session meeting room is missing a room name.');
-  }
-
-  return {
-    serverURL: `${parsed.protocol}//${parsed.host}`,
-    room,
-    isAudioOnly: session.type === 'AUDIO',
-  };
 }

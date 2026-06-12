@@ -38,8 +38,24 @@ services:
         sync: false
       - key: ADMIN_NAME
         value: MANAS Admin
+      - key: MEETING_PROVIDER
+        value: jaas
       - key: MEETING_SERVER_URL
-        value: https://meet.jit.si
+        value: https://8x8.vc
+      - key: MEETING_APP_ID
+        sync: false
+      - key: MEETING_JWT_KID
+        sync: false
+      - key: MEETING_JWT_PRIVATE_KEY
+        sync: false
+      - key: MEETING_JWT_SECRET
+        sync: false
+      - key: MEETING_JWT_ALG
+        value: RS256
+      - key: MEETING_TOKEN_TTL_MINUTES
+        value: 120
+      - key: MEETING_ENABLE_AUTH
+        value: true
 
 databases:
   - name: manas-db

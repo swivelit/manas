@@ -1,13 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, PermissionsAndroid, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
-import { useMe, useSession } from '../../lib/queries';
+import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
+import { useSession, useSessionCallConfig } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
-import { canJoinSession, getCallRoomConfig, isCallSession } from '../../lib/sessionCall';
+import { canJoinSession, isCallSession } from '../../lib/sessionCall';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
+
+const SERVICE_CONFIG_ERROR = 'Video service is not configured correctly. Please contact support.';
+
+type PermissionStatus = 'idle' | 'checking' | 'granted' | 'denied';
 
 function returnToSession(sessionId: string) {
   router.replace(`/session/${sessionId}`);
@@ -37,39 +42,103 @@ function CallStateScreen({
   );
 }
 
+function safeNavigationTarget(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.host}${parsed.pathname}`;
+  } catch {
+    return 'unparseable-url';
+  }
+}
+
+function isBlockedAuthNavigation(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  const host = parsed.host.toLowerCase();
+  const path = parsed.pathname.toLowerCase();
+  const full = `${host}${path}`.toLowerCase();
+
+  if (host === 'accounts.google.com' || host.endsWith('.accounts.google.com')) return true;
+  if (host === 'oauth2.googleapis.com' || host === 'www.googleapis.com') return true;
+  if (host.startsWith('login.') || host.includes('auth.meet.jit.si')) return true;
+  if (full.includes('/login') || full.includes('/signin') || full.includes('/oauth')) return true;
+  if (host.includes('jitsi') && (path.includes('login') || path.includes('auth'))) return true;
+
+  return false;
+}
+
+function callConfigErrorMessage(error: unknown): string {
+  const response = (error as { response?: { status?: number; data?: { error?: string } } })?.response;
+  if (response?.status === 503) return SERVICE_CONFIG_ERROR;
+  return response?.data?.error ?? 'MANAS could not prepare this meeting room.';
+}
+
+async function requestAndroidCallPermissions(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+
+  const permissions = [
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+  ];
+  const checks = await Promise.all(permissions.map(permission => PermissionsAndroid.check(permission)));
+  if (checks.every(Boolean)) return true;
+
+  const result = await PermissionsAndroid.requestMultiple(permissions);
+  return permissions.every(permission => result[permission] === PermissionsAndroid.RESULTS.GRANTED);
+}
+
 export default function SessionCallScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const sessionId = Array.isArray(id) ? id[0] : id;
+  const sessionId = (Array.isArray(id) ? id[0] : id) ?? '';
   const token = useAuthStore(s => s.token);
   const { data: session, isLoading, isError } = useSession(sessionId);
-  const { data: me } = useMe();
   const [webError, setWebError] = useState<string | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('idle');
+  const [permissionRetryKey, setPermissionRetryKey] = useState(0);
 
-  const callConfig = useMemo(() => {
-    if (!session) return null;
-    try {
-      return { value: getCallRoomConfig(session), error: null };
-    } catch (error) {
-      return { value: null, error: error instanceof Error ? error.message : 'This call could not be opened.' };
+  const joinable = useMemo(() => canJoinSession(session), [session]);
+  const isCall = isCallSession(session?.type);
+  const shouldFetchCallConfig = Boolean(token && sessionId && session && isCall && joinable && permissionStatus === 'granted' && !webError);
+  const {
+    data: callConfig,
+    isLoading: isCallConfigLoading,
+    isError: isCallConfigError,
+    error: callConfigError,
+  } = useSessionCallConfig(sessionId, shouldFetchCallConfig);
+
+  useEffect(() => {
+    if (!token || !session || !isCallSession(session.type) || !canJoinSession(session)) return;
+
+    let cancelled = false;
+    setPermissionStatus('checking');
+
+    requestAndroidCallPermissions()
+      .then(granted => {
+        if (!cancelled) setPermissionStatus(granted ? 'granted' : 'denied');
+      })
+      .catch(error => {
+        console.warn('[call] camera/microphone permission request failed', error instanceof Error ? error.message : 'unknown');
+        if (!cancelled) setPermissionStatus('denied');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [permissionRetryKey, session, token]);
+
+  function handleShouldStartLoadWithRequest(request: ShouldStartLoadRequest) {
+    if (isBlockedAuthNavigation(request.url)) {
+      console.warn('[call] blocked meeting auth navigation', safeNavigationTarget(request.url));
+      setWebError(SERVICE_CONFIG_ERROR);
+      return false;
     }
-  }, [session]);
-
-  const meetingUrl = useMemo(() => {
-    if (!callConfig?.value) return null;
-    const url = new URL(encodeURIComponent(callConfig.value.room), `${callConfig.value.serverURL}/`);
-    const hash = new URLSearchParams({
-      'config.disableCalendarIntegration': 'true',
-      'config.disableDeepLinking': 'true',
-      'config.disableInviteFunctions': 'true',
-      'config.prejoinPageEnabled': 'true',
-      'config.startAudioOnly': String(callConfig.value.isAudioOnly),
-      'config.startWithVideoMuted': String(callConfig.value.isAudioOnly),
-      'userInfo.displayName': me?.name ?? 'MANAS user',
-      'userInfo.email': me?.email ?? '',
-    });
-    url.hash = hash.toString();
-    return url.toString();
-  }, [callConfig, me?.email, me?.name]);
+    return true;
+  }
 
   if (!token) {
     return (
@@ -112,7 +181,7 @@ export default function SessionCallScreen() {
     );
   }
 
-  if (!canJoinSession(session)) {
+  if (!joinable) {
     return (
       <CallStateScreen
         title="Call not open yet"
@@ -122,21 +191,40 @@ export default function SessionCallScreen() {
     );
   }
 
-  if (!callConfig?.value) {
+  if (permissionStatus === 'checking' || permissionStatus === 'idle') {
+    return (
+      <SafeAreaView style={styles.stateScreen}>
+        <ActivityIndicator color={colors.blue} size="large" />
+        <Text style={styles.loadingText}>Checking camera and microphone access...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (permissionStatus === 'denied') {
     return (
       <CallStateScreen
-        title="Meeting room unavailable"
-        message={callConfig?.error ?? 'MANAS could not prepare this meeting room.'}
-        onPress={() => returnToSession(sessionId)}
+        title="Camera and microphone needed"
+        message="Camera and microphone access are needed for video sessions."
+        actionLabel="Retry"
+        onPress={() => setPermissionRetryKey(key => key + 1)}
       />
     );
   }
 
-  if (!meetingUrl) {
+  if (isCallConfigLoading || (shouldFetchCallConfig && !callConfig && !isCallConfigError)) {
+    return (
+      <SafeAreaView style={styles.stateScreen}>
+        <ActivityIndicator color={colors.blue} size="large" />
+        <Text style={styles.loadingText}>Preparing your secure MANAS call...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isCallConfigError || !callConfig?.joinUrl) {
     return (
       <CallStateScreen
         title="Meeting room unavailable"
-        message="MANAS could not prepare this meeting room."
+        message={callConfigErrorMessage(callConfigError)}
         onPress={() => returnToSession(sessionId)}
       />
     );
@@ -154,9 +242,9 @@ export default function SessionCallScreen() {
   }
 
   return (
-    <View style={styles.callScreen}>
+    <SafeAreaView style={styles.callScreen} edges={['top', 'bottom', 'left', 'right']}>
       <WebView
-        source={{ uri: meetingUrl }}
+        source={{ uri: callConfig.joinUrl }}
         style={styles.webview}
         javaScriptEnabled
         domStorageEnabled
@@ -166,22 +254,23 @@ export default function SessionCallScreen() {
         mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
         originWhitelist={['https://*', 'http://*']}
         setSupportMultipleWindows={false}
-        onError={event => setWebError(event.nativeEvent.description || 'The meeting provider could not load.')}
+        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+        onError={() => setWebError('The meeting provider could not load. Please try again.')}
       />
-      <SafeAreaView pointerEvents="box-none" style={styles.callChrome}>
+      <View pointerEvents="box-none" style={styles.callChrome}>
         <TouchableOpacity onPress={() => returnToSession(sessionId)} style={styles.endButton} activeOpacity={0.85}>
           <Text style={styles.endButtonText}>End</Text>
         </TouchableOpacity>
-      </SafeAreaView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   callScreen: { flex: 1, backgroundColor: '#000' },
   webview: { flex: 1, backgroundColor: '#000' },
-  callChrome: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12, alignItems: 'flex-end' },
-  endButton: { marginTop: 8, backgroundColor: 'rgba(20, 24, 28, 0.82)', borderRadius: 999, minHeight: 38, minWidth: 64, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  callChrome: { position: 'absolute', top: 10, left: 0, right: 0, paddingHorizontal: 12, alignItems: 'flex-end' },
+  endButton: { backgroundColor: 'rgba(20, 24, 28, 0.82)', borderRadius: 999, minHeight: 38, minWidth: 64, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   endButtonText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 12, color: colors.cream },
   stateScreen: { flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 24 },
   stateCard: { width: '100%', maxWidth: 420, backgroundColor: colors.paper, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 20 },

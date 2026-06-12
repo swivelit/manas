@@ -1,9 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { SessionType, SessionStatus } from '@prisma/client';
 import { notifyUser } from '../lib/notifications';
+import {
+  MeetingConfigError,
+  buildMeetingJoinUrl,
+  buildRoomName,
+  buildStoredMeetingUrl,
+  getMeetingConfig,
+  isWithinCallWindow,
+} from '../lib/meetingConfig';
+import { signMeetingToken } from '../lib/meetingTokens';
 
 const router = Router();
 
@@ -24,14 +33,12 @@ const messageSchema = z.object({
   body: z.string().trim().min(1).max(2000),
 });
 
-function meetingUrlFor(sessionId: string, type: SessionType): string | null {
-  if (type === SessionType.CHAT) return null;
-  const serverUrl = (process.env.MEETING_SERVER_URL || 'https://meet.jit.si').trim().replace(/\/+$/, '');
-  return `${serverUrl}/manas-${sessionId}`;
-}
-
 function canAccessSession(session: { userId: string; coach: { userId: string } }, userId: string): boolean {
   return session.userId === userId || session.coach.userId === userId;
+}
+
+function isCallSession(type: SessionType): boolean {
+  return type === SessionType.VIDEO || type === SessionType.AUDIO;
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
@@ -76,7 +83,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     },
   });
 
-  const meetingUrl = meetingUrlFor(session.id, session.type);
+  const meetingUrl = buildStoredMeetingUrl(session.id, session.type);
   await prisma.session.update({ where: { id: session.id }, data: { meetingUrl } });
   (session as typeof session & { meetingUrl: string | null }).meetingUrl = meetingUrl;
 
@@ -143,6 +150,66 @@ router.post('/:id/messages', requireAuth, async (req: Request, res: Response) =>
     },
   });
   res.status(201).json(message);
+});
+
+router.get('/:id/call-config', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const session = await prisma.session.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: { select: { id: true, email: true, name: true, avatarUrl: true } },
+        coach: {
+          include: {
+            user: { select: { id: true, email: true, name: true, avatarUrl: true } },
+          },
+        },
+      },
+    });
+
+    if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+    if (!canAccessSession(session, req.user!.id)) { res.status(403).json({ error: 'Forbidden' }); return; }
+    if (!isCallSession(session.type)) { res.status(400).json({ error: 'Call config is only available for video and audio sessions.' }); return; }
+    if (session.status === SessionStatus.CANCELLED) { res.status(409).json({ error: 'This session has been cancelled.' }); return; }
+    if (session.status !== SessionStatus.CONFIRMED) { res.status(409).json({ error: 'This session is not confirmed yet.' }); return; }
+    if (!isWithinCallWindow(session.scheduledAt)) {
+      res.status(403).json({ error: 'The meeting opens 10 minutes before start and remains available for 30 minutes after.' });
+      return;
+    }
+
+    const config = getMeetingConfig({ validateAuth: true });
+    const room = buildRoomName(session.id);
+    const signed = signMeetingToken({
+      session,
+      currentUser: req.user!,
+      room,
+      config,
+    });
+    const isAudioOnly = session.type === SessionType.AUDIO;
+    const joinUrl = buildMeetingJoinUrl({
+      config,
+      room,
+      jwt: signed.jwt,
+      isAudioOnly,
+    });
+
+    res.json({
+      sessionId: session.id,
+      room,
+      serverURL: config.serverURL,
+      joinUrl,
+      jwt: signed.jwt,
+      expiresAt: signed.expiresAt.toISOString(),
+      type: session.type,
+      isAudioOnly,
+      provider: config.provider,
+    });
+  } catch (error) {
+    if (error instanceof MeetingConfigError) {
+      res.status(error.statusCode).json({ error: error.message, code: error.code });
+      return;
+    }
+    next(error);
+  }
 });
 
 router.get('/:id', requireAuth, async (req: Request, res: Response) => {

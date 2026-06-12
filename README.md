@@ -17,6 +17,41 @@ environment variables. If you want different production admin credentials, set
 redeploy or restart it. Startup bootstrap hashes those env credentials and
 creates/updates the database admin user.
 
+## In-App Video And Audio Calls
+
+MANAS video/audio sessions stay inside the app. The mobile app requests
+`GET /sessions/:id/call-config` and loads the returned signed join URL in the
+in-app WebView. It no longer builds public Jitsi URLs from `session.meetingUrl`.
+
+Production calls require backend meeting auth:
+
+```bash
+MEETING_PROVIDER=jaas
+MEETING_SERVER_URL=https://8x8.vc
+MEETING_APP_ID=<jaas-app-id>
+MEETING_JWT_KID=<jaas-key-id>
+MEETING_JWT_PRIVATE_KEY=<jaas-private-key>
+MEETING_JWT_ALG=RS256
+MEETING_TOKEN_TTL_MINUTES=120
+MEETING_ENABLE_AUTH=true
+```
+
+For a self-hosted Jitsi deployment with token auth, use:
+
+```bash
+MEETING_PROVIDER=self_hosted_jitsi
+MEETING_SERVER_URL=https://meet.example.com
+MEETING_APP_ID=<jitsi-app-id>
+MEETING_JWT_SECRET=<shared-hs256-secret>
+MEETING_JWT_ALG=HS256
+MEETING_ENABLE_AUTH=true
+```
+
+The backend marks both the booked user and assigned coach as moderators for
+1-to-1 sessions so either participant can start the room. Public anonymous
+`meet.jit.si` rooms are development-only and are not acceptable for production
+because they can show moderator/login screens.
+
 ## Local Verification
 
 Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain. The root verification script checks the backend and mobile app together.
@@ -25,6 +60,15 @@ Expo SDK 56 requires Node 22.13.1 or newer for the mobile toolchain. The root ve
 nvm install 22.13.1
 nvm use 22.13.1
 ./scripts/verify-all.sh
+```
+
+To smoke-test call configuration against a running backend with seeded demo
+accounts:
+
+```bash
+cd backend
+API_URL=http://localhost:4000 MEETING_SMOKE_MODE=configured npm run smoke:calls
+API_URL=http://localhost:4000 MEETING_SMOKE_MODE=missing-config npm run smoke:calls
 ```
 
 ## Android Builds

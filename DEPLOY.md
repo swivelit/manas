@@ -44,6 +44,15 @@ Set these environment variables:
 | `EMAIL_PASS` | Sender email app password |
 | `EMAIL_FROM` | `MANAS <no-reply@manas.app>` or your sender address |
 | `OTP_EXPIRY_MINUTES` | `10` |
+| `MEETING_PROVIDER` | `jaas` for JaaS, or `self_hosted_jitsi` for your own token-auth Jitsi server |
+| `MEETING_SERVER_URL` | `https://8x8.vc` for JaaS, or your self-hosted Jitsi HTTPS origin |
+| `MEETING_APP_ID` | JaaS app ID or self-hosted Jitsi app ID |
+| `MEETING_JWT_KID` | JaaS key ID for RS256 |
+| `MEETING_JWT_PRIVATE_KEY` | JaaS RS256 private key; set only in Render env, never in mobile code |
+| `MEETING_JWT_SECRET` | Self-hosted Jitsi HS256 shared secret, if using HS256 |
+| `MEETING_JWT_ALG` | `RS256` for JaaS, `HS256` for self-hosted shared-secret mode |
+| `MEETING_TOKEN_TTL_MINUTES` | `120` |
+| `MEETING_ENABLE_AUTH` | `true` |
 
 If you use an existing manually-created Render service, changing `render.yaml` alone may not update the dashboard command. In that case, update the Render dashboard Build Command manually to match the value above.
 
@@ -92,7 +101,15 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 | `ADMIN_EMAIL` | Required in production for startup admin bootstrap; defaults to `admin@manas.app` only outside production. |
 | `ADMIN_PASSWORD` | Required in production for startup admin bootstrap; minimum 8 chars, defaults to `adminpass123` only outside production. |
 | `ADMIN_NAME` | Optional admin display name. Default: `MANAS Admin` |
-| `MEETING_SERVER_URL` | Meeting provider base URL for VIDEO/AUDIO sessions. Default: `https://meet.jit.si` |
+| `MEETING_PROVIDER` | `jaas`, `self_hosted_jitsi`, or non-production-only `open_jitsi`. Production should use `jaas` or `self_hosted_jitsi`. |
+| `MEETING_SERVER_URL` | Meeting provider base URL for VIDEO/AUDIO sessions. Use `https://8x8.vc` for JaaS or your self-hosted Jitsi domain. |
+| `MEETING_APP_ID` | JaaS app ID or self-hosted Jitsi app ID; required for authenticated calls. |
+| `MEETING_JWT_KID` | JaaS key ID for RS256 tokens. |
+| `MEETING_JWT_PRIVATE_KEY` | Backend-only RS256 private key for JaaS. Do not commit it and do not put it in the mobile app. |
+| `MEETING_JWT_SECRET` | Backend-only HS256 secret for self-hosted Jitsi token auth. |
+| `MEETING_JWT_ALG` | `RS256` for JaaS, `HS256` for self-hosted shared-secret mode. |
+| `MEETING_TOKEN_TTL_MINUTES` | Meeting token lifetime, default `120`. |
+| `MEETING_ENABLE_AUTH` | Must be `true` in production. |
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 
@@ -105,6 +122,42 @@ Run the production smoke test with matching admin env values if you changed them
 ```bash
 API_URL=https://manas-api-dlj7.onrender.com ADMIN_EMAIL=admin@manas.app ADMIN_PASSWORD=adminpass123 npm run smoke:prod
 ```
+
+After seeding and configuring meeting credentials, run the call-config smoke:
+
+```bash
+API_URL=https://manas-api-dlj7.onrender.com MEETING_SMOKE_MODE=configured npm run smoke:calls
+```
+
+Before credentials are configured, you can verify the production guard instead:
+
+```bash
+API_URL=https://manas-api-dlj7.onrender.com MEETING_SMOKE_MODE=missing-config npm run smoke:calls
+```
+
+### Meeting provider setup
+
+MANAS mobile calls stay inside the app and are opened from
+`GET /sessions/:id/call-config`. The backend verifies that the requester is the
+booked user or assigned coach, enforces the 10-minutes-before to
+30-minutes-after join window, and signs a short-lived meeting JWT. The mobile app
+must not open Chrome, the Jitsi app, or a raw `meetingUrl`.
+
+For JaaS, set `MEETING_PROVIDER=jaas`, `MEETING_SERVER_URL=https://8x8.vc`,
+`MEETING_APP_ID`, `MEETING_JWT_KID`, `MEETING_JWT_PRIVATE_KEY`,
+`MEETING_JWT_ALG=RS256`, `MEETING_TOKEN_TTL_MINUTES=120`, and
+`MEETING_ENABLE_AUTH=true`.
+
+For a self-hosted Jitsi server with token auth, set
+`MEETING_PROVIDER=self_hosted_jitsi`, `MEETING_SERVER_URL` to your Jitsi domain,
+`MEETING_APP_ID`, `MEETING_JWT_SECRET`, `MEETING_JWT_ALG=HS256`, and
+`MEETING_ENABLE_AUTH=true`.
+
+Public anonymous `meet.jit.si` rooms are not acceptable for production because
+they can show "moderators have not arrived" and Jitsi/Google login screens. If
+production meeting auth is missing, `/sessions/:id/call-config` returns a clear
+backend configuration error instead of giving the mobile app an anonymous public
+room.
 
 ### Free tier notes
 
