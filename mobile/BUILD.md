@@ -80,6 +80,40 @@ Local release APK for QA installs:
 ./scripts/build-android_release-apk.sh
 ```
 
+### Recording Google Play foreground service demo video
+
+Google Play may ask for a demo video for camera, microphone, and media playback
+foreground service declarations. Record a local MP4 from a connected Android
+emulator/device with:
+
+Production-like release APK:
+
+```bash
+BUILD_MODE=release DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
+```
+
+Debug fallback:
+
+```bash
+BUILD_MODE=debug DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
+```
+
+Existing APK:
+
+```bash
+APK_PATH=dist/manas-release.apk BUILD_MODE=none DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
+```
+
+The generated MP4 is saved under `dist/play-store` by default. Upload it to
+YouTube as Unlisted or to Google Drive with anyone-with-link viewer access, then
+paste the shareable URL into Play Console. If one video demonstrates camera,
+microphone, and active session media playback, paste the same public video URL
+into the Camera, Media playback, and Microphone video link fields.
+
+Do not paste the local `dist/play-store/...mp4` path into Play Console. See
+`scripts/play-foreground-service-demo-checklist.md` for the full manual flow and
+permission description text.
+
 Cloud preview APK with EAS:
 
 ```bash
