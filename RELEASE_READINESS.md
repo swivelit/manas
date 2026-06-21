@@ -6,7 +6,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 
 ### Play Store compliance (Phase 1 — mandatory gate)
 - **Crisis disclaimer**: one-time first-launch modal (persisted via `crisis_ack` in SecureStore) with India helplines (iCall, Vandrevala, Tele-MANAS, AASRA) as tappable `tel:` links. Persistent "In crisis? Tap for help" banner on the Sessions header and Profile footer opens the same helplines.
-- **Privacy Policy + Terms of Service**: authored at `legal/privacy.md` and `legal/terms.md`, mirrored into `mobile/lib/legal.ts` and rendered offline on the in-app `/legal` screen. Linked from Profile and the signup consent.
+- **Privacy Policy + Terms of Service**: authored at `legal/privacy.md` and `legal/terms.md`, mirrored into `mobile/lib/legal.ts`, rendered offline on the in-app `/legal` screen, and exposed publicly by the backend at `https://manas-api-dlj7.onrender.com/privacy-policy` and `https://manas-api-dlj7.onrender.com/terms`. Linked from Profile and the signup consent. Play Console Data Safety answers must match the privacy policy.
 - **Signup consent**: mandatory checkbox on register blocks account creation until the user accepts Terms/Privacy and acknowledges MANAS is not a crisis service. `User.consentAt` is recorded at account creation.
 
 ### Coach surface (Phase 2 — PDF §4.B)
@@ -25,6 +25,9 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - Versioned Prisma migration baseline at `backend/prisma/migrations/0_init` (full current schema). `render.yaml` intentionally still uses `db push` for this transitional release; DEPLOY.md documents the exact one-time cutover to `prisma migrate deploy`.
 - CORS hardened: always allows no-origin requests (native mobile/curl); production restricted to a comma-separated `FRONTEND_URL` allowlist.
 - BUILD.md documents the required one-time `eas init` (for push tokens + EAS builds) and an Expo Go vs. dev-build capability matrix.
+- Public legal pages:
+  - Google Play Privacy Policy URL: `https://manas-api-dlj7.onrender.com/privacy-policy`
+  - Terms URL: `https://manas-api-dlj7.onrender.com/terms`
 
 ### Play Store signing
 - Google Play rejects APKs and Android App Bundles signed with the Android debug certificate.
@@ -51,7 +54,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - **Email credentials** (set in Render, never commit): `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` for production email OTP delivery.
 - **Seed the Render production database** after deploy (`npm run db:seed` from Render Shell) — otherwise the app shows empty states.
 - **`eas init`** once (from the owner's Expo account) to write `extra.eas.projectId` — required for push tokens and EAS builds.
-- **Host the privacy policy at a public URL** (the Play Console data-safety form requires a URL; `legal/privacy.md` is the source text).
+- **Confirm legal contact inbox**: `support@manas.app` is used in the public privacy policy and terms; confirm this is an owner-controlled inbox before Play submission.
 - **Play Console**: developer account, release-signed AAB, data-safety + content rating, screenshots, app-access instructions, internal-track QA.
 - **One manual device QA pass** of the mobile flows (see the checklist in `VERIFY_FINAL.md`) — backend is verified live; UI is code/bundle-verified.
 - **Migration cutover** to `prisma migrate deploy` after the next `db push` deploy converges prod to the current schema (steps in DEPLOY.md).

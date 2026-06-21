@@ -5,124 +5,126 @@
 
 export const PRIVACY_MD = `# MANAS Privacy Policy
 
-_Last updated: 31 May 2026 · Version 1.0 (starter content — review with legal counsel before public release)_
+_Last updated: 22 June 2026_
 
-MANAS ("MANAS", "we", "us") provides a virtual emotional-wellbeing and coaching platform. This policy explains what we collect, why, and your choices. MANAS is operated for users in India.
+MANAS provides an emotional-wellbeing and coaching platform. This Privacy Policy explains what information MANAS collects or processes, how it is used, and the choices available to users.
 
-## 1. Information we collect
+MANAS is intended for users who are 18 years of age or older. MANAS is not an emergency, crisis, medical, or psychiatric service. If you are in immediate danger or need urgent help, contact local emergency services or a crisis helpline.
 
-- **Account details:** your name and email address.
-- **Profile & preferences:** your timezone and any profile information you add.
-- **Session metadata:** which coach, topic, date/time, type (video/audio/chat), and status of sessions you book. Video/audio calls open inside MANAS using a configured meeting provider and backend-issued meeting tokens. We do not record the audio or video of your counseling calls.
-- **Mood check-ins:** the mood ratings and optional notes you log.
-- **Learning activity:** which videos you watch, your playback progress, and your bookmarks.
-- **Notifications:** your device push token (so we can send session reminders and confirmations).
+## 1. Information We May Collect or Process
 
-## 2. Information we do NOT collect
+- **Name and email address.**
+- **Login and authentication data:** email verification activity and account security information.
+- **User profile details:** timezone, role, preferences, and profile information you choose to provide.
+- **Coach and session booking details:** selected coach, topic, session type, date, time, status, and scheduling history.
+- **Chat messages:** messages exchanged inside MANAS session threads.
+- **Mood check-ins and notes:** mood ratings and notes if you use mood tracking features.
+- **Learning and video activity:** viewed videos, playback progress, bookmarks, likes, and related activity if you use those features.
+- **Push notification token:** collected if notifications are enabled on your device.
+- **Device, app, and diagnostic information:** collected if needed to maintain reliability, security, and support.
+- **Audio/video call metadata:** meeting room identifiers, participants, timing, and call configuration needed to connect sessions.
 
-- We do not record or store the content of your counseling calls. Video/audio sessions open inside MANAS and run on a configured meeting service; the call media is handled by the meeting provider and is not recorded by MANAS.
-- We do not sell your personal data to third parties.
+## 2. Information We Do Not Sell or Record
 
-## 3. How your data is protected and stored
+MANAS does not sell personal data.
 
-- Data is encrypted in transit (HTTPS/TLS) between the app and our servers.
-- Our application and database are currently hosted on Render, in a United States region. By using MANAS you understand your data may be processed and stored in the US.
-- Access to production data is limited to authorised MANAS personnel.
+MANAS does not record counseling audio or video calls. Calls may be connected through a meeting provider, but MANAS does not create or store recordings unless the app is changed in the future to clearly disclose and request permission for recording.
 
-## 4. Third-party processors
+## 3. How We Use Information
 
-We share the minimum data necessary with service providers that help us run MANAS:
+- To create, authenticate, secure, and manage user accounts.
+- To provide coaching, session booking, chat, video, mood tracking, notifications, and related app features.
+- To send login codes, session confirmations, reminders, and service messages.
+- To provide support, handle account requests, and respond to privacy or deletion requests.
+- To maintain app reliability, prevent misuse, protect users, and improve MANAS.
+- To meet legal, safety, and compliance obligations.
 
-- **Render** — application and database hosting (US region).
-- **Jitsi/JaaS or self-hosted Jitsi** — real-time video/audio meeting rooms for your sessions.
-- **Expo push service** — to deliver notifications to your device.
+## 4. How Information Is Protected
 
-These providers process data on our behalf under their own terms and security practices.
+Data is sent between the MANAS app and backend over HTTPS/TLS.
 
-## 5. How we use your data
+Access to production systems and user data is limited to authorized personnel and service providers who need access to operate MANAS.
 
-- To create and secure your account.
-- To schedule, confirm, and remind you about sessions.
-- To track your learning progress and surface relevant content.
-- To provide premium access when an admin grants it to your account.
-- To improve the reliability and safety of the service.
+No system can be guaranteed completely secure, but MANAS uses reasonable safeguards appropriate for the service.
 
-## 6. Your rights and choices
+## 5. Service Providers
 
-- **Access & deletion:** you can request a copy of your data or ask us to delete your account and associated data by emailing privacy@manas.app (placeholder — replace with your verified support inbox).
-- **Notifications:** you can disable push notifications from your device settings at any time.
-- **Sign-in data:** you sign in with an email verification code.
+MANAS may use trusted service providers for cloud hosting, email delivery, push notifications, video/audio meeting connectivity, analytics, diagnostics, or similar operational needs. These providers process information only as needed to operate and support MANAS.
 
-## 7. Important safety note
+## 6. User Choices and Deletion Requests
 
-MANAS supports emotional wellbeing and growth. It is not a crisis service and not a substitute for emergency or professional medical care. If you are in crisis, please contact a helpline listed in the app or your local emergency services immediately.
+- You can disable push notifications in your device settings.
+- You can request access to your data, account deletion, or data deletion by contacting support@manas.app.
+- Some information may need to be retained where required for legal, security, fraud-prevention, dispute-resolution, or legitimate operational reasons.
 
-## 8. Children
+## 7. Children
 
-MANAS is intended for users 18 years and older. We do not knowingly collect data from anyone under 18.
+MANAS is intended for users 18 years of age or older. MANAS does not knowingly collect personal data from children or minors. If you believe a minor has provided personal data, contact MANAS so it can be reviewed and removed where appropriate.
 
-## 9. Changes to this policy
+## 8. Changes to This Policy
 
-We may update this policy as the service evolves. Material changes will be reflected by the "Last updated" date above and surfaced in the app.
+MANAS may update this Privacy Policy as the service evolves. The updated policy will show a new last updated date.
 
-## 10. Contact
+## 9. Contact
 
-Questions about privacy? Email privacy@manas.app (placeholder).`;
+For privacy questions, account deletion, or data deletion requests, contact support@manas.app.`;
 
 export const TERMS_MD = `# MANAS Terms of Service
 
-_Last updated: 31 May 2026 · Version 1.0 (starter content — review with legal counsel before public release)_
+_Last updated: 22 June 2026_
 
-Welcome to MANAS. By creating an account or using the app, you agree to these Terms of Service ("Terms"). Please read them carefully.
+By creating an account or using MANAS, you agree to these Terms of Service. If you do not agree, do not use MANAS.
 
-## 1. What MANAS is
+## 1. What MANAS Provides
 
-MANAS is a virtual platform for emotional wellbeing and personal/professional coaching. It connects you with practitioners for introductory sessions and provides a library of guided wellbeing and coaching content.
+MANAS is a virtual platform for emotional wellbeing, coaching, session booking, chat, and learning content. It helps users connect with coaches or practitioners and access wellbeing resources.
 
-## 2. Not a substitute for emergency or medical care
+## 2. Not an Emergency or Medical Service
 
-MANAS is not a substitute for emergency mental health care or for medical or psychiatric diagnosis or treatment. It does not provide emergency services. If you are experiencing a medical or mental-health emergency, or are thinking about harming yourself, contact your local emergency services or a crisis helpline (several India helplines are listed in the app) immediately. Coaches and practitioners on MANAS do not provide emergency intervention.
+MANAS is not an emergency, crisis, medical, psychiatric, or suicide-prevention service. MANAS does not provide emergency intervention, medical diagnosis, or medical treatment.
 
-## 3. Demo and introductory sessions
+If you are in immediate danger, thinking about harming yourself or someone else, or experiencing a medical or mental-health emergency, contact local emergency services or a crisis helpline immediately.
 
-Sessions offered as "demo" or introductory are exploratory and intended to help you decide whether ongoing support is right for you. They are not a complete course of treatment.
+## 3. Eligibility
 
-## 4. Coaches are independent practitioners
+You must be 18 years of age or older to create an account or use MANAS. By using MANAS, you confirm that you meet this requirement.
 
-Coaches, psychologists, and practitioners offering sessions through MANAS are independent practitioners, not employees of MANAS. MANAS facilitates introductions and scheduling but is not responsible for the clinical judgement, advice, or conduct of any individual practitioner. Any professional relationship is between you and the practitioner.
+## 4. Your Account
 
-## 5. Eligibility
+- Provide accurate account information and keep it up to date.
+- Keep your login and device access secure.
+- You are responsible for activity that occurs through your account.
 
-You must be 18 years of age or older to create an account and use MANAS. By using the service you confirm that you meet this requirement.
+## 5. Coaches and Practitioners
 
-## 6. Your account
+Coaches, psychologists, counselors, and practitioners available through MANAS may be independent professionals. MANAS may facilitate discovery, scheduling, chat, and session access, but the professional relationship and advice are between you and the practitioner.
 
-You are responsible for keeping your account credentials secure and for activity under your account. Provide accurate information and keep it up to date.
+## 6. Acceptable Use
 
-## 7. Acceptable use
+- Do not use MANAS for unlawful, harmful, abusive, harassing, fraudulent, or disruptive activity.
+- Do not attempt to access accounts, systems, data, or features that you are not authorized to access.
+- Do not upload or send content that infringes rights, violates law, or harms other users, coaches, practitioners, or MANAS.
 
-You agree not to misuse MANAS, including by attempting to disrupt the service, accessing it without authorisation, harassing practitioners or other users, or using it for unlawful purposes.
+## 7. Premium Access and Content
 
-## 8. Premium access
+Some content or features may require premium access or administrative approval. MANAS may change, suspend, or remove content or features as the service evolves.
 
-Some content and features may require MANAS Premium. Premium access is assigned by admins; MANAS does not support in-app purchases for premium access.
+## 8. Account Suspension or Termination
 
-## 9. Account termination
+MANAS may suspend or terminate accounts that violate these Terms, create risk for users or the service, or are required to be restricted for safety, legal, or operational reasons. You may stop using MANAS and request account deletion at any time.
 
-We may suspend or terminate accounts that violate these Terms or that we reasonably believe pose a risk to users or to the service. You may stop using MANAS and request account deletion at any time (see the Privacy Policy).
+## 9. Disclaimers and Limitation of Liability
 
-## 10. Limitation of liability
+MANAS is provided on an "as is" and "as available" basis. To the maximum extent permitted by law, MANAS and its operators are not liable for indirect, incidental, special, consequential, punitive, or similar damages, or for losses arising from use of the service, inability to use the service, or conduct or advice of any independent practitioner.
 
-To the maximum extent permitted by law, MANAS and its operators are not liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of (or inability to use) the service or from the conduct or advice of any independent practitioner. The service is provided on an "as is" and "as available" basis.
+## 10. Changes to These Terms
 
-## 11. Changes to these Terms
+MANAS may update these Terms as the service evolves. Continued use of MANAS after updated Terms are posted means you accept the updated Terms.
 
-We may update these Terms as the service evolves. Continued use after changes take effect constitutes acceptance of the updated Terms.
+## 11. Governing Law
 
-## 12. Governing law
+These Terms are governed by the laws of India, except where applicable consumer protection laws require otherwise.
 
-These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts of [City], India (placeholder — set your registered jurisdiction before public release).
+## 12. Contact
 
-## 13. Contact
-
-Questions about these Terms? Email support@manas.app (placeholder).`;
+Questions about these Terms can be sent to support@manas.app.`;

@@ -1,57 +1,59 @@
 # MANAS Terms of Service
 
-_Last updated: 31 May 2026 · Version 1.0 (starter content — review with legal counsel before public release)_
+_Last updated: 22 June 2026_
 
-Welcome to MANAS. By creating an account or using the app, you agree to these Terms of Service ("Terms"). Please read them carefully.
+By creating an account or using MANAS, you agree to these Terms of Service. If you do not agree, do not use MANAS.
 
-## 1. What MANAS is
+## 1. What MANAS Provides
 
-MANAS is a virtual platform for emotional wellbeing and personal/professional coaching. It connects you with practitioners for introductory sessions and provides a library of guided wellbeing and coaching content.
+MANAS is a virtual platform for emotional wellbeing, coaching, session booking, chat, and learning content. It helps users connect with coaches or practitioners and access wellbeing resources.
 
-## 2. Not a substitute for emergency or medical care
+## 2. Not an Emergency or Medical Service
 
-**MANAS is not a substitute for emergency mental health care or for medical or psychiatric diagnosis or treatment.** It does not provide emergency services. If you are experiencing a medical or mental-health emergency, or are thinking about harming yourself, contact your local emergency services or a crisis helpline (several India helplines are listed in the app) immediately. Coaches and practitioners on MANAS do not provide emergency intervention.
+MANAS is not an emergency, crisis, medical, psychiatric, or suicide-prevention service. MANAS does not provide emergency intervention, medical diagnosis, or medical treatment.
 
-## 3. Demo and introductory sessions
+If you are in immediate danger, thinking about harming yourself or someone else, or experiencing a medical or mental-health emergency, contact local emergency services or a crisis helpline immediately.
 
-Sessions offered as "demo" or introductory are exploratory and intended to help you decide whether ongoing support is right for you. They are not a complete course of treatment.
+## 3. Eligibility
 
-## 4. Coaches are independent practitioners
+You must be 18 years of age or older to create an account or use MANAS. By using MANAS, you confirm that you meet this requirement.
 
-Coaches, psychologists, and practitioners offering sessions through MANAS are **independent practitioners**, not employees of MANAS. MANAS facilitates introductions and scheduling but is not responsible for the clinical judgement, advice, or conduct of any individual practitioner. Any professional relationship is between you and the practitioner.
+## 4. Your Account
 
-## 5. Eligibility
+- Provide accurate account information and keep it up to date.
+- Keep your login and device access secure.
+- You are responsible for activity that occurs through your account.
 
-You must be **18 years of age or older** to create an account and use MANAS. By using the service you confirm that you meet this requirement.
+## 5. Coaches and Practitioners
 
-## 6. Your account
+Coaches, psychologists, counselors, and practitioners available through MANAS may be independent professionals. MANAS may facilitate discovery, scheduling, chat, and session access, but the professional relationship and advice are between you and the practitioner.
 
-You are responsible for keeping your account credentials secure and for activity under your account. Provide accurate information and keep it up to date.
+## 6. Acceptable Use
 
-## 7. Acceptable use
+- Do not use MANAS for unlawful, harmful, abusive, harassing, fraudulent, or disruptive activity.
+- Do not attempt to access accounts, systems, data, or features that you are not authorized to access.
+- Do not upload or send content that infringes rights, violates law, or harms other users, coaches, practitioners, or MANAS.
 
-You agree not to misuse MANAS, including by attempting to disrupt the service, accessing it without authorisation, harassing practitioners or other users, or using it for unlawful purposes.
+## 7. Premium Access and Content
 
-## 8. Premium access
+Some content or features may require premium access or administrative approval. MANAS may change, suspend, or remove content or features as the service evolves.
 
-Some content and features may require MANAS Premium access. Premium access is managed by administrators and is not sold through the app.
+## 8. Account Suspension or Termination
 
-## 9. Account termination
+MANAS may suspend or terminate accounts that violate these Terms, create risk for users or the service, or are required to be restricted for safety, legal, or operational reasons. You may stop using MANAS and request account deletion at any time.
 
-We may suspend or terminate accounts that violate these Terms or that we reasonably believe pose a risk to users or to the service. You may stop using MANAS and request account deletion at any time (see the Privacy Policy).
+## 9. Disclaimers and Limitation of Liability
 
-## 10. Limitation of liability
+MANAS is provided on an "as is" and "as available" basis. To the maximum extent permitted by law, MANAS and its operators are not liable for indirect, incidental, special, consequential, punitive, or similar damages, or for losses arising from use of the service, inability to use the service, or conduct or advice of any independent practitioner.
 
-To the maximum extent permitted by law, MANAS and its operators are not liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of (or inability to use) the service or from the conduct or advice of any independent practitioner. The service is provided on an "as is" and "as available" basis.
+## 10. Changes to These Terms
 
-## 11. Changes to these Terms
+MANAS may update these Terms as the service evolves. Continued use of MANAS after updated Terms are posted means you accept the updated Terms.
 
-We may update these Terms as the service evolves. Continued use after changes take effect constitutes acceptance of the updated Terms.
+## 11. Governing Law
 
-## 12. Governing law
+These Terms are governed by the laws of India, except where applicable consumer protection laws require otherwise.
 
-These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts of **[City], India** _(placeholder — set your registered jurisdiction before public release)_.
+## 12. Contact
 
-## 13. Contact
-
-Questions about these Terms? Email **support@manas.app** _(placeholder)_.
+Questions about these Terms can be sent to support@manas.app.

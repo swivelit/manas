@@ -16,6 +16,7 @@ import notificationsRoutes from './routes/notifications';
 import moodRoutes from './routes/mood';
 import coachRoutes from './routes/coach';
 import adminRoutes from './routes/admin';
+import legalRoutes from './routes/legal';
 import { startReminderCron } from './lib/reminders';
 import { ensureConfiguredAdmin } from './lib/adminBootstrap';
 
@@ -57,6 +58,8 @@ app.get('/', (_req: Request, res: Response) => {
     version: API_VERSION,
     health: '/health',
     endpoints: [
+      '/privacy-policy',
+      '/terms',
       '/categories',
       '/categories/emotional-healing/topics',
       '/categories/coaching/topics',
@@ -67,6 +70,7 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 // Routes
+app.use('/', legalRoutes);
 app.use('/auth', authRoutes);
 app.use('/me', meRoutes);
 app.use('/categories', categoriesRoutes);

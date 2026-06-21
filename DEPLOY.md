@@ -74,11 +74,25 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
    - Your API lives at: `https://manas-api-dlj7.onrender.com`
    - Browser root: `https://manas-api-dlj7.onrender.com/`
    - Health check: `curl https://manas-api-dlj7.onrender.com/health`
+   - Google Play Privacy Policy URL: `https://manas-api-dlj7.onrender.com/privacy-policy`
+   - Terms URL: `https://manas-api-dlj7.onrender.com/terms`
    - Full production smoke after deploy and seed:
    ```bash
    cd backend
    API_URL=https://manas-api-dlj7.onrender.com npm run smoke:prod
    ```
+
+   Legal page smoke checks after deploy:
+   ```bash
+   curl -I https://manas-api-dlj7.onrender.com/privacy-policy
+   curl https://manas-api-dlj7.onrender.com/privacy-policy
+   curl -I https://manas-api-dlj7.onrender.com/terms
+   curl https://manas-api-dlj7.onrender.com/terms
+   ```
+   Expected result: HTTP 200, `Content-Type: text/html`, no login required, and
+   the privacy page contains `MANAS Privacy Policy`. The Play Console Data
+   Safety answers must match the data collection and processing described in the
+   privacy policy.
 
 6. **Update mobile app**
    - Set `EXPO_PUBLIC_API_URL` in `mobile/.env.production` to the Render URL
