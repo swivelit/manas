@@ -73,6 +73,8 @@ require_command npm "Install npm with Node.js."
 require_command npx "Install npm/npx with Node.js."
 require_node_version
 
+run_step "Android release signing plugin check" node "$ROOT_DIR/scripts/check-android-release-signing-plugin.js"
+
 run_step "Backend npm ci" bash -c "cd '$ROOT_DIR/backend' && npm ci"
 run_step "Backend Prisma generate" bash -c "cd '$ROOT_DIR/backend' && npx prisma generate"
 run_step "Backend typecheck" bash -c "cd '$ROOT_DIR/backend' && npm run typecheck"

@@ -26,6 +26,21 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - CORS hardened: always allows no-origin requests (native mobile/curl); production restricted to a comma-separated `FRONTEND_URL` allowlist.
 - BUILD.md documents the required one-time `eas init` (for push tokens + EAS builds) and an Expo Go vs. dev-build capability matrix.
 
+### Play Store signing
+- Google Play rejects APKs and Android App Bundles signed with the Android debug certificate.
+- Valid Play Store AAB path A, recommended EAS production build:
+  ```bash
+  cd mobile
+  eas build --platform android --profile production
+  ```
+- Valid Play Store AAB path B, local release-signed build:
+  ```bash
+  ./scripts/create-android-upload-keystore.sh
+  ./scripts/build-android_release-aab.sh
+  ```
+- Never upload `dist/manas-debug.apk` or any debug-signed AAB.
+- Remove the rejected AAB from the Play Console release draft and replace it with the new release-signed AAB.
+
 ### Previously completed (carried forward, not regressed)
 - Patient app: onboarding, categories/topics, coach booking (category→topic→coach→date/time→confirm), reschedule/cancel, Jitsi join for video sessions, in-app chat sessions, video library with premium gating + resume + bookmarks + subtitles + likes, mood check-in, multilingual mascot guide, notifications, timezone handling.
 - Email OTP auth, push registration (non-fatal), idempotent seed.
@@ -37,7 +52,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - **Seed the Render production database** after deploy (`npm run db:seed` from Render Shell) — otherwise the app shows empty states.
 - **`eas init`** once (from the owner's Expo account) to write `extra.eas.projectId` — required for push tokens and EAS builds.
 - **Host the privacy policy at a public URL** (the Play Console data-safety form requires a URL; `legal/privacy.md` is the source text).
-- **Play Console**: developer account, signed AAB, data-safety + content rating, screenshots, app-access instructions, internal-track QA.
+- **Play Console**: developer account, release-signed AAB, data-safety + content rating, screenshots, app-access instructions, internal-track QA.
 - **One manual device QA pass** of the mobile flows (see the checklist in `VERIFY_FINAL.md`) — backend is verified live; UI is code/bundle-verified.
 - **Migration cutover** to `prisma migrate deploy` after the next `db push` deploy converges prod to the current schema (steps in DEPLOY.md).
 

@@ -1,0 +1,4 @@
+MANAS_UPLOAD_STORE_FILE=keystores/manas-upload-key.jks
+MANAS_UPLOAD_STORE_PASSWORD=replace-with-local-password
+MANAS_UPLOAD_KEY_ALIAS=manas-upload
+MANAS_UPLOAD_KEY_PASSWORD=replace-with-local-password

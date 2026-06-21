@@ -54,6 +54,7 @@
       "expo-font",
       "expo-secure-store",
       "./plugins/with-android-gradle-node",
+      "./plugins/with-android-release-signing",
       [
         "expo-notifications",
         {

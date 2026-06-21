@@ -72,13 +72,6 @@ if (config.name !== expectedName || androidPackage !== expectedPackage) {
 NODE
 }
 
-find_jarsigner() {
-  if command -v jarsigner >/dev/null 2>&1; then
-    command -v jarsigner
-    return 0
-  fi
-}
-
 cat <<'BANNER'
 ========================================
  MANAS Android Release AAB Build
@@ -131,9 +124,13 @@ Mobile directory: $MOBILE_DIR
 Android SDK: $ANDROID_SDK_ROOT
 Output AAB: $AAB_PATH
 
-This creates a local release Android App Bundle for Play Store-style QA.
+This creates a Play Console uploadable AAB only when release signing is configured.
+If release signing is missing, run:
+  ./scripts/create-android-upload-keystore.sh
+  ./scripts/build-android_release-aab.sh
+
 Production cloud alternative:
-  eas build --platform android --profile production
+  cd mobile && eas build --platform android --profile production
 
 EOF
 
@@ -142,16 +139,6 @@ BUILD_TYPE=bundle "$ROOT_DIR/build-apk.sh"
 if [[ ! -f "$AAB_PATH" ]]; then
   echo "ERROR: Expected release AAB was not created at $AAB_PATH" >&2
   exit 1
-fi
-
-JAR_SIGNER="$(find_jarsigner || true)"
-if [[ -n "$JAR_SIGNER" ]]; then
-  echo
-  echo "Verifying AAB signature with $JAR_SIGNER"
-  "$JAR_SIGNER" -verify -verbose -certs "$AAB_PATH"
-else
-  echo
-  echo "WARNING: jarsigner was not found; AAB signature verification was skipped."
 fi
 
 cat <<EOF
@@ -163,5 +150,5 @@ AAB:
 $AAB_PATH
 
 Production cloud alternative:
-eas build --platform android --profile production
+cd mobile && eas build --platform android --profile production
 EOF

@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 MOBILE_DIR="$REPO_ROOT/mobile"
 BUILD_TYPE="${BUILD_TYPE:-release}"
+RELEASE_SIGNING_PROPERTIES="$REPO_ROOT/release-signing.properties"
 
 if [[ "$BUILD_TYPE" != "release" && "$BUILD_TYPE" != "debug" && "$BUILD_TYPE" != "bundle" ]]; then
   echo "BUILD_TYPE must be release, debug, or bundle" >&2
@@ -77,6 +78,7 @@ load_env_file() {
 load_env_file "$MOBILE_DIR/.env"
 if [[ "$BUILD_TYPE" == "release" || "$BUILD_TYPE" == "bundle" ]]; then
   load_env_file "$MOBILE_DIR/.env.production"
+  load_env_file "$RELEASE_SIGNING_PROPERTIES"
 fi
 load_env_file "$MOBILE_DIR/.env.local"
 
@@ -91,6 +93,69 @@ if [[ -z "${NODE_ENV:-}" ]]; then
     export NODE_ENV=development
   fi
 fi
+
+resolve_repo_path() {
+  local path_value="$1"
+  if [[ "$path_value" = /* ]]; then
+    printf '%s' "$path_value"
+  else
+    printf '%s/%s' "$REPO_ROOT" "$path_value"
+  fi
+}
+
+is_eas_build() {
+  [[ "${EAS_BUILD:-}" == "true" || -n "${EAS_BUILD_ID:-}" || -n "${EAS_BUILD_PROFILE:-}" ]]
+}
+
+is_placeholder_secret() {
+  [[ "${1:-}" == "replace-with-local-password" ]]
+}
+
+release_signing_configured_locally() {
+  if [[ -z "${MANAS_UPLOAD_STORE_FILE:-}" ||
+        -z "${MANAS_UPLOAD_STORE_PASSWORD:-}" ||
+        -z "${MANAS_UPLOAD_KEY_ALIAS:-}" ||
+        -z "${MANAS_UPLOAD_KEY_PASSWORD:-}" ]]; then
+    return 1
+  fi
+
+  if is_placeholder_secret "$MANAS_UPLOAD_STORE_PASSWORD" ||
+     is_placeholder_secret "$MANAS_UPLOAD_KEY_PASSWORD"; then
+    return 1
+  fi
+
+  local store_file
+  store_file="$(resolve_repo_path "$MANAS_UPLOAD_STORE_FILE")"
+  [[ -f "$store_file" ]]
+}
+
+require_release_signing_ready() {
+  [[ "$BUILD_TYPE" == "release" || "$BUILD_TYPE" == "bundle" ]] || return 0
+
+  if release_signing_configured_locally; then
+    return 0
+  fi
+
+  if is_eas_build; then
+    echo "EAS build detected; allowing EAS-managed Android release signing."
+    return 0
+  fi
+
+  cat >&2 <<'EOF'
+ERROR: MANAS release signing is not configured.
+Play Console will reject debug-signed bundles.
+
+Create local upload signing credentials, then build again:
+  ./scripts/create-android-upload-keystore.sh
+  ./scripts/build-android_release-aab.sh
+
+Cloud alternative:
+  cd mobile && eas build --platform android --profile production
+EOF
+  exit 1
+}
+
+require_release_signing_ready
 
 for command_name in node npm java unzip; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -160,6 +225,10 @@ cp "$ARTIFACT_SOURCE" "$ARTIFACT_DEST"
 if [[ ! -f "$ARTIFACT_DEST" ]]; then
   echo "$ARTIFACT_KIND was not created at $ARTIFACT_DEST" >&2
   exit 1
+fi
+
+if [[ "$BUILD_TYPE" == "release" || "$BUILD_TYPE" == "bundle" ]]; then
+  bash "$REPO_ROOT/scripts/verify-android-release-signing.sh" "$ARTIFACT_DEST"
 fi
 
 echo "$ARTIFACT_KIND created: $ARTIFACT_DEST"

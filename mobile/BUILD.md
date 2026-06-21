@@ -93,11 +93,36 @@ cd mobile && eas build --platform android --profile preview
 
 ### Production AAB (for Play Store)
 
+Google Play rejects Android App Bundles signed with the Android debug certificate.
+Never upload `dist/manas-debug.apk` or any debug-signed `.aab`.
+
+There are two valid ways to create a Play Store AAB:
+
+**A) Recommended: EAS production build**
+
 ```bash
-cd mobile && eas build --platform android --profile production
+cd mobile
+eas build --platform android --profile production
 ```
 
-Produces an `.aab` (Android App Bundle) optimised for Play Store distribution.
+This uses EAS-managed Android signing credentials and produces an `.aab`
+(Android App Bundle) optimized for Play Store distribution.
+
+**B) Local release-signed build**
+
+```bash
+./scripts/create-android-upload-keystore.sh
+./scripts/build-android_release-aab.sh
+```
+
+The first command creates a local upload keystore and
+`release-signing.properties`; both are gitignored and must never be committed.
+The second command creates `dist/manas-release.aab` only after release signing
+is configured, then verifies that the artifact is not signed with the Android
+debug certificate.
+
+If Play Console has a rejected `dist/manas-release.aab` draft, remove that bad
+AAB from the release draft and upload the newly generated release-signed AAB.
 
 ### iOS (future)
 
