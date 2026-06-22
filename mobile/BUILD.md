@@ -80,22 +80,75 @@ Local release APK for QA installs:
 ./scripts/build-android_release-apk.sh
 ```
 
-### Recording Google Play foreground service demo video
+### Recording three Google Play foreground service demo videos
 
 Google Play may ask for a demo video for camera, microphone, and media playback
-foreground service declarations. Record a local MP4 from a connected Android
-emulator/device with:
+foreground service declarations. Record three separate local MP4s from a visible
+Android emulator/device with the debug APK flow.
 
-Production-like release APK:
+Record all three:
+
+```bash
+./scripts/record-all-play-fgs-demos.sh
+```
+
+Record only camera:
+
+```bash
+./scripts/record-play-camera-demo.sh
+```
+
+Record only media playback:
+
+```bash
+./scripts/record-play-media-playback-demo.sh
+```
+
+Record only microphone:
+
+```bash
+./scripts/record-play-microphone-demo.sh
+```
+
+With selected emulator:
+
+```bash
+START_EMULATOR=true AVD_NAME="YOUR_AVD_NAME" ./scripts/record-all-play-fgs-demos.sh
+```
+
+With longer time:
+
+```bash
+DEMO_SECONDS=180 ./scripts/record-all-play-fgs-demos.sh
+```
+
+If ADB is broken:
+
+```bash
+REPAIR_ADB=true ./scripts/android-adb-doctor.sh
+```
+
+The generated MP4s are saved under `dist/play-store` by default:
+`manas-fgs-camera-demo-...mp4`, `manas-fgs-media-playback-demo-...mp4`,
+and `manas-fgs-microphone-demo-...mp4`. Upload each MP4 to YouTube as Unlisted
+or to Google Drive with anyone-with-link viewer access. Paste the camera video
+URL into the Camera video field, the media playback video URL into the Media
+playback video field, and the microphone video URL into the Microphone video
+field. Do not paste local `dist/play-store` file paths into Play Console.
+
+The Play Console uploadable app bundle remains `dist/manas-release.aab`; the
+debug APK is only for recording permission declaration videos.
+
+Generic one-video fallback:
+
+```bash
+./scripts/record-debug-apk-play-demo.sh
+```
+
+Production-like release APK recording:
 
 ```bash
 BUILD_MODE=release DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
-```
-
-Debug fallback:
-
-```bash
-BUILD_MODE=debug DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
 ```
 
 Existing APK:
@@ -103,16 +156,6 @@ Existing APK:
 ```bash
 APK_PATH=dist/manas-release.apk BUILD_MODE=none DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
 ```
-
-The generated MP4 is saved under `dist/play-store` by default. Upload it to
-YouTube as Unlisted or to Google Drive with anyone-with-link viewer access, then
-paste the shareable URL into Play Console. If one video demonstrates camera,
-microphone, and active session media playback, paste the same public video URL
-into the Camera, Media playback, and Microphone video link fields.
-
-Do not paste the local `dist/play-store/...mp4` path into Play Console. See
-`scripts/play-foreground-service-demo-checklist.md` for the full manual flow and
-permission description text.
 
 Cloud preview APK with EAS:
 

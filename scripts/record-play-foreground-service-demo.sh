@@ -10,6 +10,7 @@ BUILD_MODE="${BUILD_MODE:-release}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 RESET_APP="${RESET_APP:-false}"
 GRANT_PERMISSIONS="${GRANT_PERMISSIONS:-false}"
+USE_LAUNCH_DEBUG_SCRIPT="${USE_LAUNCH_DEBUG_SCRIPT:-false}"
 DEMO_SECONDS="${DEMO_SECONDS:-120}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist/play-store}"
 EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://manas-api-dlj7.onrender.com}"
@@ -40,6 +41,7 @@ Environment:
   SKIP_BUILD             true or false. Default: false
   RESET_APP              true or false. Default: false
   GRANT_PERMISSIONS      true or false. Default: false
+  USE_LAUNCH_DEBUG_SCRIPT true or false. Default: false
   DEMO_SECONDS           screenrecord duration in seconds. Default: 120
   OUTPUT_DIR             output directory. Default: dist/play-store
   VIDEO_NAME             output MP4 filename. Default includes timestamp.
@@ -315,6 +317,7 @@ fi
 validate_bool "SKIP_BUILD" "$SKIP_BUILD"
 validate_bool "RESET_APP" "$RESET_APP"
 validate_bool "GRANT_PERMISSIONS" "$GRANT_PERMISSIONS"
+validate_bool "USE_LAUNCH_DEBUG_SCRIPT" "$USE_LAUNCH_DEBUG_SCRIPT"
 
 if [[ ! "$DEMO_SECONDS" =~ ^[0-9]+$ || "$DEMO_SECONDS" -lt 1 ]]; then
   error "DEMO_SECONDS must be a positive integer. Current value: $DEMO_SECONDS"
@@ -341,6 +344,14 @@ BANNER
 
 ensure_adb
 
+if [[ "$USE_LAUNCH_DEBUG_SCRIPT" == "true" ]]; then
+  echo "USE_LAUNCH_DEBUG_SCRIPT=true; preparing emulator and debug APK launcher flow."
+  "$SCRIPT_DIR/start-android-emulator-if-needed.sh"
+  "$SCRIPT_DIR/launch-debug_apk.sh"
+else
+  "$SCRIPT_DIR/android-adb-doctor.sh"
+fi
+
 echo "Connected adb devices:"
 adb devices -l
 echo
@@ -358,27 +369,34 @@ echo "Logcat: $LOGCAT_PATH"
 echo "Device info: $DEVICE_INFO_PATH"
 echo
 
-build_or_select_apk
-
-echo
-echo "Installing APK:"
-echo "$APK_TO_INSTALL"
-adb_cmd install -r "$APK_TO_INSTALL"
-
-if [[ "$RESET_APP" == "true" ]]; then
-  echo "RESET_APP=true; clearing $APP_ID app data."
-  adb_cmd shell pm clear "$APP_ID"
+if [[ "$USE_LAUNCH_DEBUG_SCRIPT" == "true" ]]; then
+  APK_TO_INSTALL="${APK_PATH:-$ROOT_DIR/dist/manas-debug.apk}"
+  echo "Debug launcher flow already built, installed, configured Metro, and verified launch."
+  echo "Force-stopping $APP_ID before recording."
+  adb_cmd shell am force-stop "$APP_ID" >/dev/null 2>&1 || true
 else
-  echo "RESET_APP=false; preserving app data."
-fi
+  build_or_select_apk
 
-if [[ "$GRANT_PERMISSIONS" == "true" ]]; then
-  echo "GRANT_PERMISSIONS=true; granting runtime permissions before recording."
-  grant_permission android.permission.CAMERA
-  grant_permission android.permission.RECORD_AUDIO
-  grant_permission android.permission.POST_NOTIFICATIONS
-else
-  echo "GRANT_PERMISSIONS=false; permissions will use the normal in-app Android prompts."
+  echo
+  echo "Installing APK:"
+  echo "$APK_TO_INSTALL"
+  adb_cmd install -r "$APK_TO_INSTALL"
+
+  if [[ "$RESET_APP" == "true" ]]; then
+    echo "RESET_APP=true; clearing $APP_ID app data."
+    adb_cmd shell pm clear "$APP_ID"
+  else
+    echo "RESET_APP=false; preserving app data."
+  fi
+
+  if [[ "$GRANT_PERMISSIONS" == "true" ]]; then
+    echo "GRANT_PERMISSIONS=true; granting runtime permissions before recording."
+    grant_permission android.permission.CAMERA
+    grant_permission android.permission.RECORD_AUDIO
+    grant_permission android.permission.POST_NOTIFICATIONS
+  else
+    echo "GRANT_PERMISSIONS=false; permissions will use the normal in-app Android prompts."
+  fi
 fi
 
 capture_device_info "$DEVICE_INFO_PATH"
@@ -402,13 +420,13 @@ cat <<EOF
 
 Recording is running. Complete this flow on the Android device:
 
-STEP 1: Sign in with the Google Play reviewer test account.
-STEP 2: Open the dashboard/session area.
-STEP 3: Open or join an audio/video session.
-STEP 4: Allow camera and microphone permissions if prompted.
-STEP 5: Keep the active audio/video session visible for a few seconds.
-STEP 6: Leave/end the session.
-STEP 7: Wait for recording to finish.
+1. Sign in with the Google Play reviewer account.
+2. Open dashboard/session area.
+3. Open or join an audio/video session.
+4. Allow camera/microphone permissions if prompted.
+5. Keep active call/session visible for a few seconds.
+6. End/leave the session.
+7. Wait for recording to finish.
 
 The script will wait for screenrecord to finish, then pull the MP4 locally.
 EOF

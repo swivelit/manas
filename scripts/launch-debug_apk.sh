@@ -17,12 +17,19 @@ API_PORT="${API_PORT:-4000}"
 EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-http://localhost:$API_PORT}"
 export EXPO_PUBLIC_API_URL
 LAUNCH_WAIT_SECONDS="${LAUNCH_WAIT_SECONDS:-20}"
+ADB_DETECT_TIMEOUT_SECONDS="${ADB_DETECT_TIMEOUT_SECONDS:-20}"
 START_METRO="${START_METRO:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 KEEP_METRO="${KEEP_METRO:-true}"
+RESET_APP="${RESET_APP:-false}"
+ADB_SERVER_PORT="${ADB_SERVER_PORT:-5037}"
+export ADB_SERVER_PORT
+export ADB_MDNS_AUTO_CONNECT=0
+export ADB_MDNS_OPENSCREEN=0
 
 FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.jeygroups\\.manas"
 CRASH_REGEX="ANR in $APP_ID|failed to complete startup|FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Exception in native call|Could not connect to development server"
+STARTUP_READY_REGEX='ReactNativeJS.*Running "main"|BridgelessReact.*Loading JS Bundle|BridgelessReact.*startSurface|ExpoModulesCore.*AppContext was initialized'
 
 METRO_PID=""
 
@@ -49,8 +56,81 @@ require_command() {
   fi
 }
 
+find_android_sdk() {
+  local candidates=()
+  [[ -n "${ANDROID_SDK_ROOT:-}" ]] && candidates+=("$ANDROID_SDK_ROOT")
+  [[ -n "${ANDROID_HOME:-}" ]] && candidates+=("$ANDROID_HOME")
+  candidates+=("$HOME/Library/Android/sdk" "$HOME/Android/Sdk")
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -x "$candidate/platform-tools/adb" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+ensure_adb_path() {
+  if command -v adb >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local android_sdk
+  android_sdk="$(find_android_sdk || true)"
+  if [[ -n "$android_sdk" ]]; then
+    export ANDROID_SDK_ROOT="$android_sdk"
+    export ANDROID_HOME="$android_sdk"
+    export PATH="$android_sdk/platform-tools:$PATH"
+  fi
+}
+
+run_with_timeout_capture() {
+  local seconds="$1"
+  local output_path="$2"
+  shift 2
+  local command_pid timer_pid status
+
+  "$@" > "$output_path" 2>&1 &
+  command_pid="$!"
+
+  (
+    sleep "$seconds"
+    if kill -0 "$command_pid" >/dev/null 2>&1; then
+      kill "$command_pid" >/dev/null 2>&1 || true
+    fi
+  ) &
+  timer_pid="$!"
+
+  set +e
+  wait "$command_pid"
+  status="$?"
+  set -e
+
+  kill "$timer_pid" >/dev/null 2>&1 || true
+  wait "$timer_pid" >/dev/null 2>&1 || true
+
+  if [[ "$status" -eq 130 || "$status" -eq 137 || "$status" -eq 143 ]]; then
+    echo "ERROR: timed out after ${seconds}s: $*" >> "$output_path"
+    return 124
+  fi
+
+  return "$status"
+}
+
 adb_devices() {
-  adb devices | awk 'NR > 1 && $2 == "device" { print $1 }'
+  local devices_output
+  devices_output="$(mktemp "${TMPDIR:-/tmp}/manas-adb-devices.XXXXXX")"
+  if ! run_with_timeout_capture "$ADB_DETECT_TIMEOUT_SECONDS" "$devices_output" adb devices; then
+    cat "$devices_output" >&2 || true
+    rm -f "$devices_output"
+    return 1
+  fi
+
+  awk 'NR > 1 && $2 == "device" { print $1 }' "$devices_output"
+  rm -f "$devices_output"
 }
 
 select_device() {
@@ -210,10 +290,13 @@ BANNER
 
 mkdir -p "$DIST_DIR"
 
+ensure_adb_path
 require_command adb "Install Android platform-tools and ensure adb is on PATH."
 require_command node "Install Node.js."
 require_command npm "Install npm with Node.js."
 require_command npx "Install npm/npx with Node.js."
+
+"$SCRIPT_DIR/android-adb-doctor.sh"
 
 if [[ "$SKIP_BUILD" != "true" ]]; then
   "$SCRIPT_DIR/build-android-apk.sh"
@@ -236,6 +319,13 @@ start_metro_if_needed
 
 echo "Installing debug APK."
 adb_cmd install -r "$APK_PATH"
+
+if [[ "$RESET_APP" == "true" ]]; then
+  echo "RESET_APP=true; clearing $APP_ID app data before configuring the debug host."
+  adb_cmd shell pm clear "$APP_ID"
+else
+  echo "RESET_APP=false; preserving app data."
+fi
 
 configure_debug_server_host
 
@@ -273,9 +363,9 @@ EOF
   exit 1
 fi
 
-if grep -iq "Status: timeout" <<<"$START_OUTPUT" && ! grep -q 'ReactNativeJS.*Running "main"' "$LOG_PATH"; then
+if grep -iq "Status: timeout" <<<"$START_OUTPUT" && ! grep -qE "$STARTUP_READY_REGEX" "$LOG_PATH"; then
   cat <<EOF >&2
-ERROR: Android reported a launch timeout and React did not finish starting.
+ERROR: Android reported a launch timeout and MANAS did not show React/Expo startup markers.
 
 am start output:
 $START_OUTPUT
@@ -316,6 +406,9 @@ cat <<EOF
 ========================================
 Installed and launched:
 $APP_ID
+
+Status:
+Debug APK launch verified successfully.
 
 Full log:
 $LOG_PATH

@@ -44,9 +44,11 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - Never upload `dist/manas-debug.apk` or any debug-signed AAB.
 - Remove the rejected AAB from the Play Console release draft and replace it with the new release-signed AAB.
 
-### Play foreground service demo video
-- Use `./scripts/record-play-foreground-service-demo.sh` to record a local MP4 demonstrating the user-initiated session flow for camera, microphone, and media playback foreground service declarations.
-- Upload the generated MP4 to YouTube as Unlisted or to Google Drive with anyone-with-link access, then paste the public/shareable URL into Play Console. Do not paste a local `dist/play-store` path.
+### Play foreground service demo videos
+- Use `./scripts/record-all-play-fgs-demos.sh` to record separate local MP4s for the Camera, Media playback, and Microphone Play Console video fields.
+- Single-field options: `./scripts/record-play-camera-demo.sh`, `./scripts/record-play-media-playback-demo.sh`, and `./scripts/record-play-microphone-demo.sh`.
+- If ADB is broken, run `REPAIR_ADB=true ./scripts/android-adb-doctor.sh`. If you need a specific emulator, run `START_EMULATOR=true AVD_NAME="YOUR_AVD_NAME" ./scripts/record-all-play-fgs-demos.sh`.
+- Upload each generated MP4 to YouTube as Unlisted or to Google Drive with anyone-with-link access, then paste each public/shareable URL into its matching Play Console field. Do not paste local `dist/play-store` paths.
 
 ### Previously completed (carried forward, not regressed)
 - Patient app: onboarding, categories/topics, coach booking (category→topic→coach→date/time→confirm), reschedule/cancel, Jitsi join for video sessions, in-app chat sessions, video library with premium gating + resume + bookmarks + subtitles + likes, mood check-in, multilingual mascot guide, notifications, timezone handling.
