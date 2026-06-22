@@ -45,9 +45,10 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - Remove the rejected AAB from the Play Console release draft and replace it with the new release-signed AAB.
 
 ### Play foreground service demo videos
-- Use `./scripts/record-all-play-fgs-demos.sh` to record separate local MP4s for the Camera, Media playback, and Microphone Play Console video fields.
+- Use `RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh` to record separate local MP4s for the Camera, Media playback, and Microphone Play Console video fields.
 - Single-field options: `./scripts/record-play-camera-demo.sh`, `./scripts/record-play-media-playback-demo.sh`, and `./scripts/record-play-microphone-demo.sh`.
-- If ADB is broken, run `REPAIR_ADB=true ./scripts/android-adb-doctor.sh`. If you need a specific emulator, run `START_EMULATOR=true AVD_NAME="YOUR_AVD_NAME" ./scripts/record-all-play-fgs-demos.sh`.
+- If ADB is broken, run `REPAIR_ADB=true ./scripts/android-adb-doctor.sh`. If you need a specific emulator, run `AVD_NAME="YOUR_AVD_NAME" RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh`.
+- If the script says the emulator is hidden/headless, rerun `RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true ./scripts/record-all-play-fgs-demos.sh`, or close all emulator windows, run `adb kill-server`, `pkill -f "qemu-system"`, and `pkill -f "emulator"`, then start a visible AVD from Android Studio Device Manager.
 - Upload each generated MP4 to YouTube as Unlisted or to Google Drive with anyone-with-link access, then paste each public/shareable URL into its matching Play Console field. Do not paste local `dist/play-store` paths.
 
 ### Previously completed (carried forward, not regressed)

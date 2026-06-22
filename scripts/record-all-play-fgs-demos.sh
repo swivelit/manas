@@ -8,7 +8,10 @@ cd "$ROOT_DIR"
 APP_ID="${APP_ID:-com.jeygroups.manas}"
 RESET_APP="${RESET_APP:-false}"
 START_EMULATOR="${START_EMULATOR:-true}"
+RESTART_HEADLESS_EMULATOR="${RESTART_HEADLESS_EMULATOR:-true}"
 ALLOW_HEADLESS_EMULATOR="${ALLOW_HEADLESS_EMULATOR:-false}"
+FORCE_VISIBLE_EMULATOR="${FORCE_VISIBLE_EMULATOR:-true}"
+INTERACTIVE_CONFIRM="${INTERACTIVE_CONFIRM:-false}"
 EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://manas-api-dlj7.onrender.com}"
 
 export EXPO_PUBLIC_API_URL
@@ -49,31 +52,6 @@ select_device() {
   printf '%s\n' "${devices[0]}"
 }
 
-headless_emulator_detected() {
-  ps ax -o args= | awk '
-    /qemu-system|\/emulator/ && /-no-window|-qt-hide-window/ { found = 1 }
-    END { exit found ? 0 : 1 }
-  '
-}
-
-require_visible_emulator() {
-  local device_id="$1"
-
-  [[ "$ALLOW_HEADLESS_EMULATOR" == "true" ]] && return 0
-  [[ "$device_id" == emulator-* ]] || return 0
-
-  if headless_emulator_detected; then
-    cat >&2 <<'EOF'
-ERROR: The selected emulator appears to be hidden/headless.
-
-Play Console demo recording needs a visible, interactive emulator window.
-Close the hidden emulator and start a visible AVD from Android Studio Device
-Manager. For non-interactive verification only, set ALLOW_HEADLESS_EMULATOR=true.
-EOF
-    exit 2
-  fi
-}
-
 pause_before_demo() {
   local label="$1"
   local field="$2"
@@ -99,13 +77,19 @@ run_demo() {
     FGS_SKIP_PREP=true \
     RESET_APP="$RESET_APP" \
     START_EMULATOR="$START_EMULATOR" \
+    RESTART_HEADLESS_EMULATOR="$RESTART_HEADLESS_EMULATOR" \
     ALLOW_HEADLESS_EMULATOR="$ALLOW_HEADLESS_EMULATOR" \
+    FORCE_VISIBLE_EMULATOR="$FORCE_VISIBLE_EMULATOR" \
+    INTERACTIVE_CONFIRM="$INTERACTIVE_CONFIRM" \
     "$SCRIPT_DIR/record-play-fgs-permission-video.sh"
 }
 
 validate_bool "RESET_APP" "$RESET_APP"
 validate_bool "START_EMULATOR" "$START_EMULATOR"
+validate_bool "RESTART_HEADLESS_EMULATOR" "$RESTART_HEADLESS_EMULATOR"
 validate_bool "ALLOW_HEADLESS_EMULATOR" "$ALLOW_HEADLESS_EMULATOR"
+validate_bool "FORCE_VISIBLE_EMULATOR" "$FORCE_VISIBLE_EMULATOR"
+validate_bool "INTERACTIVE_CONFIRM" "$INTERACTIVE_CONFIRM"
 
 cat <<EOF
 =====================================================
@@ -119,16 +103,22 @@ API URL: $EXPO_PUBLIC_API_URL
 EOF
 
 "$SCRIPT_DIR/android-adb-doctor.sh"
-START_EMULATOR="$START_EMULATOR" "$SCRIPT_DIR/start-android-emulator-if-needed.sh"
+START_EMULATOR="$START_EMULATOR" \
+  RESTART_HEADLESS_EMULATOR="$RESTART_HEADLESS_EMULATOR" \
+  ALLOW_HEADLESS_EMULATOR="$ALLOW_HEADLESS_EMULATOR" \
+  FORCE_VISIBLE_EMULATOR="$FORCE_VISIBLE_EMULATOR" \
+  INTERACTIVE_CONFIRM="$INTERACTIVE_CONFIRM" \
+  "$SCRIPT_DIR/start-android-emulator-if-needed.sh"
 
 DEVICE_ID="$(select_device)"
-require_visible_emulator "$DEVICE_ID"
 
+echo "Using adb device for recordings: $DEVICE_ID"
+echo "Running ./scripts/launch-debug_apk.sh before recording."
 RESET_APP="$RESET_APP" "$SCRIPT_DIR/launch-debug_apk.sh"
 
-run_demo camera "Camera demo" "Camera video field"
-run_demo media-playback "Media playback demo" "Media playback video field"
-run_demo microphone "Microphone demo" "Microphone video field"
+run_demo camera "1. Camera video" "Camera video field"
+run_demo media-playback "2. Media playback video" "Media playback video field"
+run_demo microphone "3. Microphone video" "Microphone video field"
 
 cat <<'EOF'
 

@@ -11,7 +11,10 @@ APP_ID="${APP_ID:-com.jeygroups.manas}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist/play-store}"
 RESET_APP="${RESET_APP:-false}"
 START_EMULATOR="${START_EMULATOR:-true}"
+RESTART_HEADLESS_EMULATOR="${RESTART_HEADLESS_EMULATOR:-true}"
 ALLOW_HEADLESS_EMULATOR="${ALLOW_HEADLESS_EMULATOR:-false}"
+FORCE_VISIBLE_EMULATOR="${FORCE_VISIBLE_EMULATOR:-true}"
+INTERACTIVE_CONFIRM="${INTERACTIVE_CONFIRM:-false}"
 FGS_SKIP_PREP="${FGS_SKIP_PREP:-false}"
 EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://manas-api-dlj7.onrender.com}"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
@@ -45,9 +48,12 @@ Environment:
   OUTPUT_DIR                 Output directory. Default: dist/play-store
   RESET_APP                  true or false. Default: false
   START_EMULATOR             true or false. Default: true
+  RESTART_HEADLESS_EMULATOR  true or false. Default: true
+  FORCE_VISIBLE_EMULATOR     true or false. Default: true
   AVD_NAME                   Optional Android Virtual Device name.
   ANDROID_SERIAL             Optional adb device serial.
   ALLOW_HEADLESS_EMULATOR    true or false. Default: false
+  INTERACTIVE_CONFIRM        true or false. Default: false
   EXPO_PUBLIC_API_URL        Backend URL. Default: production Render API.
 EOF
 }
@@ -145,24 +151,36 @@ select_device() {
   printf '%s\n' "${devices[0]}"
 }
 
-headless_emulator_detected() {
-  ps ax -o args= | awk '
-    /qemu-system|\/emulator/ && /-no-window|-qt-hide-window/ { found = 1 }
-    END { exit found ? 0 : 1 }
-  '
+headless_flags_for_selected_emulator() {
+  [[ "$DEVICE_ID" == emulator-* ]] || return 1
+
+  local hard_headless_flag_regex='(^|[[:space:]])(-no-window|-headless|-display[[:space:]]+none|-display=none)([[:space:]]|$)'
+  local pid args
+
+  while read -r pid args; do
+    [[ -n "${pid:-}" && -n "${args:-}" ]] || continue
+    [[ "$args" == *qemu-system* || "$args" == *"/emulator"* || "$args" == emulator* ]] || continue
+    if [[ "$args" =~ $hard_headless_flag_regex ]]; then
+      return 0
+    fi
+  done < <(ps ax -o pid= -o args=)
+
+  return 1
 }
 
 require_visible_emulator() {
   [[ "$ALLOW_HEADLESS_EMULATOR" == "true" ]] && return 0
   [[ "$DEVICE_ID" == emulator-* ]] || return 0
 
-  if headless_emulator_detected; then
+  if headless_flags_for_selected_emulator; then
     cat >&2 <<EOF
 ERROR: $DEVICE_ID appears to be a hidden/headless emulator.
 
-Play Console demo recording needs a visible, interactive emulator window.
-Close the hidden emulator and start a visible AVD from Android Studio Device
-Manager, or rerun only for non-interactive verification with:
+Play Console demo recording needs a visible, interactive emulator window. The
+setup helper should normally restart this automatically. Rerun with:
+  RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true PERMISSION_DEMO=$PERMISSION_DEMO ./scripts/record-play-fgs-permission-video.sh
+
+For non-interactive verification only:
   ALLOW_HEADLESS_EMULATOR=true PERMISSION_DEMO=$PERMISSION_DEMO ./scripts/record-play-fgs-permission-video.sh
 EOF
     exit 2
@@ -368,11 +386,17 @@ prepare_debug_app() {
   fi
 
   "$SCRIPT_DIR/android-adb-doctor.sh"
-  START_EMULATOR="$START_EMULATOR" "$SCRIPT_DIR/start-android-emulator-if-needed.sh"
+  START_EMULATOR="$START_EMULATOR" \
+    RESTART_HEADLESS_EMULATOR="$RESTART_HEADLESS_EMULATOR" \
+    ALLOW_HEADLESS_EMULATOR="$ALLOW_HEADLESS_EMULATOR" \
+    FORCE_VISIBLE_EMULATOR="$FORCE_VISIBLE_EMULATOR" \
+    INTERACTIVE_CONFIRM="$INTERACTIVE_CONFIRM" \
+    "$SCRIPT_DIR/start-android-emulator-if-needed.sh"
 
   DEVICE_ID="$(select_device)"
   require_visible_emulator
 
+  echo "Running ./scripts/launch-debug_apk.sh before recording."
   RESET_APP="$RESET_APP" "$SCRIPT_DIR/launch-debug_apk.sh"
 }
 
@@ -441,7 +465,10 @@ fi
 
 validate_bool "RESET_APP" "$RESET_APP"
 validate_bool "START_EMULATOR" "$START_EMULATOR"
+validate_bool "RESTART_HEADLESS_EMULATOR" "$RESTART_HEADLESS_EMULATOR"
 validate_bool "ALLOW_HEADLESS_EMULATOR" "$ALLOW_HEADLESS_EMULATOR"
+validate_bool "FORCE_VISIBLE_EMULATOR" "$FORCE_VISIBLE_EMULATOR"
+validate_bool "INTERACTIVE_CONFIRM" "$INTERACTIVE_CONFIRM"
 validate_bool "FGS_SKIP_PREP" "$FGS_SKIP_PREP"
 [[ "$DEMO_SECONDS" =~ ^[0-9]+$ && "$DEMO_SECONDS" -gt 0 ]] || error "DEMO_SECONDS must be a positive integer."
 

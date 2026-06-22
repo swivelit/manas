@@ -89,7 +89,7 @@ Android emulator/device with the debug APK flow.
 Record all three:
 
 ```bash
-./scripts/record-all-play-fgs-demos.sh
+RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh
 ```
 
 Record only camera:
@@ -113,7 +113,7 @@ Record only microphone:
 With selected emulator:
 
 ```bash
-START_EMULATOR=true AVD_NAME="YOUR_AVD_NAME" ./scripts/record-all-play-fgs-demos.sh
+AVD_NAME="YOUR_AVD_NAME" RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh
 ```
 
 With longer time:
@@ -127,6 +127,31 @@ If ADB is broken:
 ```bash
 REPAIR_ADB=true ./scripts/android-adb-doctor.sh
 ```
+
+If the script says the emulator is hidden/headless:
+
+```bash
+RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true ./scripts/record-all-play-fgs-demos.sh
+```
+
+Or manually:
+
+1. Close all emulator windows.
+2. Run:
+
+   ```bash
+   adb kill-server
+   pkill -f "qemu-system"
+   pkill -f "emulator"
+   ```
+
+3. Open Android Studio > Device Manager.
+4. Start an AVD normally so the emulator window is visible.
+5. Run:
+
+   ```bash
+   ./scripts/record-all-play-fgs-demos.sh
+   ```
 
 The generated MP4s are saved under `dist/play-store` by default:
 `manas-fgs-camera-demo-...mp4`, `manas-fgs-media-playback-demo-...mp4`,
