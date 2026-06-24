@@ -44,6 +44,17 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - Never upload `dist/manas-debug.apk` or any debug-signed AAB.
 - Remove the rejected AAB from the Play Console release draft and replace it with the new release-signed AAB.
 
+### Play Store photo and video permissions
+- MANAS must not request `android.permission.READ_MEDIA_VIDEO`, `android.permission.READ_MEDIA_IMAGES`, `android.permission.READ_EXTERNAL_STORAGE`, or `android.permission.WRITE_EXTERNAL_STORAGE` in the final Android manifest.
+- Audio/video calls use `CAMERA` and `RECORD_AUDIO`; they do not require `READ_MEDIA_VIDEO`.
+- Admin and coach video uploads must use a user-selected file picker flow (`expo-document-picker`) instead of broad photo/video gallery access.
+- Before uploading to Play Console, build a fresh release AAB and verify the manifest:
+  ```bash
+  ./scripts/build-android_release-aab.sh
+  ./scripts/verify-android-media-permissions.sh dist/manas-release.aab
+  ```
+- Upload the fresh `dist/manas-release.aab` after this fix. Reusing an older AAB can keep the Play Console "Photo and video permissions" declaration visible.
+
 ### Play foreground service demo videos
 - Use `RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh` to record separate local MP4s for the Camera, Media playback, and Microphone Play Console video fields.
 - Single-field options: `./scripts/record-play-camera-demo.sh`, `./scripts/record-play-media-playback-demo.sh`, and `./scripts/record-play-microphone-demo.sh`.

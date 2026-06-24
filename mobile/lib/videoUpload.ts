@@ -1,5 +1,4 @@
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 
 export const VIDEO_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 
@@ -9,7 +8,7 @@ export type PickedVideoFile = {
   fileName: string;
   sizeBytes?: number;
   durationMs?: number;
-  source: 'gallery' | 'files';
+  source: 'files';
 };
 
 const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
@@ -82,38 +81,6 @@ function assertSupportedVideo(file: PickedVideoFile) {
   if (file.sizeBytes && file.sizeBytes > VIDEO_UPLOAD_MAX_BYTES) {
     throw new Error('Choose a video smaller than 100 MB.');
   }
-}
-
-export async function pickVideoFromGallery(): Promise<PickedVideoFile | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    throw new Error('Media library permission is required to choose a video.');
-  }
-
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['videos'],
-    allowsEditing: false,
-    quality: 1,
-  });
-  if (result.canceled) return null;
-
-  const asset = result.assets[0];
-  if (!asset || asset.type !== 'video') {
-    throw new Error('Choose a video from your gallery.');
-  }
-
-  const fileName = asset.fileName ?? getFileNameFromUri(asset.uri);
-  const mimeType = inferVideoMimeType({ mimeType: asset.mimeType, fileName, uri: asset.uri });
-  const file: PickedVideoFile = {
-    uri: asset.uri,
-    mimeType: mimeType ?? '',
-    fileName,
-    sizeBytes: asset.fileSize,
-    durationMs: asset.duration ?? undefined,
-    source: 'gallery',
-  };
-  assertSupportedVideo(file);
-  return file;
 }
 
 export async function pickVideoFromFiles(): Promise<PickedVideoFile | null> {

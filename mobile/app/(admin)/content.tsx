@@ -24,7 +24,6 @@ import {
   formatBytes,
   getReadableErrorMessage,
   pickVideoFromFiles,
-  pickVideoFromGallery,
 } from '../../lib/videoUpload';
 
 const VIDEO_TYPES = ['INTRO', 'TOPIC', 'THERAPY', 'COACHING', 'MOTIVATIONAL'] as const;
@@ -102,15 +101,6 @@ export default function AdminContent() {
       if (uploaded.thumbnailUrl) setThumbnailUrl(uploaded.thumbnailUrl);
     } catch (err: unknown) {
       void dialog.alert('Could not upload video', getReadableErrorMessage(err, 'Choose another video and try again.'));
-    }
-  }
-
-  async function chooseGalleryVideo() {
-    try {
-      const video = await pickVideoFromGallery();
-      if (video) await uploadPickedVideo(video);
-    } catch (err: unknown) {
-      void dialog.alert('Could not choose video', getReadableErrorMessage(err, 'Choose another video and try again.'));
     }
   }
 
@@ -246,11 +236,8 @@ export default function AdminContent() {
                   <Text style={styles.fieldLabel}>Choose video</Text>
                   <View style={styles.videoPicker}>
                     <View style={styles.videoPickerActions}>
-                      <TouchableOpacity style={[styles.pickButton, isBusy && styles.pickButtonDisabled]} onPress={chooseGalleryVideo} disabled={isBusy} activeOpacity={0.85}>
-                        <Text style={styles.pickButtonText}>Gallery</Text>
-                      </TouchableOpacity>
                       <TouchableOpacity style={[styles.pickButton, isBusy && styles.pickButtonDisabled]} onPress={chooseFileVideo} disabled={isBusy} activeOpacity={0.85}>
-                        <Text style={styles.pickButtonText}>Files</Text>
+                        <Text style={styles.pickButtonText}>Choose video file</Text>
                       </TouchableOpacity>
                     </View>
                     {pickedVideo ? (

@@ -3,7 +3,7 @@
     "name": "MANAS",
     "slug": "manas",
     "scheme": "manas",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,9 +23,13 @@
         "POST_NOTIFICATIONS",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_CAMERA",
-        "FOREGROUND_SERVICE_MICROPHONE",
-        "READ_MEDIA_VIDEO",
-        "READ_EXTERNAL_STORAGE"
+        "FOREGROUND_SERVICE_MICROPHONE"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -68,13 +72,6 @@
           "backgroundColor": "#FAF6EF",
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain"
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "MANAS needs access to your videos so coaches and admins can upload library content.",
-          "microphonePermission": false
         }
       ],
       "expo-document-picker",

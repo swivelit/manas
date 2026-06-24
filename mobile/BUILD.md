@@ -164,6 +164,40 @@ field. Do not paste local `dist/play-store` file paths into Play Console.
 The Play Console uploadable app bundle remains `dist/manas-release.aab`; the
 debug APK is only for recording permission declaration videos.
 
+### Photo and video media permissions
+
+The Play Store release must not request broad photo/video library permissions:
+
+- `android.permission.READ_MEDIA_VIDEO`
+- `android.permission.READ_MEDIA_IMAGES`
+- `android.permission.READ_EXTERNAL_STORAGE`
+- `android.permission.WRITE_EXTERNAL_STORAGE`
+
+MANAS video calls use `CAMERA` and `RECORD_AUDIO`; they do not need
+`READ_MEDIA_VIDEO`. Admin and coach video uploads must use a user-selected
+picker/file picker, currently `expo-document-picker`, so the app can upload the
+single video the user selected without broad gallery access.
+
+After any change to media upload dependencies or Android permissions, build and
+verify a fresh AAB:
+
+```bash
+./scripts/build-android_release-aab.sh
+./scripts/verify-android-media-permissions.sh dist/manas-release.aab
+```
+
+If `bundletool` is available, the verification script dumps the AAB manifest
+directly. Without it, the script checks generated release manifests and uses an
+AAB manifest strings fallback; for final manual verification, run:
+
+```bash
+bundletool dump manifest --bundle dist/manas-release.aab --module base
+```
+
+Upload a fresh `dist/manas-release.aab` to Play Console after this fix. An older
+AAB that still declares `READ_MEDIA_VIDEO` will continue to trigger the Photo
+and video permissions declaration.
+
 Generic one-video fallback:
 
 ```bash
