@@ -80,89 +80,30 @@ Local release APK for QA installs:
 ./scripts/build-android_release-apk.sh
 ```
 
-### Recording three Google Play foreground service demo videos
+### Camera, microphone, and media playback permissions
 
-Google Play may ask for a demo video for camera, microphone, and media playback
-foreground service declarations. Record three separate local MP4s from a visible
-Android emulator/device with the debug APK flow.
+MANAS retains the normal Android `CAMERA` and `RECORD_AUDIO` runtime permissions.
+They are requested only for visible, user-initiated features: the in-app
+audio/video call screen and the visible toy audio recording screen.
 
-Record all three:
+MANAS does not capture camera or microphone input in the background, does not
+provide sustained background audio/video playback, and does not use Android
+lock-screen media controls. Picture-in-Picture and native background playback
+support are disabled. Consequently, the current release must not declare
+camera, microphone, or media-playback foreground services, and no Play Console
+foreground-service declaration should be required.
 
-```bash
-RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh
-```
-
-Record only camera:
-
-```bash
-./scripts/record-play-camera-demo.sh
-```
-
-Record only media playback:
+After a clean prebuild or release build, verify the generated manifest:
 
 ```bash
-./scripts/record-play-media-playback-demo.sh
+./scripts/verify-android-foreground-service-permissions.sh
 ```
 
-Record only microphone:
+For Play Console submission, verify the final AAB:
 
 ```bash
-./scripts/record-play-microphone-demo.sh
+./scripts/verify-android-foreground-service-permissions.sh dist/manas-release.aab
 ```
-
-With selected emulator:
-
-```bash
-AVD_NAME="YOUR_AVD_NAME" RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true DEMO_SECONDS=120 ./scripts/record-all-play-fgs-demos.sh
-```
-
-With longer time:
-
-```bash
-DEMO_SECONDS=180 ./scripts/record-all-play-fgs-demos.sh
-```
-
-If ADB is broken:
-
-```bash
-REPAIR_ADB=true ./scripts/android-adb-doctor.sh
-```
-
-If the script says the emulator is hidden/headless:
-
-```bash
-RESTART_HEADLESS_EMULATOR=true FORCE_VISIBLE_EMULATOR=true ./scripts/record-all-play-fgs-demos.sh
-```
-
-Or manually:
-
-1. Close all emulator windows.
-2. Run:
-
-   ```bash
-   adb kill-server
-   pkill -f "qemu-system"
-   pkill -f "emulator"
-   ```
-
-3. Open Android Studio > Device Manager.
-4. Start an AVD normally so the emulator window is visible.
-5. Run:
-
-   ```bash
-   ./scripts/record-all-play-fgs-demos.sh
-   ```
-
-The generated MP4s are saved under `dist/play-store` by default:
-`manas-fgs-camera-demo-...mp4`, `manas-fgs-media-playback-demo-...mp4`,
-and `manas-fgs-microphone-demo-...mp4`. Upload each MP4 to YouTube as Unlisted
-or to Google Drive with anyone-with-link viewer access. Paste the camera video
-URL into the Camera video field, the media playback video URL into the Media
-playback video field, and the microphone video URL into the Microphone video
-field. Do not paste local `dist/play-store` file paths into Play Console.
-
-The Play Console uploadable app bundle remains `dist/manas-release.aab`; the
-debug APK is only for recording permission declaration videos.
 
 ### Photo and video media permissions
 
@@ -197,24 +138,6 @@ bundletool dump manifest --bundle dist/manas-release.aab --module base
 Upload a fresh `dist/manas-release.aab` to Play Console after this fix. An older
 AAB that still declares `READ_MEDIA_VIDEO` will continue to trigger the Photo
 and video permissions declaration.
-
-Generic one-video fallback:
-
-```bash
-./scripts/record-debug-apk-play-demo.sh
-```
-
-Production-like release APK recording:
-
-```bash
-BUILD_MODE=release DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
-```
-
-Existing APK:
-
-```bash
-APK_PATH=dist/manas-release.apk BUILD_MODE=none DEMO_SECONDS=120 ./scripts/record-play-foreground-service-demo.sh
-```
 
 Cloud preview APK with EAS:
 
@@ -254,8 +177,8 @@ This uses EAS-managed Android signing credentials and produces an `.aab`
 The first command creates a local upload keystore and
 `release-signing.properties`; both are gitignored and must never be committed.
 The second command creates `dist/manas-release.aab` only after release signing
-is configured, then verifies that the artifact is not signed with the Android
-debug certificate.
+is configured, then verifies release signing, media-library permissions, and
+foreground-service permissions before reporting the artifact as ready.
 
 If Play Console has a rejected `dist/manas-release.aab` draft, remove that bad
 AAB from the release draft and upload the newly generated release-signed AAB.

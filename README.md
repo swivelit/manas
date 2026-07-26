@@ -100,6 +100,21 @@ cd mobile && eas build --platform android --profile production
 
 The `preview` profile produces a shareable APK. The `production` profile produces a Play Store AAB.
 
+MANAS uses normal `CAMERA` and `RECORD_AUDIO` runtime permissions only while the
+user is in visible, user-initiated call or recording screens. It does not
+capture camera or microphone input in the background, provide sustained
+background media playback, use Android lock-screen media controls, or enable
+Picture-in-Picture. The current release therefore should not require Google Play
+foreground-service declarations.
+
+The local release AAB flow verifies signing, broad media-library permissions,
+and unwanted foreground-service permissions before reporting the bundle ready:
+
+```bash
+./scripts/build-android_release-aab.sh
+./scripts/verify-android-foreground-service-permissions.sh dist/manas-release.aab
+```
+
 When testing against a backend running on the same machine from the Android emulator, set the API URL to the emulator host alias:
 
 ```bash

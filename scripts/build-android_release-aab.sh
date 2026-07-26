@@ -141,6 +141,9 @@ if [[ ! -f "$AAB_PATH" ]]; then
   exit 1
 fi
 
+"$ROOT_DIR/scripts/verify-android-media-permissions.sh" "$AAB_PATH"
+"$ROOT_DIR/scripts/verify-android-foreground-service-permissions.sh" "$AAB_PATH"
+
 cat <<EOF
 
 ========================================

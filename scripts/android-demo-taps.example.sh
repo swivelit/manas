@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Example only. This is not used by record-play-foreground-service-demo.sh.
+# Example only. These generic ADB actions can help with manual Android UI testing.
 # Coordinates vary by emulator/device size, density, keyboard, and app state.
-# Manual recording is safer for Play Console review videos.
+# Review and adjust every action before use.
 
 ADB="${ADB:-adb}"
 APP_ID="${APP_ID:-com.swivelit.manas}"
