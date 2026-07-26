@@ -3,13 +3,13 @@
     "name": "MANAS",
     "slug": "manas",
     "scheme": "manas",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
-      "package": "com.jeygroups.manas",
-      "versionCode": 2,
+      "package": "com.swivelit.manas",
+      "versionCode": 3,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",

@@ -12,7 +12,8 @@ Full-stack MANAS (Jey Groups) build completed 2026-05-26. Commit: 9cef745.
 **Stack:**
 - Backend: Express + TypeScript + Prisma + PostgreSQL (Render free tier)
 - Mobile: Expo 56 + expo-router + NativeWind v4 + React Query + Zustand
-- Bundle ID: com.jeygroups.manas
+- Android package: com.swivelit.manas
+- iOS bundle identifier: com.jeygroups.manas
 - Fonts: Fraunces / DM Sans / Instrument Serif (via @expo-google-fonts)
 - Colors defined in `mobile/theme/colors.ts`, mirroring HTML design tokens
 

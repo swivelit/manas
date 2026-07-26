@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 
 PERMISSION_DEMO="${PERMISSION_DEMO:-}"
 DEMO_SECONDS="${DEMO_SECONDS:-120}"
-APP_ID="${APP_ID:-com.jeygroups.manas}"
+APP_ID="${APP_ID:-com.swivelit.manas}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist/play-store}"
 RESET_APP="${RESET_APP:-false}"
 START_EMULATOR="${START_EMULATOR:-true}"
@@ -44,7 +44,7 @@ Usage:
 Environment:
   PERMISSION_DEMO            camera, media-playback, or microphone. Required.
   DEMO_SECONDS               Max recording duration. Default: 120
-  APP_ID                     Android package. Default: com.jeygroups.manas
+  APP_ID                     Android package. Default: com.swivelit.manas
   OUTPUT_DIR                 Output directory. Default: dist/play-store
   RESET_APP                  true or false. Default: false
   START_EMULATOR             true or false. Default: true

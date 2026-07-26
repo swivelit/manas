@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
-APP_ID="${APP_ID:-com.jeygroups.manas}"
+APP_ID="${APP_ID:-com.swivelit.manas}"
 RESET_APP="${RESET_APP:-false}"
 START_EMULATOR="${START_EMULATOR:-true}"
 RESTART_HEADLESS_EMULATOR="${RESTART_HEADLESS_EMULATOR:-true}"

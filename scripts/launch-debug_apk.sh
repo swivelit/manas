@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 APP_NAME="MANAS"
-APP_ID="com.jeygroups.manas"
+APP_ID="com.swivelit.manas"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MOBILE_DIR="$ROOT_DIR/mobile"
@@ -27,7 +27,7 @@ export ADB_SERVER_PORT
 export ADB_MDNS_AUTO_CONNECT=0
 export ADB_MDNS_OPENSCREEN=0
 
-FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.jeygroups\\.manas"
+FILTER_REGEX="AndroidRuntime|FATAL EXCEPTION|ReactNativeJS|Invariant Violation|main has not been registered|Reanimated|SplashScreen|expo|MANAS|com\\.swivelit\\.manas"
 CRASH_REGEX="ANR in $APP_ID|failed to complete startup|FATAL EXCEPTION|Invariant Violation|main has not been registered|has not been registered|com\\.facebook\\.react\\.common\\.JavascriptException|ReactNativeJS.*(TypeError|ReferenceError|SyntaxError|RangeError|Error:)|Unable to load script|Exception in native call|Could not connect to development server"
 STARTUP_READY_REGEX='ReactNativeJS.*Running "main"|BridgelessReact.*Loading JS Bundle|BridgelessReact.*startSurface|ExpoModulesCore.*AppContext was initialized'
 

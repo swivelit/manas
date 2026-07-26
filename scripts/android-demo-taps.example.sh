@@ -6,7 +6,7 @@ set -Eeuo pipefail
 # Manual recording is safer for Play Console review videos.
 
 ADB="${ADB:-adb}"
-APP_ID="${APP_ID:-com.jeygroups.manas}"
+APP_ID="${APP_ID:-com.swivelit.manas}"
 DEVICE_ARGS=()
 
 if [[ -n "${ANDROID_SERIAL:-}" ]]; then

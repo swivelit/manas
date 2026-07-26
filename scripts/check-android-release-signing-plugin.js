@@ -43,9 +43,9 @@ const sampleBuildGradle = `apply plugin: "com.android.application"
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
 android {
-    namespace 'com.jeygroups.manas'
+    namespace 'com.swivelit.manas'
     defaultConfig {
-        applicationId 'com.jeygroups.manas'
+        applicationId 'com.swivelit.manas'
     }
     signingConfigs {
         debug {

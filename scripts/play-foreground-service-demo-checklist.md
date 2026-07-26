@@ -6,7 +6,7 @@ Use this checklist to record the MANAS foreground service permission demo video 
 - `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
 - `FOREGROUND_SERVICE_MICROPHONE`
 
-The app package is `com.jeygroups.manas`, and the production backend is `https://manas-api-dlj7.onrender.com`.
+The Android package is `com.swivelit.manas`, the iOS bundle identifier is `com.jeygroups.manas`, and the production backend is `https://manas-api-dlj7.onrender.com`.
 
 ## Start an emulator or device
 

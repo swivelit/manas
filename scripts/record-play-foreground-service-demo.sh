@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
-APP_ID="${APP_ID:-com.jeygroups.manas}"
+APP_ID="${APP_ID:-com.swivelit.manas}"
 BUILD_MODE="${BUILD_MODE:-release}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 RESET_APP="${RESET_APP:-false}"
@@ -34,7 +34,7 @@ Usage:
   APK_PATH=dist/manas-release.apk BUILD_MODE=none DEMO_SECONDS=120 $0
 
 Environment:
-  APP_ID                 Android application id. Default: com.jeygroups.manas
+  APP_ID                 Android application id. Default: com.swivelit.manas
   ANDROID_SERIAL         adb serial to use when multiple devices are connected.
   APK_PATH               Existing APK to install. Skips build selection.
   BUILD_MODE             release, debug, or none. Default: release
