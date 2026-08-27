@@ -139,7 +139,8 @@ const MASCOT_SIZE = 64;
 const SHADOW_HEIGHT = Math.round(MASCOT_SIZE * 0.22);
 const EDGE_PADDING = 12;
 const DEFAULT_RIGHT = 18;
-const TAB_BAR_CLEARANCE = 90;
+// Includes the custom tab bar plus the normal-flow Android ad slot below it.
+const TAB_BAR_CLEARANCE = 176;
 const MIN_TOP_CLEARANCE = 8;
 const BLINK_MIN_DELAY_MS = 2500;
 const BLINK_MAX_DELAY_MS = 6000;

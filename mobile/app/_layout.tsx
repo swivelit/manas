@@ -1,5 +1,6 @@
 import '../global.css';
 import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -16,6 +17,8 @@ import { CrisisDisclaimerModal } from '../components/CrisisDisclaimerModal';
 import { MascotAssistant, MascotTapSurface } from '../components/MascotAssistant';
 import { DialogProvider } from '../components/AppDialog';
 import { hasAckedCrisis, setCrisisAck } from '../lib/crisis';
+import { AdsConsentProvider } from '../lib/adsConsent';
+import { GlobalBannerAd } from '../components/GlobalBannerAd';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -75,22 +78,34 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <QueryClientProvider client={queryClient}>
-            <DialogProvider>
-              <MascotTapSurface>
-                <StatusBar style="dark" />
-                <Stack screenOptions={{ headerShown: false }} />
-                {showAssistant ? <MascotAssistant /> : null}
-                <CrisisDisclaimerModal
-                  visible={showCrisis === true}
-                  onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
-                />
-              </MascotTapSurface>
-            </DialogProvider>
-          </QueryClientProvider>
-        </GestureHandlerRootView>
+        <AdsConsentProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <QueryClientProvider client={queryClient}>
+              <DialogProvider>
+                <MascotTapSurface>
+                  <StatusBar style="dark" />
+                  <View style={styles.appFrame}>
+                    <View style={styles.routeFrame}>
+                      <Stack screenOptions={{ headerShown: false }} />
+                      {showAssistant ? <MascotAssistant /> : null}
+                      <CrisisDisclaimerModal
+                        visible={showCrisis === true}
+                        onAcknowledge={() => { setShowCrisis(false); void setCrisisAck(); }}
+                      />
+                    </View>
+                    <GlobalBannerAd />
+                  </View>
+                </MascotTapSurface>
+              </DialogProvider>
+            </QueryClientProvider>
+          </GestureHandlerRootView>
+        </AdsConsentProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
+
+const styles = {
+  appFrame: { flex: 1 },
+  routeFrame: { flex: 1, overflow: 'hidden' as const },
+};

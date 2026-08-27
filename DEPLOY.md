@@ -75,6 +75,7 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
    - Browser root: `https://manas-api-dlj7.onrender.com/`
    - Health check: `curl https://manas-api-dlj7.onrender.com/health`
    - Google Play Privacy Policy URL: `https://manas-api-dlj7.onrender.com/privacy-policy`
+   - Google AdMob app-ads.txt URL: `https://manas-api-dlj7.onrender.com/app-ads.txt`
    - Terms URL: `https://manas-api-dlj7.onrender.com/terms`
    - Full production smoke after deploy and seed:
    ```bash
@@ -86,6 +87,7 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
    ```bash
    curl -I https://manas-api-dlj7.onrender.com/privacy-policy
    curl https://manas-api-dlj7.onrender.com/privacy-policy
+   curl https://manas-api-dlj7.onrender.com/app-ads.txt
    curl -I https://manas-api-dlj7.onrender.com/terms
    curl https://manas-api-dlj7.onrender.com/terms
    ```

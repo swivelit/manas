@@ -27,6 +27,24 @@ Quick UI testing works in **Expo Go** (scan the QR from `npx expo start`). A few
 | All screens, auth (email OTP), booking, videos, mood, legal, crisis, coach + admin areas | ✅ | ✅ |
 | Premium access display (admin-controlled) | ✅ | ✅ |
 | **Push notification tokens** (`expo-notifications` getExpoPushToken) | ❌ needs `eas init` + a build | ✅ |
+| **Google AdMob banner + Google UMP consent** | ❌ Expo Go cannot run this native integration | ✅ |
+
+## Android advertising and consent
+
+MANAS uses the Android-only Google Mobile Ads SDK integration. The Android App ID contains
+`~` (`ca-app-pub-9649241407302744~1599761317`), while the banner ad-unit ID contains `/`
+(`ca-app-pub-9649241407302744/9035398208`). The production `app-ads.txt` uses the publisher
+line `google.com, pub-9649241407302744, DIRECT, f08c47fec0942fa0` at:
+`https://manas-api-dlj7.onrender.com/app-ads.txt`.
+
+App ID contains `~`; banner ad-unit ID contains `/`; app-ads.txt uses the publisher line.
+
+Debug and development builds always use Google test ads. Developers must never click live ads.
+Production ads can remain limited until app-ads.txt verification and AdMob readiness review finish. The Google UMP consent flow runs at app launch, and available choices can be reopened
+from Profile → Ad privacy choices. MANAS does not send sensitive wellness or account-profile
+information to AdMob for targeting.
+
+Play Console must be updated for Contains ads, Data safety and Advertising ID before release.
 
 ---
 
@@ -220,9 +238,11 @@ Before your first submission, complete these in the Play Console:
 
 - [ ] **App listing**: icon, screenshots (phone + 7-inch tablet), short/full description
 - [ ] **Privacy policy URL**: required — host a privacy policy page
+- [ ] **Contains ads**: set the Play Console app-content answer to Yes for the Android build
 - [ ] **Content rating questionnaire**: answer for medical/health app category
 - [ ] **Target API level**: SDK 34+ (EAS handles this automatically)
-- [ ] **Data safety section**: declare what user data is collected (email, health data)
+- [ ] **Data safety section**: declare what user data is collected (email, health data, and ad-related device data)
+- [ ] **Advertising ID**: complete the Play Console declaration for the Google Mobile Ads SDK
 - [ ] **App access**: provide an email account that can receive the MANAS login OTP.
 
 ---

@@ -12,12 +12,14 @@ import { Icon } from '../../components/Icon';
 import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
+import { useAdsConsent } from '../../lib/adsConsent';
 
 export default function ProfileScreen() {
   const dialog = useDialog();
   const { data: me } = useMe();
   const { data: sessions } = useSessions();
   const clearAuth = useAuthStore(s => s.clearAuth);
+  const { privacyOptionsRequired, openPrivacyOptions } = useAdsConsent();
 
   const sessionList = Array.isArray(sessions) ? sessions : [];
   const upcoming = sessionList.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status));
@@ -33,6 +35,15 @@ export default function ProfileScreen() {
     if (!confirmed) return;
     await clearAuth();
     router.replace('/onboarding');
+  }
+
+  async function handlePrivacyOptions() {
+    try {
+      await openPrivacyOptions();
+    } catch (error) {
+      if (__DEV__) console.warn('[admob] privacy options failed:', error);
+      await dialog.alert('Privacy choices unavailable', 'Ad privacy choices could not be opened right now. Please try again later.');
+    }
   }
 
   return (
@@ -104,6 +115,15 @@ export default function ProfileScreen() {
             <Text style={styles.rowText}>Privacy & Terms</Text>
             <Icon name="chevron_right" size={16} color={colors.muted} />
           </TouchableOpacity>
+          {privacyOptionsRequired ? (
+            <TouchableOpacity style={styles.row} onPress={() => { void handlePrivacyOptions(); }} activeOpacity={0.85}>
+              <View style={styles.rowLabel}>
+                <Icon name="shield" size={16} color={colors.muted} />
+                <Text style={styles.rowText}>Ad privacy choices</Text>
+              </View>
+              <Icon name="chevron_right" size={16} color={colors.muted} />
+            </TouchableOpacity>
+          ) : null}
           <CrisisBanner variant="footer" style={styles.footerBanner} />
         </View>
       </ScrollView>
@@ -148,6 +168,7 @@ const styles = StyleSheet.create({
   emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.blue },
   footer: { paddingHorizontal: 22, marginTop: 22, gap: 10 },
   row: { backgroundColor: colors.paper, borderRadius: 14, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   rowText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
   premiumRow: { backgroundColor: colors.pinkSoft, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
   premiumStar: { fontSize: 14, color: colors.pink },

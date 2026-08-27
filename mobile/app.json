@@ -3,13 +3,13 @@
     "name": "MANAS",
     "slug": "manas",
     "scheme": "manas",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.swivelit.manas",
-      "versionCode": 5,
+      "versionCode": 6,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -55,6 +55,7 @@
       "expo-font",
       "expo-secure-store",
       "./plugins/with-android-gradle-node",
+      "./plugins/with-android-kotlin-compat",
       "./plugins/with-android-release-signing",
       [
         "expo-notifications",
@@ -72,6 +73,22 @@
         }
       ],
       "expo-document-picker",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-9649241407302744~1599761317",
+          "delayAppMeasurementInit": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class com.google.android.gms.internal.consent_sdk.** { *; }",
+            "kotlinVersion": "2.3.0"
+          }
+        }
+      ],
       [
         "expo-video",
         {

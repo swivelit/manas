@@ -59,6 +59,7 @@ app.get('/', (_req: Request, res: Response) => {
     health: '/health',
     endpoints: [
       '/privacy-policy',
+      '/app-ads.txt',
       '/terms',
       '/categories',
       '/categories/emotional-healing/topics',
@@ -113,6 +114,8 @@ async function startServer() {
   });
 }
 
-void startServer();
+if (require.main === module) {
+  void startServer();
+}
 
 export default app;

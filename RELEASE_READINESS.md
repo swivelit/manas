@@ -7,6 +7,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 ### Play Store compliance (Phase 1 — mandatory gate)
 - **Crisis disclaimer**: one-time first-launch modal (persisted via `crisis_ack` in SecureStore) with India helplines (iCall, Vandrevala, Tele-MANAS, AASRA) as tappable `tel:` links. Persistent "In crisis? Tap for help" banner on the Sessions header and Profile footer opens the same helplines.
 - **Privacy Policy + Terms of Service**: authored at `legal/privacy.md` and `legal/terms.md`, mirrored into `mobile/lib/legal.ts`, rendered offline on the in-app `/legal` screen, and exposed publicly by the backend at `https://manas-api-dlj7.onrender.com/privacy-policy` and `https://manas-api-dlj7.onrender.com/terms`. Linked from Profile and the signup consent. Play Console Data Safety answers must match the privacy policy.
+- **Android AdMob + app-ads.txt**: the App ID contains `~`, the banner ad-unit ID contains `/`, and `https://manas-api-dlj7.onrender.com/app-ads.txt` serves the publisher line. Debug and development builds always use Google test ads; developers must never click live ads. Production ads can remain limited until app-ads.txt verification and AdMob readiness review finish.
 - **Signup consent**: mandatory checkbox on register blocks account creation until the user accepts Terms/Privacy and acknowledges MANAS is not a crisis service. `User.consentAt` is recorded at account creation.
 
 ### Coach surface (Phase 2 — PDF §4.B)
@@ -73,6 +74,7 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - **Seed the Render production database** after deploy (`npm run db:seed` from Render Shell) — otherwise the app shows empty states.
 - **`eas init`** once (from the owner's Expo account) to write `extra.eas.projectId` — required for push tokens and EAS builds.
 - **Confirm legal contact inbox**: `support@manas.app` is used in the public privacy policy and terms; confirm this is an owner-controlled inbox before Play submission.
+- **Play Console advertising declarations**: before release, update Contains ads, Data safety, and Advertising ID declarations for the Android build.
 - **Play Console**: developer account, release-signed AAB, data-safety + content rating, screenshots, app-access instructions, internal-track QA.
 - **One manual device QA pass** of the mobile flows (see the checklist in `VERIFY_FINAL.md`) — backend is verified live; UI is code/bundle-verified.
 - **Migration cutover** to `prisma migrate deploy` after the next `db push` deploy converges prod to the current schema (steps in DEPLOY.md).

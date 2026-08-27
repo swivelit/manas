@@ -74,11 +74,13 @@ require_command npx "Install npm/npx with Node.js."
 require_node_version
 
 run_step "Android release signing plugin check" node "$ROOT_DIR/scripts/check-android-release-signing-plugin.js"
+run_step "Android AdMob configuration check" node "$ROOT_DIR/scripts/check-android-admob-config.js"
 
 run_step "Backend npm ci" bash -c "cd '$ROOT_DIR/backend' && npm ci"
 run_step "Backend Prisma generate" bash -c "cd '$ROOT_DIR/backend' && npx prisma generate"
 run_step "Backend typecheck" bash -c "cd '$ROOT_DIR/backend' && npm run typecheck"
 run_step "Backend build" bash -c "cd '$ROOT_DIR/backend' && npm run build"
+run_step "app-ads.txt response check" node "$ROOT_DIR/backend/scripts/check-app-ads-txt.mjs"
 
 run_step "Mobile npm ci" bash -c "cd '$ROOT_DIR/mobile' && npm ci"
 run_step "Mobile typecheck" bash -c "cd '$ROOT_DIR/mobile' && npm run typecheck"

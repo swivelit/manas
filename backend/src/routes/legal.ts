@@ -16,6 +16,7 @@ type LegalDocument = {
 };
 
 const router = Router();
+const APP_ADS_TXT_LINE = 'google.com, pub-9649241407302744, DIRECT, f08c47fec0942fa0';
 
 function escapeHtml(value: string): string {
   return value
@@ -121,6 +122,13 @@ function sendLegalPage(res: Response, document: LegalDocument) {
 
 router.get('/privacy-policy', (_req: Request, res: Response) => {
   sendLegalPage(res, privacyPolicy);
+});
+
+router.get('/app-ads.txt', (_req: Request, res: Response) => {
+  res
+    .status(200)
+    .type('text/plain')
+    .send(`${APP_ADS_TXT_LINE}\n`);
 });
 
 router.get('/terms', (_req: Request, res: Response) => {

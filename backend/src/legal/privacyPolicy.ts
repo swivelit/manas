@@ -1,7 +1,7 @@
 // TODO: Confirm support@manas.app is an owner-controlled privacy/support inbox before Play submission.
 export const privacyPolicy = {
   title: 'MANAS Privacy Policy',
-  lastUpdated: '22 June 2026',
+  lastUpdated: '27 August 2026',
   sections: [
     {
       heading: 'Overview',
@@ -22,7 +22,7 @@ export const privacyPolicy = {
         'Learning and video activity, such as viewed videos, playback progress, bookmarks, likes, and related activity if you use those features.',
         'Push notification tokens if notifications are enabled on your device.',
         'Device, app, and diagnostic information if collected to maintain reliability, security, and support.',
-        'Audio/video call metadata when calls are used, such as meeting room identifiers, participants, timing, and call configuration needed to connect the session.',
+        'Audio/video call metadata when calls are used, such as meeting room identifiers, participants, timing, and call configuration needed to connect sessions.',
       ],
     },
     {
@@ -30,6 +30,15 @@ export const privacyPolicy = {
       paragraphs: [
         'MANAS does not sell personal data.',
         'MANAS does not record counseling audio or video calls. Calls may be connected through a meeting provider, but MANAS does not create or store recordings unless the app is changed in the future to clearly disclose and request permission for recording.',
+      ],
+    },
+    {
+      heading: 'Advertising, Consent and Google Mobile Ads',
+      paragraphs: [
+        'The Android MANAS app uses Google AdMob and the Google Mobile Ads SDK to display banner advertisements. Google UMP handles regional consent and privacy choices for these ads. Ad serving depends on the user\'s region and consent choices.',
+        'The Google Mobile Ads SDK may process an IP address or approximate location, app and ad interactions, diagnostics, Advertising ID, App Set ID, and other device identifiers for advertising, analytics, measurement, security, and fraud prevention. Google\'s privacy policy also applies to this processing.',
+        'MANAS does not provide sensitive wellness content or account-profile information to AdMob for targeting. This includes mood entries, journal or note text, chat or session contents, coach selection, crisis activity, name, email, account identifiers, authentication identifiers, location, screen or route names, keywords, and content URLs.',
+        'Users can reopen available privacy choices from Profile using Ad privacy choices.',
       ],
     },
     {
@@ -54,13 +63,14 @@ export const privacyPolicy = {
     {
       heading: 'Service Providers',
       paragraphs: [
-        'MANAS may use trusted service providers for cloud hosting, email delivery, push notifications, video/audio meeting connectivity, analytics, diagnostics, or similar operational needs. These providers process information only as needed to operate and support MANAS.',
+        'MANAS may use trusted service providers for cloud hosting, email delivery, push notifications, video/audio meeting connectivity, Google AdMob and the Google Mobile Ads SDK, Google UMP consent services, analytics, diagnostics, or similar operational needs. These providers process information only as needed to operate and support MANAS and as described in their own privacy policies.',
       ],
     },
     {
       heading: 'User Choices and Deletion Requests',
       bullets: [
         'You can disable push notifications in your device settings.',
+        'You can use Ad privacy choices in Profile when Google UMP makes privacy options available.',
         'You can request access to your data, account deletion, or data deletion by contacting support@manas.app.',
         'Some information may need to be retained where required for legal, security, fraud-prevention, dispute-resolution, or legitimate operational reasons.',
       ],
