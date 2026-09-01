@@ -56,6 +56,8 @@ services:
         value: 120
       - key: MEETING_ENABLE_AUTH
         value: true
+      - key: MEETING_ALLOW_INSECURE_OPEN_JITSI
+        value: false
 
 databases:
   - name: manas-db

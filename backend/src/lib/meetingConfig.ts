@@ -22,6 +22,7 @@ export type MeetingConfig = {
   tokenTtlMinutes: number;
   authEnabled: boolean;
   isProduction: boolean;
+  allowInsecureOpenJitsi: boolean;
 };
 
 function trim(value: string | undefined): string {
@@ -32,12 +33,12 @@ function normalizePrivateKey(value: string): string {
   return value.replace(/\\n/g, '\n').trim();
 }
 
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+function parseBoolean(value: string | undefined, fallback: boolean, name = 'MEETING_ENABLE_AUTH'): boolean {
   if (value === undefined) return fallback;
   const normalized = value.trim().toLowerCase();
   if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-  throw new MeetingConfigError('Invalid MEETING_ENABLE_AUTH value. Use true or false.');
+  throw new MeetingConfigError(`Invalid ${name} value. Use true or false.`);
 }
 
 function parseProvider(value: string | undefined, isProduction: boolean): MeetingProvider {
@@ -95,6 +96,11 @@ export function getMeetingConfig(options: { validateAuth?: boolean } = {}): Meet
   const isProduction = process.env.NODE_ENV === 'production';
   const provider = parseProvider(process.env.MEETING_PROVIDER, isProduction);
   const authEnabled = parseBoolean(process.env.MEETING_ENABLE_AUTH, provider !== 'open_jitsi');
+  const allowInsecureOpenJitsi = parseBoolean(
+    process.env.MEETING_ALLOW_INSECURE_OPEN_JITSI,
+    false,
+    'MEETING_ALLOW_INSECURE_OPEN_JITSI',
+  );
   const jwtAlg = parseJwtAlg(process.env.MEETING_JWT_ALG, provider);
 
   const config: MeetingConfig = {
@@ -108,15 +114,25 @@ export function getMeetingConfig(options: { validateAuth?: boolean } = {}): Meet
     tokenTtlMinutes: parseTokenTtlMinutes(process.env.MEETING_TOKEN_TTL_MINUTES),
     authEnabled,
     isProduction,
+    allowInsecureOpenJitsi,
   };
 
   if (options.validateAuth) validateMeetingAuthConfig(config);
   return config;
 }
 
+let insecureOpenJitsiWarningLogged = false;
+
 export function validateMeetingAuthConfig(config: MeetingConfig): void {
   if (config.provider === 'open_jitsi') {
     if (config.isProduction) {
+      if (config.allowInsecureOpenJitsi) {
+        if (!insecureOpenJitsiWarningLogged) {
+          console.warn('[meeting-config] INSECURE — production calls are using anonymous public Jitsi rooms. Demo use only.');
+          insecureOpenJitsiWarningLogged = true;
+        }
+        return;
+      }
       throw new MeetingConfigError(
         'Production video calls require MEETING_PROVIDER=jaas or self_hosted_jitsi with backend JWT auth configured.'
       );
@@ -147,6 +163,19 @@ export function validateMeetingAuthConfig(config: MeetingConfig): void {
   }
   if (config.jwtAlg === 'RS256' && (!config.jwtKid || !config.jwtPrivateKey)) {
     throw new MeetingConfigError('Self-hosted Jitsi RS256 auth requires MEETING_JWT_KID and MEETING_JWT_PRIVATE_KEY.');
+  }
+}
+
+export function logMeetingConfigStatus(): void {
+  try {
+    const config = getMeetingConfig({ validateAuth: true });
+    console.log(`[meeting-config] ok — provider=${config.provider} server=${config.serverURL} auth=${config.authEnabled} ttl=${config.tokenTtlMinutes}m`);
+  } catch (error) {
+    if (error instanceof MeetingConfigError) {
+      console.error(`[meeting-config] MISCONFIGURED — ${error.message} — video and audio calls will return 503 until this is fixed.`);
+      return;
+    }
+    throw error;
   }
 }
 

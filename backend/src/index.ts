@@ -19,6 +19,7 @@ import adminRoutes from './routes/admin';
 import legalRoutes from './routes/legal';
 import { startReminderCron } from './lib/reminders';
 import { ensureConfiguredAdmin } from './lib/adminBootstrap';
+import { logMeetingConfigStatus } from './lib/meetingConfig';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -107,6 +108,8 @@ async function startServer() {
     }
     console.warn(`[admin-bootstrap] skipped in non-production: ${message}`);
   }
+
+  logMeetingConfigStatus();
 
   app.listen(PORT, () => {
     console.log(`🚀 MANAS API listening on port ${PORT}`);

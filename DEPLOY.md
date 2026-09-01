@@ -53,6 +53,7 @@ Set these environment variables:
 | `MEETING_JWT_ALG` | `RS256` for JaaS, `HS256` for self-hosted shared-secret mode |
 | `MEETING_TOKEN_TTL_MINUTES` | `120` |
 | `MEETING_ENABLE_AUTH` | `true` |
+| `MEETING_ALLOW_INSECURE_OPEN_JITSI` | `false`; demos only, never enable for a production release |
 
 If you use an existing manually-created Render service, changing `render.yaml` alone may not update the dashboard command. In that case, update the Render dashboard Build Command manually to match the value above.
 
@@ -126,6 +127,17 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 | `MEETING_JWT_ALG` | `RS256` for JaaS, `HS256` for self-hosted shared-secret mode. |
 | `MEETING_TOKEN_TTL_MINUTES` | Meeting token lifetime, default `120`. |
 | `MEETING_ENABLE_AUTH` | Must be `true` in production. |
+| `MEETING_ALLOW_INSECURE_OPEN_JITSI` | `false`; demos only, never enable for a production release. |
+
+### Getting JaaS credentials
+
+1. Sign up at [jaas.8x8.vc](https://jaas.8x8.vc).
+2. Copy your AppID.
+3. Create an API key on the **API Keys** page.
+4. Download the private key before closing the dialog.
+5. Use only the suffix of the Key ID for `MEETING_JWT_KID` (the part after the slash, not `appId/kid`).
+
+`MEETING_ALLOW_INSECURE_OPEN_JITSI` exists for demos only and must never be `true` for a production release.
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
 

@@ -13,6 +13,7 @@
     "db:setup": "prisma db push && npm run db:seed",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "smoke:calls": "node scripts/smoke-calls.mjs",
+    "check:meeting": "node scripts/check-meeting-config.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npx prisma generate && npm run typecheck"
   },
