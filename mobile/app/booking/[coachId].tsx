@@ -9,6 +9,7 @@ import { useCoach, useCoachAvailability, useBookSession, useTopic, useMe } from 
 import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
+import { apiErrorMessage } from '../../lib/api';
 
 export default function BookingScreen() {
   const dialog = useDialog();
@@ -47,8 +48,8 @@ export default function BookingScreen() {
         message: 'Your free demo session is confirmed.',
         actions: [{ label: 'OK', onPress: () => router.replace('/(tabs)/sessions') }],
       });
-    } catch {
-      void dialog.alert('Booking failed', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Booking failed', apiErrorMessage(err, 'Please try again.'));
     }
   }
 

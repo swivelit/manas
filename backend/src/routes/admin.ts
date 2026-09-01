@@ -79,13 +79,30 @@ router.patch('/users/:id', async (req: Request, res: Response, next: NextFunctio
       }
     }
 
-    const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, coach: { select: { id: true } } } });
     if (!target) { res.status(404).json({ error: 'User not found' }); return; }
 
-    const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data: parsed.data,
-      select: userListFields,
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: req.params.id },
+        data: parsed.data,
+        select: userListFields,
+      });
+
+      if (parsed.data.role === Role.COACH && !target.coach) {
+        await tx.coach.create({
+          data: {
+            userId: target.id,
+            specialty: 'Counseling',
+            bio: 'MANAS practitioner.',
+            yearsExp: 1,
+            languages: ['EN'],
+            hourlyRate: 100000,
+          },
+        });
+      }
+
+      return updatedUser;
     });
     res.json(user);
   } catch (err) {

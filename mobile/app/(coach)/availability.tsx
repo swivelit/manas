@@ -6,6 +6,7 @@ import { Button } from '../../components/Button';
 import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
+import { apiErrorMessage } from '../../lib/api';
 
 // dayOfWeek follows JS getDay(): 0=Sun … 6=Sat (matches the seed + booking flow).
 const DAYS: { value: number; label: string }[] = [
@@ -67,8 +68,8 @@ export default function CoachAvailability() {
     try {
       await replace.mutateAsync(out);
       void dialog.alert('Saved', 'Your weekly availability has been updated.');
-    } catch {
-      void dialog.alert('Could not save', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not save', apiErrorMessage(err, 'Please try again.'));
     }
   }
 

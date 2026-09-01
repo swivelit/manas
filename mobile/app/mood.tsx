@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { useCreateMoodEntry } from '../lib/queries';
 import { useAuthStore } from '../lib/auth';
 import { useDialog } from '../components/AppDialog';
+import { apiErrorMessage } from '../lib/api';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/fonts';
 
@@ -44,8 +45,8 @@ export default function MoodScreen() {
       await create.mutateAsync({ mood: selected, note: note.trim() || undefined });
       setSubmitted(true);
       setTimeout(() => router.back(), 1100);
-    } catch {
-      void dialog.alert('Could not save', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not save', apiErrorMessage(err, 'Please try again.'));
     }
   }
 

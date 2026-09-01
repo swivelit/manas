@@ -8,6 +8,7 @@ import { useAuthStore } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
 import { useDialog } from '../../components/AppDialog';
 import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN, PRE_START_JOIN_WINDOW_MIN } from '../../lib/sessionCall';
+import { apiErrorMessage } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -122,8 +123,8 @@ export default function CoachAppointments() {
     setBusyId(id);
     try {
       await update.mutateAsync({ id, status });
-    } catch {
-      void dialog.alert('Could not update', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not update', apiErrorMessage(err, 'Please try again.'));
     } finally {
       setBusyId(null);
     }

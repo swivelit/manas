@@ -18,6 +18,7 @@ import {
 import { formatInTimeZone } from 'date-fns-tz';
 import { useDialog } from '../../components/AppDialog';
 import { canJoinSession, isCallSession, POST_START_JOIN_WINDOW_MIN, PRE_START_JOIN_WINDOW_MIN } from '../../lib/sessionCall';
+import { apiErrorMessage } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -49,8 +50,8 @@ function ChatPanel({ sessionId, currentUserId }: { sessionId: string; currentUse
     try {
       await send.mutateAsync({ sessionId, body });
       setDraft('');
-    } catch {
-      void dialog.alert('Could not send message', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not send message', apiErrorMessage(err, 'Please try again.'));
     }
   }
 
@@ -175,8 +176,8 @@ export default function SessionDetail() {
       setRescheduling(false);
       setNewDate(null);
       void dialog.alert('Rescheduled', `New time: ${format(new Date(slot.startsAt), 'EEE, d MMM · h:mm a')}`);
-    } catch {
-      void dialog.alert('Could not reschedule', 'Please try a different slot.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not reschedule', apiErrorMessage(err, 'Please try a different slot.'));
     }
   }
 
@@ -192,8 +193,8 @@ export default function SessionDetail() {
     try {
       await update.mutateAsync({ id: sessionId, status: 'CANCELLED' });
       router.back();
-    } catch {
-      void dialog.alert('Could not cancel', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not cancel', apiErrorMessage(err, 'Please try again.'));
     }
   }
 

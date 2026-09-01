@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSegments } from 'expo-router';
 import { getAndroidBannerAdUnitId } from '../lib/ads';
 import { useAdsConsent } from '../lib/adsConsent';
 import { colors } from '../theme/colors';
@@ -13,6 +14,7 @@ function getAdsModule(): AdsModule {
 
 export function GlobalBannerAd() {
   const insets = useSafeAreaInsets();
+  const segments = useSegments() as string[];
   const { canRequestAds, adsInitialized } = useAdsConsent();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -26,7 +28,15 @@ export function GlobalBannerAd() {
     };
   }, []);
 
-  if (Platform.OS !== 'android' || !canRequestAds || !adsInitialized) return null;
+  if (
+    Platform.OS !== 'android' ||
+    !canRequestAds ||
+    !adsInitialized ||
+    segments.includes('(coach)') ||
+    segments.includes('(admin)') ||
+    segments[0] === 'call' ||
+    segments[0] === 'legal'
+  ) return null;
 
   const unitId = getAndroidBannerAdUnitId();
   if (!unitId) return null;

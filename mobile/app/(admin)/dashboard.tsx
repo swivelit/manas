@@ -7,6 +7,7 @@ import { useAuthStore } from '../../lib/auth';
 import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
 import { useDialog } from '../../components/AppDialog';
+import { apiErrorMessage } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
@@ -48,8 +49,8 @@ export default function AdminDashboard() {
       const res = await broadcast.mutateAsync({ title: title.trim(), body: body.trim() });
       void dialog.alert('Sent', `Delivered to ${res.recipients} member${res.recipients === 1 ? '' : 's'}.`);
       setTitle(''); setBody('');
-    } catch {
-      void dialog.alert('Could not send', 'Please try again.');
+    } catch (err: unknown) {
+      void dialog.alert('Could not send', apiErrorMessage(err, 'Please try again.'));
     }
   }
 

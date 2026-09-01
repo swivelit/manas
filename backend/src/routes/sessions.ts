@@ -67,12 +67,26 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   if (!coach) { res.status(404).json({ error: 'Coach not found' }); return; }
   if (!topic) { res.status(404).json({ error: 'Topic not found' }); return; }
 
+  const scheduledDate = new Date(scheduledAt);
+  const existing = await prisma.session.findFirst({
+    where: {
+      coachId,
+      scheduledAt: scheduledDate,
+      status: { in: [SessionStatus.PENDING, SessionStatus.CONFIRMED] },
+    },
+    select: { id: true },
+  });
+  if (existing) {
+    res.status(409).json({ error: 'That slot was just taken. Please pick another time.' });
+    return;
+  }
+
   const session = await prisma.session.create({
     data: {
       userId: req.user!.id,
       coachId,
       topicId,
-      scheduledAt: new Date(scheduledAt),
+      scheduledAt: scheduledDate,
       type,
       status: SessionStatus.CONFIRMED,
       isDemo: true,

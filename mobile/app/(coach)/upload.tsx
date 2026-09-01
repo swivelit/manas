@@ -17,6 +17,7 @@ import {
   getReadableErrorMessage,
   pickVideoFromFiles,
 } from '../../lib/videoUpload';
+import { apiErrorMessage } from '../../lib/api';
 
 const VIDEO_TYPES = ['THERAPY', 'COACHING', 'MOTIVATIONAL', 'TOPIC', 'INTRO'] as const;
 type VideoTypeOption = typeof VIDEO_TYPES[number];
@@ -108,7 +109,7 @@ export default function CoachUpload() {
       setTitle(''); setDescription(''); setUrl(''); setThumbnailUrl(''); setPickedVideo(null); setToyDescription(''); setToyAudio(null); setDuration('');
       setType('THERAPY'); setIsPremium(false); setTopicId(null);
     } catch (err: unknown) {
-      void dialog.alert('Could not publish', getReadableErrorMessage(err, 'Please check the fields and try again.'));
+      void dialog.alert('Could not publish', apiErrorMessage(err, 'Please check the fields and try again.'));
     }
   }
 
