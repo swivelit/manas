@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { createPrivateKey } from 'node:crypto';
+
 const env = process.env;
 const meetingVars = [
   'MEETING_PROVIDER',
@@ -48,6 +50,37 @@ function deriveJwtAlg(provider) {
   return alg;
 }
 
+function normalizePrivateKey(value) {
+  const normalized = value.replace(/\\n/g, '\n').trim();
+  if (!normalized || normalized.includes('BEGIN') || normalized.includes('PRIVATE KEY')) return normalized;
+
+  const body = normalized.replace(/\s+/g, '');
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
+}
+
+function inspectPrivateKey() {
+  if (!isSet('MEETING_JWT_PRIVATE_KEY')) return { status: 'MISSING', valid: false };
+
+  const source = env.MEETING_JWT_PRIVATE_KEY.replace(/\\n/g, '\n').trim();
+  const isBareBody = !source.includes('BEGIN') && !source.includes('PRIVATE KEY');
+  const normalized = normalizePrivateKey(env.MEETING_JWT_PRIVATE_KEY);
+
+  try {
+    const key = createPrivateKey(normalized);
+    if (key.asymmetricKeyType !== 'rsa') {
+      return { status: `INVALID — key type is ${key.asymmetricKeyType ?? 'unknown'}, expected rsa`, valid: false };
+    }
+    const modulusLength = key.asymmetricKeyDetails?.modulusLength;
+    const status = isBareBody
+      ? 'bare base64 body — will be auto-armored'
+      : `valid RSA private key (${modulusLength} bits)`;
+    return { status, valid: true };
+  } catch {
+    return { status: 'INVALID — could not parse as a private key', valid: false };
+  }
+}
+
 function validateServerUrl(provider) {
   const value = isSet('MEETING_SERVER_URL')
     ? env.MEETING_SERVER_URL.trim().replace(/\/+$/, '')
@@ -72,10 +105,12 @@ const provider = deriveProvider();
 const authEnabled = parseBoolean('MEETING_ENABLE_AUTH', provider !== 'open_jitsi');
 const allowInsecureOpenJitsi = parseBoolean('MEETING_ALLOW_INSECURE_OPEN_JITSI', false);
 const jwtAlg = deriveJwtAlg(provider);
+const privateKey = inspectPrivateKey();
 
 console.log(`Derived provider: ${provider}`);
 console.log(`Derived auth: ${authEnabled ? 'enabled' : 'disabled'}`);
 console.log(`Environment: ${isProduction ? 'production' : 'non-production'}`);
+console.log(`MEETING_JWT_PRIVATE_KEY: ${privateKey.status}`);
 
 validateServerUrl(provider);
 
@@ -85,11 +120,7 @@ if (isSet('MEETING_JWT_KID') && env.MEETING_JWT_KID.includes('/')) {
   errors.push(message);
 }
 
-if (isSet('MEETING_JWT_PRIVATE_KEY') && (!env.MEETING_JWT_PRIVATE_KEY.includes('BEGIN') || !env.MEETING_JWT_PRIVATE_KEY.includes('PRIVATE KEY'))) {
-  const message = 'MEETING_JWT_PRIVATE_KEY looks truncated; the value should contain BEGIN and PRIVATE KEY.';
-  console.error(`[meeting-config] ERROR — ${message}`);
-  errors.push(message);
-}
+if (provider !== 'open_jitsi' && isSet('MEETING_JWT_PRIVATE_KEY') && !privateKey.valid) errors.push(privateKey.status);
 
 if (provider === 'open_jitsi') {
   if (isProduction && !allowInsecureOpenJitsi) {

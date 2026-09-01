@@ -1,3 +1,4 @@
+import { createPrivateKey } from 'node:crypto';
 import { SessionType } from '@prisma/client';
 
 export const PRE_START_JOIN_WINDOW_MIN = 10;
@@ -30,7 +31,13 @@ function trim(value: string | undefined): string {
 }
 
 function normalizePrivateKey(value: string): string {
-  return value.replace(/\\n/g, '\n').trim();
+  const normalized = value.replace(/\\n/g, '\n').trim();
+  if (!normalized || normalized.includes('BEGIN') || normalized.includes('PRIVATE KEY')) return normalized;
+
+  // Render's env field commonly yields a bare base64 body when PEM armor is lost on paste.
+  const body = normalized.replace(/\s+/g, '');
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean, name = 'MEETING_ENABLE_AUTH'): boolean {
@@ -123,6 +130,20 @@ export function getMeetingConfig(options: { validateAuth?: boolean } = {}): Meet
 
 let insecureOpenJitsiWarningLogged = false;
 
+function assertRsaPrivateKey(privateKey: string): void {
+  try {
+    const key = createPrivateKey(privateKey);
+    if (key.asymmetricKeyType !== 'rsa') {
+      throw new MeetingConfigError(
+        `MEETING_JWT_PRIVATE_KEY must be an RSA private key; received ${key.asymmetricKeyType ?? 'unknown'}.`
+      );
+    }
+  } catch (error) {
+    if (error instanceof MeetingConfigError) throw error;
+    throw new MeetingConfigError('MEETING_JWT_PRIVATE_KEY is not a valid RSA private key. Include the BEGIN and END PEM lines.');
+  }
+}
+
 export function validateMeetingAuthConfig(config: MeetingConfig): void {
   if (config.provider === 'open_jitsi') {
     if (config.isProduction) {
@@ -155,6 +176,7 @@ export function validateMeetingAuthConfig(config: MeetingConfig): void {
     if (!config.jwtKid || !config.jwtPrivateKey) {
       throw new MeetingConfigError('JaaS meetings require MEETING_JWT_KID and MEETING_JWT_PRIVATE_KEY.');
     }
+    assertRsaPrivateKey(config.jwtPrivateKey);
     return;
   }
 
@@ -164,6 +186,7 @@ export function validateMeetingAuthConfig(config: MeetingConfig): void {
   if (config.jwtAlg === 'RS256' && (!config.jwtKid || !config.jwtPrivateKey)) {
     throw new MeetingConfigError('Self-hosted Jitsi RS256 auth requires MEETING_JWT_KID and MEETING_JWT_PRIVATE_KEY.');
   }
+  if (config.jwtAlg === 'RS256') assertRsaPrivateKey(config.jwtPrivateKey);
 }
 
 export function logMeetingConfigStatus(): void {

@@ -137,6 +137,8 @@ This repository now includes a versioned Prisma migration baseline at `backend/p
 4. Download the private key before closing the dialog.
 5. Use only the suffix of the Key ID for `MEETING_JWT_KID` (the part after the slash, not `appId/kid`).
 
+Troubleshooting: A 500 rather than 503 from `/sessions/:id/call-config` historically meant the PEM armor was missing from the environment value.
+
 `MEETING_ALLOW_INSECURE_OPEN_JITSI` exists for demos only and must never be `true` for a production release.
 
 ### Optional provider credentials (set in the Render dashboard — never commit)
