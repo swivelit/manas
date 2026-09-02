@@ -65,12 +65,46 @@ check_text_manifest() {
   fi
 }
 
+check_source_manifest_removals() {
+  local file_path="$1"
+  local label="$2"
+  local forbidden_value matches line bad_matches
+
+  for forbidden_value in "${FORBIDDEN_LITERALS[@]}"; do
+    matches="$(grep -nF "$forbidden_value" "$file_path" || true)"
+    [[ -n "$matches" ]] || continue
+
+    bad_matches=""
+    while IFS= read -r line; do
+      if [[ "$line" != *'tools:node="remove"'* && "$line" != *"tools:node='remove'"* ]]; then
+        bad_matches+="$line"$'\n'
+      fi
+    done <<< "$matches"
+
+    if [[ -n "$bad_matches" ]]; then
+      mark_failure "$label" "$forbidden_value" "$bad_matches"
+    else
+      echo "OK: $label removes $forbidden_value during manifest merge."
+    fi
+  done
+
+  matches="$(grep -nE "$FOREGROUND_TYPE_REGEX" "$file_path" || true)"
+  if [[ -n "$matches" ]]; then
+    mark_failure "$label" 'camera, microphone, or mediaPlayback foregroundServiceType' "$matches"
+  fi
+}
+
 check_generated_manifest() {
   local manifest_path="$1"
+  local main_manifest="$MOBILE_DIR/android/app/src/main/AndroidManifest.xml"
 
   [[ -f "$manifest_path" ]] || return 0
   checked_generated=1
-  check_text_manifest "$manifest_path" "$(relative_path "$manifest_path")"
+  if [[ "$manifest_path" == "$main_manifest" ]]; then
+    check_source_manifest_removals "$manifest_path" "$(relative_path "$manifest_path")"
+  else
+    check_text_manifest "$manifest_path" "$(relative_path "$manifest_path")"
+  fi
   echo "Checked generated manifest: $(relative_path "$manifest_path")"
 }
 

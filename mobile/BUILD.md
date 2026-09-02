@@ -111,6 +111,10 @@ support are disabled. Consequently, the current release must not declare
 camera, microphone, or media-playback foreground services, and no Play Console
 foreground-service declaration should be required.
 
+This policy is enforced in `mobile/app.json` through Expo's
+`android.blockedPermissions` for the base and typed foreground-service
+permissions. The normal `CAMERA` and `RECORD_AUDIO` permissions remain enabled.
+
 After a clean prebuild or release build, verify the generated manifest:
 
 ```bash
