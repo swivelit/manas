@@ -31,7 +31,21 @@ type VideoTypeOption = typeof VIDEO_TYPES[number];
 const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
 
 type AdminVideo = {
-  id: string; title: string; type: string; isPremium: boolean; approved: boolean;
+   id: string;
+  title: string;
+  description?: string | null;
+  url?: string | null;
+  thumbnailUrl?: string | null;
+  subtitleUrl?: string | null;
+  toyDescription?: string | null;
+  englishDialogue?: string | null;
+  tamilDialogue?: string | null;
+  toyAudioUrl?: string | null;
+  durationSec?: number | null;
+  type: string;
+  isPremium: boolean;
+  approved: boolean;
+  topicId?: string | null;
   topic?: { name?: string } | null;
 };
 
@@ -48,12 +62,15 @@ export default function AdminContent() {
   const uploadVideo = useUploadVideo();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<AdminVideo | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [pickedVideo, setPickedVideo] = useState<PickedVideoFile | null>(null);
   const [toyDescription, setToyDescription] = useState('');
+  const [englishDialogue, setEnglishDialogue] = useState('');
+  const [tamilDialogue, setTamilDialogue] = useState('');
   const [toyAudio, setToyAudio] = useState<ToyAudioClip | null>(null);
   const [duration, setDuration] = useState('');
   const [type, setType] = useState<VideoTypeOption>('THERAPY');
@@ -75,12 +92,35 @@ export default function AdminContent() {
     setThumbnailUrl('');
     setPickedVideo(null);
     setToyDescription('');
+    setEnglishDialogue('');
+    setTamilDialogue('');
     setToyAudio(null);
     setDuration('');
     setType('THERAPY');
     setTopicId(null);
     setIsPremium(false);
   }
+  function openEditVideo(video: AdminVideo) {
+  setEditingVideo(video);
+  setTitle(video.title ?? '');
+  setDescription(video.description ?? '');
+  setUrl(video.url ?? '');
+  setThumbnailUrl(video.thumbnailUrl ?? '');
+  setPickedVideo(null);
+  setToyDescription(video.toyDescription ?? '');
+  setEnglishDialogue(video.englishDialogue ?? '');
+  setTamilDialogue(video.tamilDialogue ?? '');
+  setToyAudio(null);
+  setDuration(video.durationSec ? String(video.durationSec) : '');
+  setType(
+    VIDEO_TYPES.includes(video.type as VideoTypeOption)
+      ? (video.type as VideoTypeOption)
+      : 'THERAPY'
+  );
+  setTopicId(video.topicId ?? null);
+  setIsPremium(video.isPremium);
+  setModalOpen(true);
+}
 
   function handleModalRequestClose() {
     Keyboard.dismiss();
@@ -114,6 +154,29 @@ export default function AdminContent() {
   }
 
   async function submit() {
+      if (editingVideo) {
+        console.log('EDIT TYPE:', type);
+    await update.mutateAsync({
+      id: editingVideo.id,
+      title,
+      description,
+      url,
+      thumbnailUrl,
+      toyDescription,
+      englishDialogue,
+      tamilDialogue,
+      durationSec: duration ? parseInt(duration, 10) : undefined,
+      type,
+      isPremium,
+      approved: editingVideo.approved,
+      topicId: topicId ?? undefined,
+    });
+
+    setModalOpen(false);
+    setEditingVideo(null);
+    resetForm();
+    return;
+  }
     if (uploadVideo.isPending) {
       void dialog.alert('Upload in progress', 'Wait for the selected video to finish uploading before adding it.');
       return;
@@ -130,9 +193,27 @@ export default function AdminContent() {
       void dialog.alert('Check the thumbnail URL', 'Enter a full thumbnail URL starting with http(s)://');
       return;
     }
-    const parsedDurationSec = duration.trim() ? parseInt(duration.trim(), 10) || 0 : 0;
-    const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
+    const durationValue = duration.trim();
 
+let parsedDurationSec = 0;
+
+if (durationValue.includes(':')) {
+  const [minutes, seconds] = durationValue.split(':').map(Number);
+
+  if (
+    Number.isFinite(minutes) &&
+    Number.isFinite(seconds) &&
+    minutes >= 0 &&
+    seconds >= 0 &&
+    seconds < 60
+  ) {
+    parsedDurationSec = minutes * 60 + seconds;
+  }
+} else {
+  parsedDurationSec = parseInt(durationValue, 10) || 0;
+}
+
+const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
     try {
       const toyAudioUrl = toyAudio
         ? (await uploadToyAudio.mutateAsync({ uri: toyAudio.uri, durationMs: toyAudio.durationMs })).url
@@ -143,6 +224,8 @@ export default function AdminContent() {
         url: url.trim(),
         thumbnailUrl: thumbnailUrl.trim() || undefined,
         toyDescription: toyDescription.trim() || undefined,
+        englishDialogue,
+        tamilDialogue,
         toyAudioUrl,
         durationSec,
         type,
@@ -174,7 +257,15 @@ export default function AdminContent() {
           <Text style={styles.kicker}>LIBRARY</Text>
           <Text style={styles.title}>Content{videos.length ? ` · ${videos.length}` : ''}</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setModalOpen(true)} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => {
+           resetForm();
+           setEditingVideo(null);
+           setModalOpen(true);
+          }}
+          activeOpacity={0.85}
+        >
           <Text style={styles.addBtnText}>+ Add video</Text>
         </TouchableOpacity>
       </View>
@@ -196,6 +287,13 @@ export default function AdminContent() {
                 {item.isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumBadgeText}>PREMIUM</Text></View>}
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmDelete(item)} activeOpacity={0.85}>
                   <Text style={styles.deleteText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                   style={styles.deleteBtn}
+                   onPress={() => openEditVideo(item)}
+                   activeOpacity={0.85}
+                  >
+                 <Text style={styles.deleteText}>Edit</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.vMeta}>{item.type}{item.topic?.name ? ` · ${item.topic.name}` : ''}</Text>
@@ -258,10 +356,26 @@ export default function AdminContent() {
                   <Text style={styles.fieldLabel}>Thumbnail URL (optional)</Text>
                   <TextInput style={styles.input} value={thumbnailUrl} onChangeText={setThumbnailUrl} placeholder="https://example.com/thumb.jpg" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
                 </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>English dialogue (optional)</Text>
+                  <TextInput
+                   style={[styles.input, styles.multiline]}
+                   value={englishDialogue}
+                   onChangeText={setEnglishDialogue}
+                   placeholder="Enter English dialogue..."
+                   placeholderTextColor={colors.muted}
+                   multiline
+                  />
+                </View>
 
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Toy description (optional)</Text>
-                  <TextInput style={[styles.input, styles.multiline]} value={toyDescription} onChangeText={setToyDescription} placeholder="What the toy should say for this video..." placeholderTextColor={colors.muted} multiline />
+                  <Text style={styles.fieldLabel}>Tamil dialogue (optional)</Text>
+                  <TextInput style={[styles.input, styles.multiline]}
+                  value={tamilDialogue}
+                  onChangeText={setTamilDialogue}
+                  placeholder="Enter Tamil dialogue..."
+                  placeholderTextColor={colors.muted}
+                   multiline/>
                 </View>
 
                 <View style={styles.field}>
@@ -269,8 +383,8 @@ export default function AdminContent() {
                 </View>
 
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Duration in seconds (optional)</Text>
-                  <TextInput style={styles.input} value={duration} onChangeText={setDuration} placeholder="480" placeholderTextColor={colors.muted} keyboardType="number-pad" />
+                  <Text style={styles.fieldLabel}>Duration (optional)</Text>
+                  <TextInput style={styles.input} value={duration} onChangeText={setDuration} placeholder="1:30 or 90" placeholderTextColor={colors.muted} keyboardType="number-pad" />
                 </View>
 
                 <View style={styles.field}>
@@ -307,7 +421,11 @@ export default function AdminContent() {
                   <TouchableOpacity onPress={() => setModalOpen(false)} style={styles.cancelBtn} activeOpacity={0.85}>
                     <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <Button label={isBusy ? 'Adding...' : 'Add video'} onPress={submit} loading={isBusy} />
+                  <Button
+                    label={isBusy ? 'Adding...' : editingVideo? 'Save changes': 'Add video'}
+                   onPress={submit}
+                   loading={isBusy}
+                  />
                 </View>
               </ScrollView>
             </View>

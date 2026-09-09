@@ -246,6 +246,7 @@ router.get('/bookmarks', requireAuth, async (req: Request, res: Response) => {
   res.json(bookmarks.map(b => b.video));
 });
 
+
 router.post('/toy-audio', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user!.role !== Role.COACH && req.user!.role !== Role.ADMIN) {
@@ -330,6 +331,28 @@ router.post('/upload', requireAuth, async (req: Request, res: Response, next: Ne
     next(err);
   }
 });
+router.get('/progress/me', requireAuth, async (req: Request, res: Response) => {
+  const progress = await prisma.videoProgress.findMany({
+    where: { userId: req.user!.id },
+    select: {
+      progressSec: true,
+      completed: true,
+    },
+  });
+
+  const totalProgressSec = progress.reduce(
+    (total, item) => total + item.progressSec,
+    0
+  );
+
+  const completedVideos = progress.filter(item => item.completed).length;
+
+  res.json({
+    totalProgressSec,
+    completedVideos,
+  });
+});
+
 
 router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
   const video = await prisma.video.findUnique({

@@ -68,7 +68,12 @@ export default function HomeScreen() {
         {/* Categories */}
         <View style={styles.catsTitle}>
           <Text style={styles.catsTitleText}>Two paths forward</Text>
-          <Text style={styles.catsSeeAll}>See all →</Text>
+          <TouchableOpacity
+          onPress={() => router.push('/all-topics')}
+          activeOpacity={0.7}
+        >
+        <Text style={styles.catsSeeAll}>See all →</Text>
+    </TouchableOpacity>
         </View>
 
         <View style={styles.cats}>

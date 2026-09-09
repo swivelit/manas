@@ -58,6 +58,7 @@ function PlayableVideo({ video, videoId }: { video: VideoDetails; videoId: strin
     const completed = dur > 0 && pos >= dur - 5;
     if (pos % 10 === 0 && pos > 0 && lastPostedSecondRef.current !== pos && !trackProgress.isPending) {
       lastPostedSecondRef.current = pos;
+      console.log('SAVING VIDEO PROGRESS:', pos);
       trackProgress.mutate({ id: videoId, progressSec: pos, completed });
     }
   });

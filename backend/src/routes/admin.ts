@@ -183,6 +183,8 @@ const createVideoSchema = z.object({
   thumbnailUrl: z.string().url().optional(),
   subtitleUrl: z.string().url().optional(),
   toyDescription: z.string().trim().optional(),
+  englishDialogue: z.string().trim().optional(),
+  tamilDialogue: z.string().trim().optional(),
   toyAudioUrl: z.string().url().optional(),
   durationSec: z.number().int().positive().optional(),
   type: z.nativeEnum(VideoType),
@@ -225,6 +227,16 @@ const updateVideoSchema = z.object({
   isPremium: z.boolean().optional(),
   title: z.string().trim().min(2).optional(),
   description: z.string().trim().min(2).optional(),
+  url: z.string().trim().url().optional(),
+  thumbnailUrl: z.string().trim().url().optional(),
+  subtitleUrl: z.string().trim().url().optional(),
+  toyDescription: z.string().trim().optional(),
+  englishDialogue: z.string().trim().optional(),
+  tamilDialogue: z.string().trim().optional(),
+  toyAudioUrl: z.string().trim().url().optional(),
+  durationSec: z.number().int().positive().optional(),
+  type: z.string().trim().optional(),
+  topicId: z.string().trim().optional(),
 });
 
 router.patch('/videos/:id', async (req: Request, res: Response, next: NextFunction) => {
