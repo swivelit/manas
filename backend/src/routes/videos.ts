@@ -245,7 +245,21 @@ router.get('/bookmarks', requireAuth, async (req: Request, res: Response) => {
   });
   res.json(bookmarks.map(b => b.video));
 });
+router.get('/likes', requireAuth, async (req: Request, res: Response) => {
+  const likes = await prisma.videoLike.findMany({
+    where: { userId: req.user!.id },
+    include: {
+      video: {
+        include: {
+          topic: { select: { name: true, slug: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
+  res.json(likes.map(l => l.video));
+});
 
 router.post('/toy-audio', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {

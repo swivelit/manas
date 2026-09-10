@@ -25,8 +25,20 @@ export default function BookingScreen() {
   const { data: me } = useMe();
   const { data: availability, isLoading: slotsLoading, isError: slotsError } = useCoachAvailability(coachParam, selectedDate);
   const bookSession = useBookSession();
-  const slots = Array.isArray(availability?.slots) ? availability.slots : [];
+   const slots = Array.isArray(availability?.slots) ? availability.slots : [];
 
+const visibleSlots = slots.filter((slot: { startsAt: string; available: boolean }) => {
+  if (!slot.available) return true;
+
+  const slotTime = new Date(slot.startsAt);
+
+  // On today's date, hide slots that have already passed.
+  if (selectedDate === format(new Date(), 'yyyy-MM-dd')) {
+    return slotTime.getTime() > Date.now();
+  }
+
+  return true;
+});
   const userTz = me?.timezone ?? 'Asia/Kolkata';
   const tzLabel = formatInTimeZone(new Date(), userTz, 'zzz'); // e.g. "IST", "GMT+5:30"
 
@@ -56,7 +68,7 @@ export default function BookingScreen() {
   const markedDates: Record<string, { selected?: boolean; selectedColor?: string; marked?: boolean; dotColor?: string }> = {
     [selectedDate]: { selected: true, selectedColor: colors.ink },
   };
-  if (slots.some((s: { available: boolean }) => s.available)) {
+  if (visibleSlots.some((s: { available: boolean }) => s.available)) {
     markedDates[selectedDate] = { ...markedDates[selectedDate], dotColor: colors.pink, marked: true };
   }
 
@@ -89,6 +101,7 @@ export default function BookingScreen() {
         {/* Calendar */}
         <Calendar
           current={selectedDate}
+          minDate={format(new Date(), 'yyyy-MM-dd')}
           onDayPress={(day: { dateString: string }) => { setSelectedDate(day.dateString); setSelectedStartsAt(null); }}
           markedDates={markedDates}
           theme={{
@@ -133,7 +146,7 @@ export default function BookingScreen() {
             {slots.length === 0 && (
               <Text style={styles.noSlots}>No availability on this day.</Text>
             )}
-            {slots.map((s: { time: string; startsAt: string; available: boolean }) => (
+            {visibleSlots.map((s: { time: string; startsAt: string; available: boolean }) => (
               <TouchableOpacity
                 key={s.startsAt}
                 disabled={!s.available}

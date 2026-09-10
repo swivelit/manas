@@ -187,6 +187,7 @@ export function useLikeVideo() {
     onSuccess: (_res, id) => {
       qc.invalidateQueries({ queryKey: ['video', id] });
       qc.invalidateQueries({ queryKey: ['videos'] });
+      qc.invalidateQueries({ queryKey: ['video-likes'] });
     },
   });
 }
@@ -196,6 +197,31 @@ export function useVideoBookmarks() {
   return useQuery({
     queryKey: ['video-bookmarks'],
     queryFn: () => api.get('/videos/bookmarks').then(r => r.data),
+    enabled: !!token,
+  });
+}
+export function useVideoLikes() {
+  const token = useAuthStore(s => s.token);
+
+  return useQuery({
+    queryKey: ['video-likes'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/videos/likes');
+
+        console.log('LIKED VIDEOS RESPONSE:', response.data);
+
+        return response.data;
+      } catch (error: any) {
+        console.log(
+          'LIKED VIDEOS ERROR:',
+          error?.response?.status,
+          error?.response?.data
+        );
+
+        throw error;
+      }
+    },
     enabled: !!token,
   });
 }
@@ -440,6 +466,7 @@ export function useUpdateAdminVideo() {
      description?: string;
      url?: string;
      thumbnailUrl?: string;
+     subtitleUrl?: string;
      toyDescription?: string;
      durationSec?: number;
      type?: string;
@@ -460,7 +487,7 @@ export function useCreateAdminVideo() {
   return useMutation({
     mutationFn: (data: {
       title: string; description: string; url: string; thumbnailUrl?: string; subtitleUrl?: string;
-      toyDescription?: string;
+      toyDescription?: string; 
       englishDialogue?: string;
       tamilDialogue?: string;
       toyAudioUrl?: string;

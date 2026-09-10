@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { differenceInMinutes, format } from 'date-fns';
-import { useSessions } from '../../lib/queries';
+import { useSessions, useMoodEntries } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { MoodCheckIn } from '../../components/MoodCheckIn';
 import { SessionCard } from '../../components/SessionCard';
@@ -17,6 +17,8 @@ import { fontFamilies } from '../../theme/fonts';
 export default function HomeScreen() {
   const user = useAuthStore(s => s.user);
   const { data: sessions } = useSessions();
+  const { data: moodEntries } = useMoodEntries(1);
+  const latestMood = Array.isArray(moodEntries) ? moodEntries[0] : null;
   const sessionList = Array.isArray(sessions) ? sessions : [];
 
   const now = new Date();
@@ -46,7 +48,17 @@ export default function HomeScreen() {
     if (h < 17) return 'Good afternoon,';
     return 'Good evening,';
   };
+  const MOOD_MESSAGES: Record<number, string> = {
+  1: 'It’s okay to have difficult days. Be gentle with yourself today.',
+  2: 'Take things one step at a time. You don’t have to figure everything out today.',
+  3: 'You’re doing alright. Keep taking things at your own pace.',
+  4: 'Glad to hear that. Keep carrying that good energy with you.',
+  5: 'Love that energy! Keep enjoying the little wins.',
+};
 
+const moodMessage = latestMood
+  ? MOOD_MESSAGES[Number(latestMood.mood)]
+  : null;
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -63,7 +75,30 @@ export default function HomeScreen() {
         </View>
 
         {/* Mood check-in */}
-        <MoodCheckIn onPress={() => router.push('/mood')} />
+        {/* Mood check-in */}
+ {latestMood ? (
+  <View style={styles.moodReflection}>
+    <Text style={styles.moodReflectionLabel}>TODAY'S CHECK-IN</Text>
+    <Text style={styles.moodReflectionText}>
+      {moodMessage}
+    </Text>
+
+    {latestMood.note ? (
+      <Text style={styles.moodReflectionNote}>
+        “{latestMood.note}”
+      </Text>
+    ) : null}
+
+    <TouchableOpacity
+      onPress={() => router.push('/mood')}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.moodChange}>Check in again →</Text>
+    </TouchableOpacity>
+  </View>
+) : (
+  <MoodCheckIn onPress={() => router.push('/mood')} />
+                  )}
 
         {/* Categories */}
         <View style={styles.catsTitle}>
@@ -78,7 +113,7 @@ export default function HomeScreen() {
 
         <View style={styles.cats}>
           <TouchableOpacity
-            onPress={() => router.push('/topics/emotional-healing-list')}
+            onPress={() => router.push('/emotional-healing')}
             style={[styles.cat, styles.catBlue]}
             activeOpacity={0.85}
           >
@@ -144,7 +179,7 @@ export default function HomeScreen() {
               <Text style={styles.upcomingLabel}>GET STARTED</Text>
               <Text style={styles.upcomingText}>Book your first <Text style={styles.upcomingCoach}>free demo</Text></Text>
             </View>
-            <TouchableOpacity style={styles.joinBtn} onPress={() => router.push('/(tabs)/topics')}>
+            <TouchableOpacity style={styles.joinBtn} onPress={() => router.push('/all-topics')}>
               <Text style={styles.joinBtnText}>Book →</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -179,4 +214,40 @@ const styles = StyleSheet.create({
   upcomingCoach: { fontFamily: fontFamilies.frauncesItalic, color: '#FFB6D9' },
   joinBtn: { backgroundColor: colors.pink, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
   joinBtnText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 11, color: colors.paper },
+  moodReflection: {
+  marginHorizontal: 22,
+  marginBottom: 18,
+  padding: 16,
+  backgroundColor: colors.paper,
+  borderRadius: 18,
+  borderWidth: 1,
+  borderColor: colors.line,
+},
+moodReflectionLabel: {
+  fontFamily: fontFamilies.dmSansBold,
+  fontSize: 9,
+  letterSpacing: 1.5,
+  color: colors.muted,
+},
+moodReflectionText: {
+  fontFamily: fontFamilies.fraunces,
+  fontSize: 17,
+  lineHeight: 22,
+  color: colors.ink,
+  marginTop: 7,
+},
+moodReflectionNote: {
+  fontFamily: fontFamilies.frauncesItalic,
+  fontSize: 12,
+  lineHeight: 18,
+  color: colors.inkSoft,
+  marginTop: 8,
+},
+moodChange: {
+  fontFamily: fontFamilies.dmSansMedium,
+  fontSize: 10,
+  color: colors.pink,
+  marginTop: 12,
+},
 });
+

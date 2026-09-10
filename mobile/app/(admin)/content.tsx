@@ -67,6 +67,7 @@ export default function AdminContent() {
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [subtitleUrl, setSubtitleUrl] = useState('');
   const [pickedVideo, setPickedVideo] = useState<PickedVideoFile | null>(null);
   const [toyDescription, setToyDescription] = useState('');
   const [englishDialogue, setEnglishDialogue] = useState('');
@@ -90,6 +91,7 @@ export default function AdminContent() {
     setDescription('');
     setUrl('');
     setThumbnailUrl('');
+    setSubtitleUrl('');
     setPickedVideo(null);
     setToyDescription('');
     setEnglishDialogue('');
@@ -106,6 +108,7 @@ export default function AdminContent() {
   setDescription(video.description ?? '');
   setUrl(video.url ?? '');
   setThumbnailUrl(video.thumbnailUrl ?? '');
+  setSubtitleUrl(video.subtitleUrl ?? '');
   setPickedVideo(null);
   setToyDescription(video.toyDescription ?? '');
   setEnglishDialogue(video.englishDialogue ?? '');
@@ -162,6 +165,7 @@ export default function AdminContent() {
       description,
       url,
       thumbnailUrl,
+      subtitleUrl,
       toyDescription,
       englishDialogue,
       tamilDialogue,
@@ -223,6 +227,7 @@ const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
         description: description.trim(),
         url: url.trim(),
         thumbnailUrl: thumbnailUrl.trim() || undefined,
+        subtitleUrl: subtitleUrl.trim() || undefined,
         toyDescription: toyDescription.trim() || undefined,
         englishDialogue,
         tamilDialogue,
@@ -356,6 +361,20 @@ const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
                   <Text style={styles.fieldLabel}>Thumbnail URL (optional)</Text>
                   <TextInput style={styles.input} value={thumbnailUrl} onChangeText={setThumbnailUrl} placeholder="https://example.com/thumb.jpg" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
                 </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Subtitle URL (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={subtitleUrl}
+                    onChangeText={setSubtitleUrl}
+                    placeholder="https://example.com/subtitles.vtt"
+                    placeholderTextColor={colors.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                  />
+                </View>
+                
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>English dialogue (optional)</Text>
                   <TextInput

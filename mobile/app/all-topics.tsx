@@ -30,31 +30,70 @@ export default function AllTopicsScreen() {
 
   const [search, setSearch] = React.useState('');
 
-  const emotionalList = Array.isArray(emotionalTopics) ? emotionalTopics : [];
-  const coachingList = Array.isArray(coachingTopics) ? coachingTopics : [];
+  const emotionalList = Array.isArray(emotionalTopics)
+    ? emotionalTopics
+    : [];
 
-  const allTopics = [
-    ...emotionalList.map((topic: any) => ({
-      ...topic,
-      category: 'Emotional Healing',
-    })),
-    ...coachingList.map((topic: any) => ({
-      ...topic,
-      category: 'Coaching & Growth',
-    })),
-  ];
+  const coachingList = Array.isArray(coachingTopics)
+    ? coachingTopics
+    : [];
 
-  const filtered = allTopics.filter((topic: any) =>
-    String(topic.name ?? '').toLowerCase().includes(search.toLowerCase())
+  const filteredEmotional = emotionalList.filter((topic: any) =>
+    String(topic.name ?? '')
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
+
+  const filteredCoaching = coachingList.filter((topic: any) =>
+    String(topic.name ?? '')
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
+  const hasResults =
+    filteredEmotional.length > 0 || filteredCoaching.length > 0;
 
   const isLoading = emotionalLoading || coachingLoading;
   const isError = emotionalError || coachingError;
 
+  function renderRows(topics: any[], prefix: string) {
+    const rows = [];
+
+    for (let i = 0; i < topics.length; i += 3) {
+      rows.push(
+        <View key={`${prefix}-row-${i}`} style={styles.row}>
+          {topics.slice(i, i + 3).map((item: any, index: number) => (
+            <TopicTile
+              key={`${prefix}-${item.slug}`}
+              topic={item}
+              index={i + index}
+              onPress={() => router.push(`/topics/${item.slug}`)}
+            />
+          ))}
+
+          {topics.length - i < 3 &&
+            Array.from({ length: 3 - (topics.length - i) }).map(
+              (_, emptyIndex) => (
+                <View
+                  key={`${prefix}-empty-${emptyIndex}`}
+                  style={styles.emptyTile}
+                />
+              )
+            )}
+        </View>
+      );
+    }
+
+    return rows;
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.head}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.back}
+        >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
 
@@ -69,6 +108,7 @@ export default function AllTopicsScreen() {
 
       <View style={styles.search}>
         <Text style={styles.searchIcon}>⌕</Text>
+
         <TextInput
           style={styles.searchInput}
           value={search}
@@ -79,35 +119,69 @@ export default function AllTopicsScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
+        <ActivityIndicator
+          color={colors.blue}
+          style={{ marginTop: 40 }}
+        />
       ) : isError ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Topics unavailable</Text>
+          <Text style={styles.emptyTitle}>
+            Topics unavailable
+          </Text>
+
           <Text style={styles.emptyText}>
             MANAS could not load the topics right now.
           </Text>
         </View>
-      ) : filtered.length === 0 ? (
+      ) : !hasResults ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No topics found</Text>
+          <Text style={styles.emptyTitle}>
+            No topics found
+          </Text>
+
           <Text style={styles.emptyText}>
             Try a different search.
           </Text>
         </View>
       ) : (
         <FlatList
-          data={filtered}
-          keyExtractor={(item, index) => `${item.slug}-${index}`}
-          numColumns={3}
+          data={[]}
+          keyExtractor={() => 'topics'}
           contentContainerStyle={styles.grid}
-          columnWrapperStyle={styles.row}
-          renderItem={({ item, index }) => (
-            <TopicTile
-              topic={item}
-              index={index}
-              onPress={() => router.push(`/topics/${item.slug}`)}
-            />
-          )}
+          renderItem={null}
+          ListHeaderComponent={
+            <View>
+              {filteredEmotional.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    Emotional Healing
+                  </Text>
+
+                  <View style={styles.topicGrid}>
+                    {renderRows(
+                      filteredEmotional,
+                      'emotional'
+                    )}
+                  </View>
+                </>
+              ) : null}
+
+              {filteredCoaching.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    Coaching & Growth
+                  </Text>
+
+                  <View style={styles.topicGrid}>
+                    {renderRows(
+                      filteredCoaching,
+                      'coaching'
+                    )}
+                  </View>
+                </>
+              ) : null}
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -119,11 +193,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.cream,
   },
+
   head: {
     paddingHorizontal: 22,
     paddingTop: 16,
     paddingBottom: 14,
   },
+
   back: {
     width: 34,
     height: 34,
@@ -135,10 +211,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
   },
+
   backText: {
     fontSize: 18,
     color: colors.ink,
   },
+
   title: {
     fontFamily: fontFamilies.frauncesMedium,
     fontSize: 24,
@@ -146,16 +224,19 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     lineHeight: 27,
   },
+
   titleItalic: {
     fontFamily: fontFamilies.frauncesItalic,
     color: colors.blue,
   },
+
   sub: {
     fontFamily: fontFamilies.dmSans,
     fontSize: 11,
     color: colors.muted,
     marginTop: 4,
   },
+
   search: {
     marginHorizontal: 22,
     marginBottom: 14,
@@ -169,24 +250,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+
   searchIcon: {
     fontSize: 14,
     color: colors.muted,
   },
+
   searchInput: {
     flex: 1,
     fontFamily: fontFamilies.dmSans,
     fontSize: 11,
     color: colors.ink,
   },
+
   grid: {
     paddingHorizontal: 22,
     paddingBottom: 24,
   },
+
+  sectionTitle: {
+    fontFamily: fontFamilies.frauncesMedium,
+    fontSize: 18,
+    color: colors.ink,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+
+  topicGrid: {
+    marginBottom: 18,
+  },
+
   row: {
+    flexDirection: 'row',
     gap: 8,
     marginBottom: 8,
   },
+
+  emptyTile: {
+    flex: 1,
+  },
+
   emptyState: {
     marginHorizontal: 22,
     marginTop: 16,
@@ -196,11 +299,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
+
   emptyTitle: {
     fontFamily: fontFamilies.frauncesMedium,
     fontSize: 15,
     color: colors.ink,
   },
+
   emptyText: {
     fontFamily: fontFamilies.dmSans,
     fontSize: 11,
