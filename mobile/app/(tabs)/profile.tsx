@@ -23,8 +23,14 @@ export default function ProfileScreen() {
   const { privacyOptionsRequired, openPrivacyOptions } = useAdsConsent();
 
   const sessionList = Array.isArray(sessions) ? sessions : [];
-  console.log('SESSION STATUSES:', sessionList.map((s: any) => s.status));
-  const upcoming = sessionList.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status));
+  const upcoming = sessionList.filter((s: any) => {
+  if (!['CONFIRMED', 'PENDING'].includes(s.status)) return false;
+
+  const scheduledAt = new Date(s.scheduledAt);
+  if (Number.isNaN(scheduledAt.getTime())) return false;
+
+  return scheduledAt > new Date();
+});
   const completed = sessionList.filter((s: any) => s.status === 'COMPLETED');
 
 

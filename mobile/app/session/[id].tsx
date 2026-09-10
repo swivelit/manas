@@ -256,14 +256,17 @@ export default function SessionDetail() {
                 >
                   <Text style={styles.btnPrimaryText}>
                     {canJoin
-                      ? 'Join session →'
-                      : minsUntil < -POST_START_JOIN_WINDOW_MIN
-                        ? 'Join window closed'
-                        : `Starts in ${Math.max(minsUntil, 0)} min`}
-                  </Text>
+                     ? 'Join session →'
+                     : minsUntil < -POST_START_JOIN_WINDOW_MIN
+                       ? 'Join window closed'
+                       : minsUntil >= 24 * 60
+                         ? `Starts in ${Math.floor(minsUntil / (24 * 60))} ${Math.floor(minsUntil / (24 * 60)) === 1 ? 'day' : 'days'}`
+                         : minsUntil >= 60
+                           ? `Starts in ${Math.floor(minsUntil / 60)} ${Math.floor(minsUntil / 60) === 1 ? 'hour' : 'hours'}`
+                        : `Starts in ${Math.max(minsUntil, 0)} ${Math.max(minsUntil, 0) === 1 ? 'min' : 'mins'}`}
                 </TouchableOpacity>
                 <Text style={styles.callHint}>Calls open securely inside MANAS.</Text>
-              </>
+              </></Text>
             ) : null}
 
             <TouchableOpacity
