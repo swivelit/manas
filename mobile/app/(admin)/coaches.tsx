@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAdminCoaches, useAdminUsers, usePromoteCoach } from '../../lib/queries';
+import { useAdminCoaches, useAdminUsers, usePromoteCoach,useDeleteAdminUser, } from '../../lib/queries';
 import { Button } from '../../components/Button';
 import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
@@ -14,6 +14,7 @@ export default function AdminCoaches() {
   const dialog = useDialog();
   const { data: coachesData, isLoading } = useAdminCoaches();
   const promote = usePromoteCoach();
+  const deleteAdminUser = useDeleteAdminUser();
   const { data: usersData } = useAdminUsers();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -60,13 +61,39 @@ export default function AdminCoaches() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.help}>No coaches yet. Promote a user to get started.</Text>}
-          renderItem={({ item }) => (
-  <View style={styles.row}>
+          renderItem={({ item }) => ( 
+  <View style={styles.row}> 
     <View style={{ flex: 1 }}>
-      <Text style={styles.name}>{item.user.name}</Text>
-      <Text style={styles.sub}>{item.specialty} · {item.user.email}</Text>
+      <Text style={styles.name}>{item.user.name}</Text> 
+      <Text style={styles.sub}>
+        {item.specialty} · {item.user.email}
+      </Text>
     </View>
-  </View>
+
+    <TouchableOpacity
+      style={styles.deleteButton}
+      onPress={() => {
+        Alert.alert(
+          'Delete user?',
+          `Are you sure you want to permanently delete ${item.user.name || item.user.email}?`,
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => deleteAdminUser.mutate(item.user.id),
+            },
+          ],
+        );
+      }}
+      disabled={deleteAdminUser.isPending}
+    >
+      <Text style={styles.deleteButtonText}>Delete</Text>
+    </TouchableOpacity>
+  </View> 
 )}
         />
       )}
@@ -192,5 +219,19 @@ toggleThumb: {
 toggleThumbActive: {
   alignSelf: 'flex-end',
 },
+deleteButton: {
+  marginTop: 10,
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#dc2626',
+  alignSelf: 'flex-start',
+},
 
+deleteButtonText: {
+  fontFamily: fontFamilies.dmSansMedium,
+  fontSize: 12,
+  color: '#dc2626',
+},
 });

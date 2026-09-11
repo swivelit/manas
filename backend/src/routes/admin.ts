@@ -109,6 +109,34 @@ router.patch('/users/:id', async (req: Request, res: Response, next: NextFunctio
     next(err);
   }
 });
+// DELETE /admin/users/:id — permanently delete a user or coach.
+router.delete('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Prevent an admin from deleting their own account.
+    if (req.params.id === req.user!.id) {
+      res.status(400).json({ error: "You can't delete your own admin account." });
+      return;
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    if (!target) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    await prisma.user.delete({
+      where: { id: req.params.id },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /admin/coaches — coaches with their linked user info.
 router.get('/coaches', async (_req: Request, res: Response, next: NextFunction) => {

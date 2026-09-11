@@ -448,6 +448,19 @@ export function usePromoteCoach() {
     },
   });
 }
+export function useDeleteAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+  mutationFn: async (userId: string) => {
+    return api.delete(`/admin/users/${userId}`).then(r => r.data);
+  },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'coaches'] });
+    },
+  });
+}
 export function useAdminVideos() {
   const token = useAuthStore(s => s.token);
   return useQuery({
