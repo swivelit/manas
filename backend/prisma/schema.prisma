@@ -83,6 +83,7 @@ model Coach {
   rating     Float    @default(5.0)
   languages  String[]
   hourlyRate Int
+  anxietySpecialist Boolean @default(false)
 
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   availability Availability[]

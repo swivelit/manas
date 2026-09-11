@@ -127,6 +127,7 @@ router.get('/coaches', async (_req: Request, res: Response, next: NextFunction) 
 const promoteSchema = z.object({
   userId: z.string().min(1),
   specialty: z.string().trim().min(2).optional(),
+  anxietySpecialist: z.boolean().optional(),
   bio: z.string().trim().min(2).optional(),
   yearsExp: z.number().int().min(0).max(80).optional(),
   languages: z.array(z.string()).optional(),
@@ -148,6 +149,7 @@ router.post('/coaches', async (req: Request, res: Response, next: NextFunction) 
         data: {
           userId: user.id,
           specialty: parsed.data.specialty ?? 'Counseling',
+          anxietySpecialist: parsed.data.anxietySpecialist ?? false,
           bio: parsed.data.bio ?? 'MANAS practitioner.',
           yearsExp: parsed.data.yearsExp ?? 1,
           languages: parsed.data.languages ?? ['EN'],
@@ -227,8 +229,8 @@ const updateVideoSchema = z.object({
   isPremium: z.boolean().optional(),
   title: z.string().trim().min(2).optional(),
   description: z.string().trim().min(2).optional(),
-  url: z.string().trim().url().optional(),
-  thumbnailUrl: z.string().trim().url().optional(),
+  url: z.string().trim().optional(),
+  thumbnailUrl: z.string().trim().optional(),
   subtitleUrl: z.string().trim().url().optional(),
   toyDescription: z.string().trim().optional(),
   englishDialogue: z.string().trim().optional(),
@@ -242,10 +244,40 @@ const updateVideoSchema = z.object({
 router.patch('/videos/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = updateVideoSchema.safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-    const existing = await prisma.video.findUnique({ where: { id: req.params.id }, select: { id: true } });
-    if (!existing) { res.status(404).json({ error: 'Video not found' }); return; }
-    const video = await prisma.video.update({ where: { id: req.params.id }, data: parsed.data });
+
+    if (!parsed.success) {
+      console.error('UPDATE VIDEO VALIDATION ERROR:', parsed.error.flatten());
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const existing = await prisma.video.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Video not found' });
+      return;
+    }
+
+    const { topicId, type,...videoData } = parsed.data;
+
+    const video = await prisma.video.update({
+      where: { id: req.params.id },
+      data: {
+        ...videoData,
+        ...(type !== undefined? { type: type as any } : {}),
+        ...(topicId !== undefined 
+          ? {
+              topic: topicId
+                ? { connect: { id: topicId } }
+                : { disconnect: true },
+            }
+          : {}),
+      },
+    });
+
     res.json(video);
   } catch (err) {
     next(err);

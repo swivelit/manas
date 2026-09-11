@@ -103,7 +103,7 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Watched</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>6</Text>
+            <Text style={styles.statNum}>{completed.length}</Text>
             <Text style={styles.statLabel}>Topics</Text>
           </View>
         </View>
@@ -112,7 +112,7 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Upcoming sessions</Text>
           {upcoming.length === 0 ? (
-            <TouchableOpacity onPress={() => router.push('/(tabs)/topics')} style={styles.emptyCard}>
+            <TouchableOpacity onPress={() => router.push('/all-topics')} style={styles.emptyCard}>
               <Text style={styles.emptyText}>Book a free demo session →</Text>
             </TouchableOpacity>
           ) : (

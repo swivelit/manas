@@ -19,6 +19,7 @@ import { DialogProvider } from '../components/AppDialog';
 import { hasAckedCrisis, setCrisisAck } from '../lib/crisis';
 import { AdsConsentProvider } from '../lib/adsConsent';
 import { GlobalBannerAd } from '../components/GlobalBannerAd';
+import NotificationPopup from '../components/NotificationPopup';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -87,6 +88,7 @@ export default function RootLayout() {
                   <View style={styles.appFrame}>
                     <View style={styles.routeFrame}>
                       <Stack screenOptions={{ headerShown: false }} />
+                      <NotificationPopup />
                       {showAssistant ? <MascotAssistant /> : null}
                       <CrisisDisclaimerModal
                         visible={showCrisis === true}

@@ -28,7 +28,7 @@ import {
 
 const VIDEO_TYPES = ['INTRO', 'TOPIC', 'THERAPY', 'COACHING', 'MOTIVATIONAL'] as const;
 type VideoTypeOption = typeof VIDEO_TYPES[number];
-const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
 
 type AdminVideo = {
    id: string;
@@ -62,6 +62,7 @@ export default function AdminContent() {
   const uploadVideo = useUploadVideo();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [audioRecorderReady, setAudioRecorderReady] = useState(false);
   const [editingVideo, setEditingVideo] = useState<AdminVideo | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -165,7 +166,7 @@ export default function AdminContent() {
       description,
       url,
       thumbnailUrl,
-      subtitleUrl,
+      subtitleUrl: subtitleUrl.trim() || undefined,
       toyDescription,
       englishDialogue,
       tamilDialogue,
@@ -265,9 +266,9 @@ const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => {
-           resetForm();
-           setEditingVideo(null);
-           setModalOpen(true);
+            resetForm();
+            setEditingVideo(null);
+            setModalOpen(true);
           }}
           activeOpacity={0.85}
         >
@@ -316,14 +317,31 @@ const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
           )}
         />
       )}
-
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={handleModalRequestClose}>
+      
+      <Modal
+        visible={modalOpen}
+        transparent
+        animationType="none"
+        onShow={() => {
+          setTimeout(() => setAudioRecorderReady(true), 300);
+        }}
+        onRequestClose={handleModalRequestClose}
+        onDismiss={() => setAudioRecorderReady(false)}
+      >
         <View style={styles.backdrop}>
-          <KeyboardAvoidingView behavior={keyboardBehavior} style={styles.keyboard}>
-            <View style={styles.sheet}>
-              <View style={styles.handle} />
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.sheetTitle}>Add video</Text>
+        <KeyboardAvoidingView
+  behavior={keyboardBehavior}
+  style={styles.keyboard}
+>
+  <View style={styles.sheet}>
+    <View style={styles.handle} />
+
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      keyboardDismissMode="on-drag"
+    >
+      <Text style={styles.sheetTitle}>Add video</Text>
 
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Title</Text>
@@ -398,7 +416,13 @@ const durationSec = parsedDurationSec > 0 ? parsedDurationSec : undefined;
                 </View>
 
                 <View style={styles.field}>
-                  <ToyAudioRecorder value={toyAudio} onChange={setToyAudio} disabled={isBusy} />
+                  {audioRecorderReady ? (
+  <ToyAudioRecorder
+    value={toyAudio}
+    onChange={setToyAudio}
+    disabled={isBusy}
+  />
+) : null}
                 </View>
 
                 <View style={styles.field}>
@@ -480,7 +504,7 @@ const styles = StyleSheet.create({
   help: { fontFamily: fontFamilies.dmSans, fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 20 },
   backdrop: { flex: 1, backgroundColor: 'rgba(26,28,46,0.4)', justifyContent: 'flex-end' },
   keyboard: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.cream, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: 34, maxHeight: '88%' },
+  sheet: { backgroundColor: colors.cream, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 22, paddingBottom: 34, height: '88%' },
   handle: { width: 40, height: 4, borderRadius: 99, backgroundColor: colors.line, alignSelf: 'center', marginBottom: 14 },
   sheetTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 19, color: colors.ink, marginBottom: 4 },
   field: { gap: 6, marginTop: 12 },

@@ -351,7 +351,12 @@ router.get('/progress/me', requireAuth, async (req: Request, res: Response) => {
     select: {
       progressSec: true,
       completed: true,
+      video: {
+    select: {
+      topicId: true,
     },
+    }
+   },
   });
 
   const totalProgressSec = progress.reduce(
@@ -360,10 +365,15 @@ router.get('/progress/me', requireAuth, async (req: Request, res: Response) => {
   );
 
   const completedVideos = progress.filter(item => item.completed).length;
-
+  const topicsCovered = new Set(
+  progress
+    .filter(item => item.completed && item.video.topicId)
+    .map(item => item.video.topicId)
+).size;
   res.json({
     totalProgressSec,
     completedVideos,
+    topicsCovered,
   });
 });
 

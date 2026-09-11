@@ -439,7 +439,7 @@ export function useAdminCoaches() {
 export function usePromoteCoach() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { userId: string; specialty?: string; bio?: string }) =>
+    mutationFn: (data: { userId: string; specialty?: string; bio?: string;anxietySpecialist?: boolean; }) =>
       api.post('/admin/coaches', data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-coaches'] });
@@ -448,7 +448,6 @@ export function usePromoteCoach() {
     },
   });
 }
-
 export function useAdminVideos() {
   const token = useAuthStore(s => s.token);
   return useQuery({

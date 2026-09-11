@@ -20,7 +20,7 @@ export default function CoachList() {
   if (activeFilter === 'All') return true;
 
   if (activeFilter === 'Anxiety') {
-    return String(coach.specialty ?? '').toLowerCase().includes('anxiety');
+    return coach.anxietySpecialist === true;
   }
 
   if (activeFilter === 'English') {

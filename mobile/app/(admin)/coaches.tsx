@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminCoaches, useAdminUsers, usePromoteCoach } from '../../lib/queries';
 import { Button } from '../../components/Button';
@@ -13,12 +13,12 @@ type AdminUser = { id: string; name: string; email: string; role: string };
 export default function AdminCoaches() {
   const dialog = useDialog();
   const { data: coachesData, isLoading } = useAdminCoaches();
-  const { data: usersData } = useAdminUsers();
   const promote = usePromoteCoach();
+  const { data: usersData } = useAdminUsers();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [specialty, setSpecialty] = useState('');
-
+  const [anxietySpecialist, setAnxietySpecialist] = useState(false);
   const coaches: Coach[] = Array.isArray(coachesData) ? coachesData : [];
   const allUsers: AdminUser[] = Array.isArray(usersData?.items) ? usersData.items : [];
   // Candidates: users who aren't ADMIN and don't already have a coach profile.
@@ -27,11 +27,12 @@ export default function AdminCoaches() {
   const picked = candidates.find(u => u.id === userId) ?? null;
 
   async function doPromote() {
+    console.log('PROMOTE CLICKED', { userId, specialty, anxietySpecialist });
     if (!userId) { void dialog.alert('Pick a user', 'Select the user to promote.'); return; }
     try {
-      await promote.mutateAsync({ userId, specialty: specialty.trim() || undefined });
+      await promote.mutateAsync({ userId, specialty: specialty.trim() || undefined ,anxietySpecialist, });
       void dialog.alert('Done', `${picked?.name ?? 'User'} is now a coach.`);
-      setPickerOpen(false); setUserId(null); setSpecialty('');
+      setPickerOpen(false); setUserId(null); setSpecialty('');setAnxietySpecialist(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } };
       const msg = typeof e?.response?.data?.error === 'string' ? e.response!.data!.error as string : 'Please try again.';
@@ -60,13 +61,13 @@ export default function AdminCoaches() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.help}>No coaches yet. Promote a user to get started.</Text>}
           renderItem={({ item }) => (
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.user.name}</Text>
-                <Text style={styles.sub}>{item.specialty} · {item.user.email}</Text>
-              </View>
-            </View>
-          )}
+  <View style={styles.row}>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.name}>{item.user.name}</Text>
+      <Text style={styles.sub}>{item.specialty} · {item.user.email}</Text>
+    </View>
+  </View>
+)}
         />
       )}
 
@@ -89,7 +90,27 @@ export default function AdminCoaches() {
 
             <Text style={styles.fieldLabel}>Specialty (optional)</Text>
             <TextInput style={styles.input} value={specialty} onChangeText={setSpecialty} placeholder="e.g. Clinical Psychology" placeholderTextColor={colors.muted} />
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => setAnxietySpecialist(prev => !prev)}
+              activeOpacity={0.8}
+            >
+             <View style={{ flex: 1 }}>
+               <Text style={styles.toggleTitle}>Anxiety Specialist</Text>
+               <Text style={styles.toggleSub}>
+                 Show this coach in the Anxiety filter
+               </Text>
+             </View>
 
+              <View style={[styles.toggle, anxietySpecialist && styles.toggleActive]}>
+              <View
+               style={[
+                 styles.toggleThumb,
+                 anxietySpecialist && styles.toggleThumbActive,
+              ]}
+             />
+               </View>
+            </TouchableOpacity>
             <View style={styles.actions}>
               <TouchableOpacity onPress={() => setPickerOpen(false)} style={styles.cancelBtn} activeOpacity={0.85}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -130,4 +151,46 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 18, alignItems: 'center' },
   cancelBtn: { paddingVertical: 11, paddingHorizontal: 20, borderRadius: 99, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper },
   cancelText: { fontFamily: fontFamilies.dmSansMedium, fontSize: 13, color: colors.ink },
+  toggleRow: {
+  marginTop: 16,
+  padding: 12,
+  backgroundColor: colors.paper,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: colors.line,
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+toggleTitle: {
+  fontFamily: fontFamilies.dmSansMedium,
+  fontSize: 13,
+  color: colors.ink,
+},
+toggleSub: {
+  fontFamily: fontFamilies.dmSans,
+  fontSize: 10,
+  color: colors.muted,
+  marginTop: 2,
+},
+toggle: {
+  width: 44,
+  height: 24,
+  borderRadius: 12,
+  backgroundColor: colors.line,
+  padding: 2,
+  justifyContent: 'center',
+},
+toggleActive: {
+  backgroundColor: colors.blue,
+},
+toggleThumb: {
+  width: 20,
+  height: 20,
+  borderRadius: 10,
+  backgroundColor: colors.paper,
+},
+toggleThumbActive: {
+  alignSelf: 'flex-end',
+},
+
 });

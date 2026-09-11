@@ -58,7 +58,13 @@ export default function HomeScreen() {
               <Text style={styles.greetName}>{user?.name?.split(' ')[0] ?? 'Sarah'} ✿</Text>
             </Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatar} />
+          <TouchableOpacity
+  onPress={() => router.push('/(tabs)/profile')}
+  style={styles.avatar}
+  activeOpacity={0.8}
+>
+  <Icon name="user" size={20} color={colors.blueDeep} />
+</TouchableOpacity>
         </View>
 
         {/* Categories */}
@@ -157,7 +163,8 @@ const styles = StyleSheet.create({
   date: { fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.muted, letterSpacing: 1 },
   greet: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink, letterSpacing: -0.3, marginTop: 2, lineHeight: 26 },
   greetName: { fontFamily: fontFamilies.frauncesItalic, color: colors.pink },
-  avatar: { width: 38, height: 38, borderRadius: 99, backgroundColor: colors.blue, borderWidth: 2, borderColor: colors.cream },
+  avatar: { width: 38, height: 38, borderRadius: 99, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.blueDeep, alignItems: 'center',
+  justifyContent: 'center', },
   catsTitle: { paddingHorizontal: 22, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   catsTitleText: { fontFamily: fontFamilies.frauncesMedium, fontSize: 16, color: colors.ink },
   catsSeeAll: { fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.muted, letterSpacing: 0.5 },

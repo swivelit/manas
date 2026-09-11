@@ -264,9 +264,10 @@ export default function SessionDetail() {
                          : minsUntil >= 60
                            ? `Starts in ${Math.floor(minsUntil / 60)} ${Math.floor(minsUntil / 60) === 1 ? 'hour' : 'hours'}`
                         : `Starts in ${Math.max(minsUntil, 0)} ${Math.max(minsUntil, 0) === 1 ? 'min' : 'mins'}`}
+                    </Text>
                 </TouchableOpacity>
                 <Text style={styles.callHint}>Calls open securely inside MANAS.</Text>
-              </></Text>
+              </>
             ) : null}
 
             <TouchableOpacity

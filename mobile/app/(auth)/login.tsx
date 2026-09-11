@@ -78,7 +78,12 @@ export default function Login() {
         mode: 'login',
       });
       await setAuth(data.token, data.user);
-      router.replace(routeForRole(data.user.role));
+
+      if (data.needsPassword) {
+          router.replace('/(auth)/set-password');
+      } else {
+        router.replace(routeForRole(data.user.role));
+     }
     } catch (err: any) {
       void dialog.alert('Login failed', getErrorMessage(err, 'Please try again'));
     } finally {
