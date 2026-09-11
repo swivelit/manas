@@ -137,7 +137,7 @@ export default function HomeScreen() {
           >
             <View>
               <Text style={styles.upcomingLabel}>GET STARTED</Text>
-              <Text style={styles.upcomingText}>Book your first <Text style={styles.upcomingCoach}>free demo</Text></Text>
+              <Text style={styles.upcomingText}>For your <Text style={styles.upcomingCoach}>discovery </Text>session</Text>
             </View>
             <TouchableOpacity style={styles.joinBtn} onPress={() => router.push('/(tabs)/topics')}>
               <Text style={styles.joinBtnText}>Book →</Text>

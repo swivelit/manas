@@ -120,7 +120,7 @@ export default function TopicDetail() {
             style={styles.bookBtn}
             activeOpacity={0.85}
           >
-            <Text style={styles.bookBtnLeft}>Book a <Text style={styles.bookBtnFree}>free demo</Text></Text>
+            <Text style={styles.bookBtnLeft}>Book your <Text style={styles.bookBtnFree}>discovery session</Text></Text>
             <Text style={styles.bookBtnArrow}>→</Text>
           </TouchableOpacity>
         </View>

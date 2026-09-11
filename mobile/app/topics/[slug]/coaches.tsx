@@ -24,9 +24,6 @@ export default function CoachList() {
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Choose your guide</Text>
-        <View style={styles.filterBtn}>
-          <Text style={styles.filterBtnText}>⚙</Text>
-        </View>
       </View>
 
       {/* Filter chips */}
@@ -76,9 +73,7 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 34, height: 34, borderRadius: 99, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 18, color: colors.ink },
-  title: { fontFamily: fontFamilies.frauncesMedium, fontSize: 17, color: colors.ink },
-  filterBtn: { width: 34, height: 34, borderRadius: 99, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  filterBtnText: { fontSize: 13, color: colors.cream },
+  title: { fontFamily: fontFamilies.frauncesMedium, fontSize: 17, color: colors.ink,position: 'absolute', left: 0, right: 0, textAlign: 'center' },
   filters: { paddingHorizontal: 22, gap: 7, marginBottom: 14 },
   chip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 99, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },

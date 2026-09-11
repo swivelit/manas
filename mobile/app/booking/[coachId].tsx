@@ -18,7 +18,7 @@ export default function BookingScreen() {
   const topicParam = Array.isArray(topicSlug) ? topicSlug[0] : topicSlug;
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedStartsAt, setSelectedStartsAt] = useState<string | null>(null);
-  const [sessionType, setSessionType] = useState<'VIDEO' | 'AUDIO' | 'CHAT'>('VIDEO');
+  const [sessionType, setSessionType] = useState<'VIDEO' | 'CHAT'>('VIDEO');
 
   const { data: coach, isError: coachError } = useCoach(coachParam);
   const { data: topic, isError: topicError } = useTopic(topicParam ?? 'chronic-anxiety');
@@ -158,7 +158,7 @@ export default function BookingScreen() {
 
         {/* Session type */}
         <View style={styles.typeRow}>
-          {(['VIDEO', 'AUDIO', 'CHAT'] as const).map(t => (
+          {(['VIDEO', 'CHAT'] as const).map(t => (
             <TouchableOpacity
               key={t}
               onPress={() => setSessionType(t)}

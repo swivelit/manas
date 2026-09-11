@@ -40,7 +40,7 @@ export default function SessionsScreen() {
       ) : sessionList.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>No sessions yet</Text>
-          <Text style={styles.emptySub}>Book your first free demo to get started</Text>
+          <Text style={styles.emptySub}>Book your discovery session to get started</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/topics')} style={styles.emptyBtn}>
             <Text style={styles.emptyBtnText}>Explore topics →</Text>
           </TouchableOpacity>
