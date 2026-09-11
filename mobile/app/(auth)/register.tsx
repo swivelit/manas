@@ -60,7 +60,12 @@ export default function Register() {
         mode: 'register',
       });
       await setAuth(data.token, data.user);
-      router.replace(routeForRole(data.user.role));
+
+if (data.needsPassword) {
+  router.replace('/(auth)/set-password');
+} else {
+  router.replace(routeForRole(data.user.role));
+}
     } catch (err: any) {
       void dialog.alert('Registration failed', getErrorMessage(err, 'Please try again'));
     } finally {

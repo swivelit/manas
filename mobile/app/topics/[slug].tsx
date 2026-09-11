@@ -87,7 +87,7 @@ export default function TopicDetail() {
           <Text style={styles.title}>{titleFirstLine}{titleLastWord ? '\n' : ''}<Text style={styles.titleItalic}>{titleLastWord ? `${titleLastWord}.` : ''}</Text></Text>
 
           <View style={styles.stats}>
-            <View style={styles.stat}><Text style={styles.statLabel}>SESSIONS</Text><Text style={styles.statVal}>6 weeks</Text></View>
+            <View style={styles.stat}><Text style={styles.statLabel}>SESSIONS</Text><Text style={styles.statVal}>4 weeks</Text></View>
             <View style={styles.stat}><Text style={styles.statLabel}>COACHES</Text><Text style={styles.statVal}>12 available</Text></View>
             <View style={styles.stat}><Text style={styles.statLabel}>FORMAT</Text><Text style={styles.statVal}>1-on-1</Text></View>
           </View>

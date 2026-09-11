@@ -109,6 +109,34 @@ router.patch('/users/:id', async (req: Request, res: Response, next: NextFunctio
     next(err);
   }
 });
+// DELETE /admin/users/:id — permanently delete a user or coach.
+router.delete('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Prevent an admin from deleting their own account.
+    if (req.params.id === req.user!.id) {
+      res.status(400).json({ error: "You can't delete your own admin account." });
+      return;
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    if (!target) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    await prisma.user.delete({
+      where: { id: req.params.id },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /admin/coaches — coaches with their linked user info.
 router.get('/coaches', async (_req: Request, res: Response, next: NextFunction) => {
@@ -127,6 +155,7 @@ router.get('/coaches', async (_req: Request, res: Response, next: NextFunction) 
 const promoteSchema = z.object({
   userId: z.string().min(1),
   specialty: z.string().trim().min(2).optional(),
+  anxietySpecialist: z.boolean().optional(),
   bio: z.string().trim().min(2).optional(),
   yearsExp: z.number().int().min(0).max(80).optional(),
   languages: z.array(z.string()).optional(),
@@ -148,6 +177,7 @@ router.post('/coaches', async (req: Request, res: Response, next: NextFunction) 
         data: {
           userId: user.id,
           specialty: parsed.data.specialty ?? 'Counseling',
+          anxietySpecialist: parsed.data.anxietySpecialist ?? false,
           bio: parsed.data.bio ?? 'MANAS practitioner.',
           yearsExp: parsed.data.yearsExp ?? 1,
           languages: parsed.data.languages ?? ['EN'],
@@ -183,6 +213,8 @@ const createVideoSchema = z.object({
   thumbnailUrl: z.string().url().optional(),
   subtitleUrl: z.string().url().optional(),
   toyDescription: z.string().trim().optional(),
+  englishDialogue: z.string().trim().optional(),
+  tamilDialogue: z.string().trim().optional(),
   toyAudioUrl: z.string().url().optional(),
   durationSec: z.number().int().positive().optional(),
   type: z.nativeEnum(VideoType),
@@ -225,15 +257,55 @@ const updateVideoSchema = z.object({
   isPremium: z.boolean().optional(),
   title: z.string().trim().min(2).optional(),
   description: z.string().trim().min(2).optional(),
+  url: z.string().trim().optional(),
+  thumbnailUrl: z.string().trim().optional(),
+  subtitleUrl: z.string().trim().url().optional(),
+  toyDescription: z.string().trim().optional(),
+  englishDialogue: z.string().trim().optional(),
+  tamilDialogue: z.string().trim().optional(),
+  toyAudioUrl: z.string().trim().url().optional(),
+  durationSec: z.number().int().positive().optional(),
+  type: z.string().trim().optional(),
+  topicId: z.string().trim().optional(),
 });
 
 router.patch('/videos/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = updateVideoSchema.safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-    const existing = await prisma.video.findUnique({ where: { id: req.params.id }, select: { id: true } });
-    if (!existing) { res.status(404).json({ error: 'Video not found' }); return; }
-    const video = await prisma.video.update({ where: { id: req.params.id }, data: parsed.data });
+
+    if (!parsed.success) {
+      console.error('UPDATE VIDEO VALIDATION ERROR:', parsed.error.flatten());
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const existing = await prisma.video.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Video not found' });
+      return;
+    }
+
+    const { topicId, type,...videoData } = parsed.data;
+
+    const video = await prisma.video.update({
+      where: { id: req.params.id },
+      data: {
+        ...videoData,
+        ...(type !== undefined? { type: type as any } : {}),
+        ...(topicId !== undefined 
+          ? {
+              topic: topicId
+                ? { connect: { id: topicId } }
+                : { disconnect: true },
+            }
+          : {}),
+      },
+    });
+
     res.json(video);
   } catch (err) {
     next(err);

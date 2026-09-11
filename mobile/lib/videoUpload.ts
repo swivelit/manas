@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-
+import { createVideoPlayer } from 'expo-video';
 export const VIDEO_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 
 export type PickedVideoFile = {
@@ -89,20 +89,48 @@ export async function pickVideoFromFiles(): Promise<PickedVideoFile | null> {
     multiple: false,
     copyToCacheDirectory: true,
   });
+
   if (result.canceled) return null;
 
   const asset = result.assets[0];
   if (!asset) return null;
 
   const fileName = asset.name || getFileNameFromUri(asset.uri);
-  const mimeType = inferVideoMimeType({ mimeType: asset.mimeType, fileName, uri: asset.uri });
+  const mimeType = inferVideoMimeType({
+    mimeType: asset.mimeType,
+    fileName,
+    uri: asset.uri,
+  });
+
+  let durationMs: number | undefined;
+
+  const player = createVideoPlayer({ uri: asset.uri });
+
+  try {
+    durationMs = await new Promise<number | undefined>((resolve) => {
+      const subscription = player.addListener('sourceLoad', ({ duration }) => {
+        subscription.remove();
+        resolve(duration > 0 ? Math.round(duration * 1000) : undefined);
+      });
+
+      if (player.duration > 0) {
+        subscription.remove();
+        resolve(Math.round(player.duration * 1000));
+      }
+    });
+  } finally {
+    player.release();
+  }
+
   const file: PickedVideoFile = {
     uri: asset.uri,
     mimeType: mimeType ?? '',
     fileName,
     sizeBytes: asset.size,
+    durationMs,
     source: 'files',
   };
+
   assertSupportedVideo(file);
   return file;
 }

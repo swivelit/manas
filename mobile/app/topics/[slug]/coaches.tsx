@@ -16,6 +16,30 @@ export default function CoachList() {
   const { data: coaches, isLoading, isError } = useCoaches(topicSlug);
   const coachList = Array.isArray(coaches) ? coaches : [];
 
+ const filteredCoaches = coachList.filter((coach: any) => {
+  if (activeFilter === 'All') return true;
+
+  if (activeFilter === 'Anxiety') {
+    return coach.anxietySpecialist === true;
+  }
+
+  if (activeFilter === 'English') {
+    return Array.isArray(coach.languages)
+      && coach.languages.some((language: string) => language.toLowerCase() === 'en');
+  }
+  if (activeFilter === 'Today') {
+    const today = new Date().getDay();
+    return Array.isArray(coach.availability)
+      && coach.availability.some((slot: any) => slot.dayOfWeek === today);
+  }
+
+  if (activeFilter === '★ 4.8+') {
+    return Number(coach.rating ?? 0) >= 4.8;
+  }
+
+  return true;
+});
+
   return (
     <SafeAreaView style={styles.screen}>
       {/* Header */}
@@ -27,7 +51,12 @@ export default function CoachList() {
       </View>
 
       {/* Filter chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={{ flexGrow: 0.01 }}
+        contentContainerStyle={styles.filters}
+      >
         {FILTERS.map(f => (
           <TouchableOpacity
             key={f}
@@ -54,7 +83,7 @@ export default function CoachList() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {coachList.map((c: any, i: number) => (
+          {filteredCoaches.map((c: any, i: number) => (
             <CoachCard
               key={c.id}
               coach={c}
@@ -79,7 +108,8 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontFamily: fontFamilies.dmSans, fontSize: 10, color: colors.inkSoft },
   chipTextActive: { color: colors.cream },
-  list: { paddingHorizontal: 22, gap: 10, paddingBottom: 24 },
+
+  list: { paddingHorizontal: 22,paddingTop: 0, gap: 10, paddingBottom: 24 },
   emptyState: { marginHorizontal: 22, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
   emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
   emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },

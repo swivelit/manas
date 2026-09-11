@@ -3,8 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
-import { useMe } from '../../lib/queries';
-import { useSessions } from '../../lib/queries';
+import { useMe, useSessions, useMyVideoProgress } from '../../lib/queries';;
 import { useAuthStore } from '../../lib/auth';
 import { SessionCard } from '../../components/SessionCard';
 import { CrisisBanner } from '../../components/CrisisBanner';
@@ -18,12 +17,22 @@ export default function ProfileScreen() {
   const dialog = useDialog();
   const { data: me } = useMe();
   const { data: sessions } = useSessions();
+  const { data: videoProgress } = useMyVideoProgress();
+  console.log('MY VIDEO PROGRESS:', videoProgress);
   const clearAuth = useAuthStore(s => s.clearAuth);
   const { privacyOptionsRequired, openPrivacyOptions } = useAdsConsent();
 
   const sessionList = Array.isArray(sessions) ? sessions : [];
-  const upcoming = sessionList.filter((s: any) => ['CONFIRMED', 'PENDING'].includes(s.status));
+  const upcoming = sessionList.filter((s: any) => {
+  if (!['CONFIRMED', 'PENDING'].includes(s.status)) return false;
+
+  const scheduledAt = new Date(s.scheduledAt);
+  if (Number.isNaN(scheduledAt.getTime())) return false;
+
+  return scheduledAt > new Date();
+});
   const completed = sessionList.filter((s: any) => s.status === 'COMPLETED');
+
 
   async function handleLogout() {
     const confirmed = await dialog.confirm({
@@ -67,15 +76,34 @@ export default function ProfileScreen() {
         {/* Stats */}
         <View style={styles.stats}>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{completed.length || 14}</Text>
+            <Text style={styles.statNum}>{completed.length}</Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={[styles.stat, styles.statMid]}>
-            <Text style={styles.statNum}>32<Text style={styles.statUnit}>h</Text></Text>
+           <Text style={styles.statNum}>
+  {(() => {
+    const totalMinutes = Math.floor(
+      (videoProgress?.totalProgressSec ?? 0) / 60
+    );
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) {
+      return `${minutes}m`;
+    }
+
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  })()}
+</Text>
             <Text style={styles.statLabel}>Watched</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>6</Text>
+            <Text style={styles.statNum}>{completed.length}</Text>
             <Text style={styles.statLabel}>Topics</Text>
           </View>
         </View>

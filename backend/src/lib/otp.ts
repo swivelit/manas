@@ -55,5 +55,7 @@ export function verifyOtpHash(email: string, otp: string, otpHash: string, purpo
 }
 
 export function isEmailOtpDryRun(): boolean {
-  return process.env.EMAIL_OTP_DRY_RUN === 'true' && process.env.NODE_ENV !== 'production';
+  const enabled = process.env.EMAIL_OTP_DRY_RUN === 'true';
+  const productionOverride = process.env.EMAIL_OTP_ALLOW_PRODUCTION_DRY_RUN === 'true';
+  return enabled && (process.env.NODE_ENV !== 'production' || productionOverride);
 }

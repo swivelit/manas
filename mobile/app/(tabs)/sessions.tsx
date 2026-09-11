@@ -21,7 +21,7 @@ export default function SessionsScreen() {
           <Text style={styles.title}>Your{'\n'}<Text style={styles.titleItalic}>sessions.</Text></Text>
           <TouchableOpacity
             style={styles.bookBtn}
-            onPress={() => router.push('/(tabs)/topics')}
+            onPress={() => router.push('/all-topics')}
             activeOpacity={0.85}
           >
             <Text style={styles.bookBtnText}>+ Book</Text>

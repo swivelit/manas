@@ -1,91 +1,344 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useCategoryTopics } from '../../lib/queries';
-import { TopicTile } from '../../components/TopicTile';
+import { useVideoBookmarks, useVideoLikes,useBookmarkVideo } from '../../lib/queries';
+import { useAuthStore } from '../../lib/auth';
+import { Icon } from '../../components/Icon';
+import { useDialog } from '../../components/AppDialog';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/fonts';
 
-export default function TopicsScreen() {
-  const { data: topics, isLoading, isError } = useCategoryTopics('emotional-healing');
-  const [search, setSearch] = React.useState('');
-  const topicList = Array.isArray(topics) ? topics : [];
+const thumbColors = [
+  colors.pink,
+  colors.purple,
+  colors.blue,
+];
 
-  const filtered = topicList.filter((t: any) =>
-    String(t.name ?? '').toLowerCase().includes(search.toLowerCase())
-  );
+export default function TopicsScreen() {
+  const dialog = useDialog();
+  const token = useAuthStore(s => s.token);
+
+  const { data: bookmarks, isLoading, isError } = useVideoBookmarks();
+  const { data: likes, isLoading: likesLoading } = useVideoLikes();
+  const bookmark = useBookmarkVideo();
+
+  const bookmarkList = Array.isArray(bookmarks) ? bookmarks : [];
+  const likeList = Array.isArray(likes) ? likes : [];
+
+  async function handleRemoveBookmark(id: string) {
+    if (!token) {
+      void dialog.alert('Sign in', 'Sign in to manage saved videos.');
+      return;
+    }
+
+    try {
+      await bookmark.mutateAsync(id);
+    } catch {
+      void dialog.alert('Could not update saved video');
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
-      {/* Header */}
-      <View style={styles.head}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Emotional{'\n'}<Text style={styles.titleItalic}>Healing.</Text></Text>
-        <Text style={styles.sub}>15 spaces to feel, soften, and return to yourself</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.head}>
+          <Text style={styles.title}>
+            Saved{'\n'}
+            <Text style={styles.titleItalic}>videos.</Text>
+          </Text>
 
-      {/* Search */}
-      <View style={styles.search}>
-        <Text style={styles.searchIcon}>⌕</Text>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search a feeling…"
-          placeholderTextColor={colors.muted}
-        />
-      </View>
+          <Text style={styles.sub}>
+            Your saved guidance, all in one place
+          </Text>
+        </View>
 
-      {/* Grid */}
-      {isLoading ? (
-        <ActivityIndicator color={colors.blue} style={{ marginTop: 40 }} />
-      ) : isError ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Topics unavailable</Text>
-          <Text style={styles.emptyText}>MANAS could not load the healing topics right now.</Text>
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No topics found</Text>
-          <Text style={styles.emptyText}>Try a different search or check whether the production database has been seeded.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.slug}
-          numColumns={3}
-          contentContainerStyle={styles.grid}
-          columnWrapperStyle={styles.row}
-          renderItem={({ item, index }) => (
-            <TopicTile
-              topic={item}
-              index={index}
-              onPress={() => router.push(`/topics/${item.slug}`)}
+       {isLoading ? (
+  <ActivityIndicator
+    color={colors.blue}
+    style={{ marginTop: 40 }}
+  />
+) : isError ? (
+  <View style={styles.emptyState}>
+    <Text style={styles.emptyTitle}>Saved videos unavailable</Text>
+    <Text style={styles.emptyText}>
+      MANAS could not load your saved videos right now.
+    </Text>
+  </View>
+) : (
+  <>
+    {/* Bookmarked videos */}
+    <Text style={styles.sectionTitle}>Bookmarked videos</Text>
+
+    {bookmarkList.length === 0 ? (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyTitle}>No bookmarked videos yet</Text>
+        <Text style={styles.emptyText}>
+          Tap the heart on a video in the Library to save it here.
+        </Text>
+      </View>
+    ) : (
+      <View style={styles.list}>
+        {bookmarkList.map((video: any, index: number) => (
+          <TouchableOpacity
+            key={video.id}
+            onPress={() => router.push(`/video/${video.id}`)}
+            style={styles.vidItem}
+            activeOpacity={0.85}
+          >
+            <View
+              style={[
+                styles.thumb,
+                {
+                  backgroundColor:
+                    thumbColors[index % thumbColors.length],
+                },
+              ]}
+            >
+              <Text style={styles.playSmall}>▶</Text>
+            </View>
+
+            <View style={styles.vidText}>
+              <Text style={styles.vidType}>
+                {video.type} · {video.isPremium ? 'PREMIUM' : 'FREE'}
+              </Text>
+
+              <Text style={styles.vidTitle} numberOfLines={2}>
+                {video.title}
+              </Text>
+
+              <Text style={styles.vidMeta}>
+                {Math.floor(video.durationSec ?? 0) / 60 >= 1
+                  ? `${Math.floor(video.durationSec / 60)} min`
+                  : `${video.durationSec ?? 0} sec`}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => handleRemoveBookmark(video.id)}
+              hitSlop={10}
+              style={styles.heartBtn}
+            >
+              <Icon
+                name="heart"
+                size={16}
+                color={colors.pink}
+                strokeWidth={2.5}
+              />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </View>
+    )}
+
+    {/* Liked videos */}
+    <Text style={styles.sectionTitle}>Liked videos</Text>
+
+    {likesLoading ? (
+      <ActivityIndicator
+        color={colors.blue}
+        style={{ marginTop: 20 }}
+      />
+    ) : likeList.length === 0 ? (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyTitle}>No liked videos yet</Text>
+        <Text style={styles.emptyText}>
+          Tap the like button on a video to see it here.
+        </Text>
+      </View>
+    ) : (
+      <View style={styles.list}>
+        {likeList.map((video: any, index: number) => (
+          <TouchableOpacity
+            key={video.id}
+            onPress={() => router.push(`/video/${video.id}`)}
+            style={styles.vidItem}
+            activeOpacity={0.85}
+          >
+            <View
+              style={[
+                styles.thumb,
+                {
+                  backgroundColor:
+                    thumbColors[index % thumbColors.length],
+                },
+              ]}
+            >
+              <Text style={styles.playSmall}>▶</Text>
+            </View>
+
+            <View style={styles.vidText}>
+              <Text style={styles.vidType}>
+                {video.type} · {video.isPremium ? 'PREMIUM' : 'FREE'}
+              </Text>
+
+              <Text style={styles.vidTitle} numberOfLines={2}>
+                {video.title}
+              </Text>
+
+              <Text style={styles.vidMeta}>
+                {Math.floor(video.durationSec ?? 0) / 60 >= 1
+                  ? `${Math.floor(video.durationSec / 60)} min`
+                  : `${video.durationSec ?? 0} sec`}
+              </Text>
+            </View>
+
+            <Icon
+              name="thumbs_up"
+              size={16}
+              color={colors.pink}
+              strokeWidth={2.5}
             />
-          )}
-        />
-      )}
+          </TouchableOpacity>
+        ))}
+      </View>
+    )}
+  </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.cream },
-  head: { paddingHorizontal: 22, paddingTop: 16, paddingBottom: 14 },
-  back: { width: 34, height: 34, borderRadius: 99, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  backText: { fontSize: 18, color: colors.ink },
-  title: { fontFamily: fontFamilies.frauncesMedium, fontSize: 24, color: colors.ink, letterSpacing: -0.4, lineHeight: 27 },
-  titleItalic: { fontFamily: fontFamilies.frauncesItalic, color: colors.blue },
-  sub: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4 },
-  search: { marginHorizontal: 22, marginBottom: 14, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  searchIcon: { fontSize: 14, color: colors.muted },
-  searchInput: { flex: 1, fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.ink },
-  grid: { paddingHorizontal: 22, paddingBottom: 24 },
-  row: { gap: 8, marginBottom: 8, flex: 1 },
-  emptyState: { marginHorizontal: 22, marginTop: 16, backgroundColor: colors.paper, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.line },
-  emptyTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 15, color: colors.ink },
-  emptyText: { fontFamily: fontFamilies.dmSans, fontSize: 11, color: colors.muted, marginTop: 4, lineHeight: 16 },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.cream,
+  },
+
+  scroll: {
+    paddingBottom: 24,
+  },
+
+  head: {
+    paddingHorizontal: 22,
+    paddingTop: 16,
+    paddingBottom: 18,
+  },
+
+  title: {
+    fontFamily: fontFamilies.frauncesMedium,
+    fontSize: 24,
+    color: colors.ink,
+    letterSpacing: -0.4,
+    lineHeight: 27,
+  },
+
+  titleItalic: {
+    fontFamily: fontFamilies.frauncesItalic,
+    color: colors.pink,
+  },
+
+  sub: {
+    fontFamily: fontFamilies.dmSans,
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 4,
+  },
+
+  list: {
+    paddingHorizontal: 22,
+    gap: 10,
+  },
+
+  vidItem: {
+    backgroundColor: colors.paper,
+    borderRadius: 14,
+    padding: 8,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+
+  thumb: {
+    width: 62,
+    height: 54,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  playSmall: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+  },
+
+  vidText: {
+    flex: 1,
+  },
+
+  vidType: {
+    fontFamily: fontFamilies.dmSansBold,
+    fontSize: 8,
+    letterSpacing: 1.5,
+    color: colors.pink,
+    textTransform: 'uppercase',
+  },
+
+  vidTitle: {
+    fontFamily: fontFamilies.frauncesMedium,
+    fontSize: 11.5,
+    color: colors.ink,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+
+  vidMeta: {
+    fontFamily: fontFamilies.dmSans,
+    fontSize: 9,
+    color: colors.muted,
+    marginTop: 3,
+  },
+
+  heartBtn: {
+    padding: 6,
+  },
+
+  emptyState: {
+    marginHorizontal: 22,
+    marginTop: 8,
+    backgroundColor: colors.paper,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+
+  emptyTitle: {
+    fontFamily: fontFamilies.frauncesMedium,
+    fontSize: 15,
+    color: colors.ink,
+  },
+
+  emptyText: {
+    fontFamily: fontFamilies.dmSans,
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  sectionTitle: {
+  paddingHorizontal: 22,
+  marginTop: 8,
+  marginBottom: 10,
+  fontFamily: fontFamilies.dmSansBold,
+  fontSize: 11,
+  letterSpacing: 1.2,
+  color: colors.pink,
+  textTransform: 'uppercase',
+},
 });
