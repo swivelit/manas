@@ -112,8 +112,8 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Upcoming sessions</Text>
           {upcoming.length === 0 ? (
-            <TouchableOpacity onPress={() => router.push('/all-topics')} style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Book a free demo session →</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/topics')} style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Book a discovery session →</Text>
             </TouchableOpacity>
           ) : (
             upcoming.slice(0, 3).map((s: any, i: number) => (
