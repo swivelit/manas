@@ -15,6 +15,7 @@ import {
   verifyOtpHash,
 } from '../lib/otp';
 import { sendLoginOtpEmail } from '../lib/mailer';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -29,6 +30,10 @@ const userSelect = {
   isActive: true,
   createdAt: true,
 } as const;
+const userAuthSelect = {
+  ...userSelect,
+  passwordHash: true,
+} as const;
 
 const DEACTIVATED_MESSAGE = 'This account has been deactivated. Please contact support.';
 
@@ -42,7 +47,9 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
 });
-
+const setPasswordSchema = z.object({
+  password: z.string().min(8),
+});
 const requestEmailOtpSchema = z.object({
   email: z.string().email(),
   name: z.string().trim().min(2).optional(),
@@ -203,7 +210,7 @@ router.post('/verify-email-otp', async (req: Request, res: Response, next: NextF
     });
 
     const mode = parsed.data.mode ?? 'login';
-    let user = await prisma.user.findUnique({ where: { email }, select: userSelect });
+    let user = await prisma.user.findUnique({ where: { email }, select: userAuthSelect });
 
     if (!user) {
       if (mode === 'login') {
@@ -217,17 +224,48 @@ router.post('/verify-email-otp', async (req: Request, res: Response, next: NextF
           name: parsed.data.name ?? getFallbackName(email),
           consentAt: new Date(), // account created via consented signup flow
         },
-        select: userSelect,
+        select: userAuthSelect,
       });
     }
 
-    if (!user.isActive) { res.status(403).json({ error: DEACTIVATED_MESSAGE }); return; }
-    res.json({ token: signToken(user), user });
+    if (!user.isActive) {
+  res.status(403).json({ error: DEACTIVATED_MESSAGE });
+  return;
+}
+
+const { passwordHash, ...safeUser } = user;
+
+res.json({
+  token: signToken(user),
+  user: safeUser,
+  needsPassword: !passwordHash,
+});
   } catch (error) {
     next(error);
   }
 });
+router.post('/set-password', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = setPasswordSchema.safeParse(req.body);
 
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { passwordHash },
+      select: userSelect,
+    });
+
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
 router.post('/register', async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {

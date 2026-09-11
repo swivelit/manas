@@ -158,6 +158,8 @@ export default function SessionDetail() {
   const minsUntil = differenceInMinutes(safeAt, now);
   const isCall = isCallSession(session.type);
   const canJoin = canJoinSession(session, now);
+  const chatHasStarted = minsUntil <= 0;
+  const chatHasEnded = minsUntil < -session.durationMin;
 
   function handleJoin() {
     if (!canJoin) {
@@ -230,7 +232,20 @@ export default function SessionDetail() {
         {session.status === 'CONFIRMED' && (
           <>
             {session.type === 'CHAT' ? (
-              <ChatPanel sessionId={sessionId} currentUserId={me?.id} />
+              chatHasStarted && !chatHasEnded ? (
+             <ChatPanel sessionId={sessionId} currentUserId={me?.id} />
+          ) : (
+               <View style={styles.chatClosed}>
+              <Text style={styles.chatClosedTitle}>
+               {chatHasEnded ? 'Chat session ended' : 'Chat session not started'}
+              </Text>
+            <Text style={styles.chatClosedText}>
+             {chatHasEnded
+             ? 'This session chat is no longer available.'
+              : `Chat will open at ${format(safeAt, 'h:mm a')}.`}
+             </Text>
+            </View>
+             )
             ) : isCall ? (
               <>
                 <TouchableOpacity
@@ -241,11 +256,15 @@ export default function SessionDetail() {
                 >
                   <Text style={styles.btnPrimaryText}>
                     {canJoin
-                      ? 'Join session →'
-                      : minsUntil < -POST_START_JOIN_WINDOW_MIN
-                        ? 'Join window closed'
-                        : `Starts in ${Math.max(minsUntil, 0)} min`}
-                  </Text>
+                     ? 'Join session →'
+                     : minsUntil < -POST_START_JOIN_WINDOW_MIN
+                       ? 'Join window closed'
+                       : minsUntil >= 24 * 60
+                         ? `Starts in ${Math.floor(minsUntil / (24 * 60))} ${Math.floor(minsUntil / (24 * 60)) === 1 ? 'day' : 'days'}`
+                         : minsUntil >= 60
+                           ? `Starts in ${Math.floor(minsUntil / 60)} ${Math.floor(minsUntil / 60) === 1 ? 'hour' : 'hours'}`
+                        : `Starts in ${Math.max(minsUntil, 0)} ${Math.max(minsUntil, 0) === 1 ? 'min' : 'mins'}`}
+                    </Text>
                 </TouchableOpacity>
                 <Text style={styles.callHint}>Calls open securely inside MANAS.</Text>
               </>
@@ -351,4 +370,30 @@ const styles = StyleSheet.create({
   errorWrap: { flex: 1, padding: 22, justifyContent: 'center' },
   errorTitle: { fontFamily: fontFamilies.frauncesMedium, fontSize: 22, color: colors.ink },
   errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
+    errorText: { fontFamily: fontFamilies.dmSans, fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
+
+  chatClosed: {
+    marginTop: 18,
+    backgroundColor: colors.paper,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 20,
+    alignItems: 'center',
+  },
+  chatClosedTitle: {
+    fontFamily: fontFamilies.frauncesMedium,
+    fontSize: 17,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  chatClosedText: {
+    fontFamily: fontFamilies.dmSans,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: 6,
+  },
 });
+

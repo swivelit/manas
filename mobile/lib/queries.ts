@@ -145,7 +145,19 @@ export function useVideoProgress() {
       if (!token) throw new Error('Sign in required to save video progress.');
       return api.post(`/videos/${id}/progress`, { progressSec, completed }).then(r => r.data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['videos'] }),
+    onSuccess: () => {
+  qc.invalidateQueries({ queryKey: ['videos'] });
+  qc.invalidateQueries({ queryKey: ['my-video-progress'] });
+},
+  });
+}
+export function useMyVideoProgress() {
+  const token = useAuthStore(s => s.token);
+
+  return useQuery({
+    queryKey: ['my-video-progress'],
+    queryFn: () => api.get('/videos/progress/me').then(r => r.data),
+    enabled: !!token,
   });
 }
 
@@ -175,6 +187,7 @@ export function useLikeVideo() {
     onSuccess: (_res, id) => {
       qc.invalidateQueries({ queryKey: ['video', id] });
       qc.invalidateQueries({ queryKey: ['videos'] });
+      qc.invalidateQueries({ queryKey: ['video-likes'] });
     },
   });
 }
@@ -184,6 +197,31 @@ export function useVideoBookmarks() {
   return useQuery({
     queryKey: ['video-bookmarks'],
     queryFn: () => api.get('/videos/bookmarks').then(r => r.data),
+    enabled: !!token,
+  });
+}
+export function useVideoLikes() {
+  const token = useAuthStore(s => s.token);
+
+  return useQuery({
+    queryKey: ['video-likes'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/videos/likes');
+
+        console.log('LIKED VIDEOS RESPONSE:', response.data);
+
+        return response.data;
+      } catch (error: any) {
+        console.log(
+          'LIKED VIDEOS ERROR:',
+          error?.response?.status,
+          error?.response?.data
+        );
+
+        throw error;
+      }
+    },
     enabled: !!token,
   });
 }
@@ -401,7 +439,7 @@ export function useAdminCoaches() {
 export function usePromoteCoach() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { userId: string; specialty?: string; bio?: string }) =>
+    mutationFn: (data: { userId: string; specialty?: string; bio?: string;anxietySpecialist?: boolean; }) =>
       api.post('/admin/coaches', data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-coaches'] });
@@ -410,7 +448,19 @@ export function usePromoteCoach() {
     },
   });
 }
+export function useDeleteAdminUser() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+  mutationFn: async (userId: string) => {
+    return api.delete(`/admin/users/${userId}`).then(r => r.data);
+  },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'coaches'] });
+    },
+  });
+}
 export function useAdminVideos() {
   const token = useAuthStore(s => s.token);
   return useQuery({
@@ -423,8 +473,20 @@ export function useAdminVideos() {
 export function useUpdateAdminVideo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; approved?: boolean; isPremium?: boolean }) =>
-      api.patch(`/admin/videos/${id}`, data).then(r => r.data),
+    mutationFn: ({ id, ...data }: {  id: string;
+      title?: string;
+     description?: string;
+     url?: string;
+     thumbnailUrl?: string;
+     subtitleUrl?: string;
+     toyDescription?: string;
+     durationSec?: number;
+     type?: string;
+     isPremium?: boolean;
+     approved?: boolean;
+     topicId?: string;
+    }) =>
+      api.patch(`/admin/videos/${id}`, data).then(r => {console.log('UPDATE VIDEO RESPONSE:', r.data);return r.data;}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-videos'] });
       qc.invalidateQueries({ queryKey: ['videos'] });
@@ -437,12 +499,16 @@ export function useCreateAdminVideo() {
   return useMutation({
     mutationFn: (data: {
       title: string; description: string; url: string; thumbnailUrl?: string; subtitleUrl?: string;
-      toyDescription?: string; toyAudioUrl?: string;
+      toyDescription?: string; 
+      englishDialogue?: string;
+      tamilDialogue?: string;
+      toyAudioUrl?: string;
       durationSec?: number; type: string; isPremium?: boolean; approved?: boolean; topicId?: string;
     }) => api.post('/admin/videos', data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-videos'] });
       qc.invalidateQueries({ queryKey: ['videos'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
     },
   });
 }
@@ -454,6 +520,7 @@ export function useDeleteAdminVideo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-videos'] });
       qc.invalidateQueries({ queryKey: ['videos'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
     },
   });
 }

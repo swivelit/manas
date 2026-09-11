@@ -245,6 +245,21 @@ router.get('/bookmarks', requireAuth, async (req: Request, res: Response) => {
   });
   res.json(bookmarks.map(b => b.video));
 });
+router.get('/likes', requireAuth, async (req: Request, res: Response) => {
+  const likes = await prisma.videoLike.findMany({
+    where: { userId: req.user!.id },
+    include: {
+      video: {
+        include: {
+          topic: { select: { name: true, slug: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json(likes.map(l => l.video));
+});
 
 router.post('/toy-audio', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -330,6 +345,38 @@ router.post('/upload', requireAuth, async (req: Request, res: Response, next: Ne
     next(err);
   }
 });
+router.get('/progress/me', requireAuth, async (req: Request, res: Response) => {
+  const progress = await prisma.videoProgress.findMany({
+    where: { userId: req.user!.id },
+    select: {
+      progressSec: true,
+      completed: true,
+      video: {
+    select: {
+      topicId: true,
+    },
+    }
+   },
+  });
+
+  const totalProgressSec = progress.reduce(
+    (total, item) => total + item.progressSec,
+    0
+  );
+
+  const completedVideos = progress.filter(item => item.completed).length;
+  const topicsCovered = new Set(
+  progress
+    .filter(item => item.completed && item.video.topicId)
+    .map(item => item.video.topicId)
+).size;
+  res.json({
+    totalProgressSec,
+    completedVideos,
+    topicsCovered,
+  });
+});
+
 
 router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
   const video = await prisma.video.findUnique({

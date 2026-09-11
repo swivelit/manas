@@ -29,13 +29,16 @@ export function TopicTile({ topic, index, onPress }: TopicTileProps) {
 
 const styles = StyleSheet.create({
   tile: {
+    flex: 1,
     backgroundColor: colors.paper,
     borderRadius: 14,
     padding: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
     borderColor: colors.line,
+    minHeight: 82,
   },
   ico: {
     width: 32,
