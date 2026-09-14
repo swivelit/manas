@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const mobile = path.join(root, 'mobile');
@@ -15,6 +16,7 @@ const bannerId = 'ca-app-pub-9649241407302744/9035398208';
 const publisher = '9649241407302744';
 const appAdsLine = 'google.com, pub-9649241407302744, DIRECT, f08c47fec0942fa0';
 const proguardRule = '-keep class com.google.android.gms.internal.consent_sdk.** { *; }';
+const adIdPermission = 'com.google.android.gms.permission.AD_ID';
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -32,10 +34,15 @@ function read(relativePath) {
 }
 
 requireCondition(app.name === 'MANAS', 'mobile/app.json must remain the MANAS app.');
-requireCondition(app.version === '1.0.5', 'mobile/app.json version must be incremented to 1.0.5.');
+requireCondition(typeof app.version === 'string' && /^\d+\.\d+\.\d+(?:[-+].*)?$/.test(app.version), 'mobile/app.json must contain a valid release version.');
 requireCondition(app.android?.package === 'com.swivelit.manas', 'Android package changed from com.swivelit.manas.');
-requireCondition(app.android?.versionCode === 6, 'Android versionCode must be incremented to 6.');
+requireCondition(Number.isInteger(app.android?.versionCode) && app.android.versionCode > 0, 'Android versionCode must be a positive integer.');
 requireCondition(app.ios?.bundleIdentifier === 'com.jeygroups.manas', 'iOS bundle identifier changed unexpectedly.');
+
+const androidPermissions = app.android?.permissions ?? [];
+const blockedPermissions = app.android?.blockedPermissions ?? [];
+requireCondition(androidPermissions.includes(adIdPermission), `mobile/app.json must explicitly declare ${adIdPermission} under expo.android.permissions.`);
+requireCondition(!blockedPermissions.includes(adIdPermission), `${adIdPermission} must not be present in expo.android.blockedPermissions.`);
 
 requireCondition(/^ca-app-pub-\d{16}~\d{10}$/.test(appId), 'Android App ID is malformed.');
 requireCondition(/^ca-app-pub-\d{16}\/\d{10}$/.test(bannerId), 'Android banner ad-unit ID is malformed.');
@@ -119,6 +126,70 @@ for (const [index, source] of privacySources.entries()) {
   }
 }
 
+function containsAdIdPermission(source) {
+  return source.includes(adIdPermission);
+}
+
+function checkGeneratedReleaseManifests() {
+  const buildDir = path.join(mobile, 'android', 'app', 'build');
+  if (!fs.existsSync(buildDir)) return 0;
+
+  const manifests = [];
+  const visit = directory => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(entryPath);
+      else if (
+        entry.name === 'AndroidManifest.xml' &&
+        /[/\\](merged_manifest|bundle_manifest|merged_manifests|packaged_manifests)[/\\]/.test(entryPath) &&
+        /[/\\](release|Release)[/\\]/.test(entryPath)
+      ) manifests.push(entryPath);
+    }
+  };
+  visit(buildDir);
+
+  for (const manifestPath of manifests) {
+    requireCondition(containsAdIdPermission(fs.readFileSync(manifestPath, 'utf8')), `Generated release manifest is missing ${adIdPermission}: ${path.relative(root, manifestPath)}`);
+  }
+
+  if (manifests.length > 0) {
+    console.log(`Checked ${manifests.length} generated release manifest(s) for ${adIdPermission}.`);
+  }
+  return manifests.length;
+}
+
+function commandOutput(command, args, options = {}) {
+  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
+  if (result.error || result.status !== 0) return null;
+  return result.stdout;
+}
+
+function checkAab(artifactPath) {
+  requireCondition(fs.existsSync(artifactPath), `AAB not found: ${artifactPath}`);
+  requireCondition(artifactPath.endsWith('.aab'), `Expected an Android App Bundle (.aab): ${artifactPath}`);
+
+  const bundletoolManifest = commandOutput('bundletool', ['dump', 'manifest', `--bundle=${artifactPath}`, '--module=base']);
+  if (bundletoolManifest !== null) {
+    requireCondition(containsAdIdPermission(bundletoolManifest), `Final AAB base manifest is missing ${adIdPermission}: ${path.relative(root, artifactPath)}`);
+    console.log(`Checked final AAB base manifest with bundletool for ${adIdPermission}.`);
+    return;
+  }
+
+  const entriesText = commandOutput('unzip', ['-Z1', artifactPath]);
+  requireCondition(entriesText !== null, 'bundletool or unzip is required to inspect the final AAB.');
+  const manifestEntries = entriesText.split(/\r?\n/).filter(entry => /(^|\/)AndroidManifest\.xml$/.test(entry));
+  requireCondition(manifestEntries.length > 0, `No AndroidManifest.xml entries were found inside ${path.relative(root, artifactPath)}.`);
+
+  for (const entry of manifestEntries) {
+    const manifestBinary = spawnSync('unzip', ['-p', artifactPath, entry]);
+    requireCondition(!manifestBinary.error && manifestBinary.status === 0, `Could not extract ${entry} from the final AAB.`);
+    const strings = spawnSync('strings', [], { input: manifestBinary.stdout, encoding: 'utf8' });
+    requireCondition(!strings.error && strings.status === 0, 'strings is required to inspect the final AAB when bundletool is unavailable.');
+    requireCondition(containsAdIdPermission(strings.stdout), `Final AAB manifest is missing ${adIdPermission}: ${path.relative(root, artifactPath)} (${entry})`);
+  }
+  console.log(`Checked ${manifestEntries.length} final AAB manifest entr${manifestEntries.length === 1 ? 'y' : 'ies'} with unzip/strings for ${adIdPermission}.`);
+}
+
 const buildDocs = read('mobile/BUILD.md');
 for (const requirement of [
   'App ID contains `~`',
@@ -131,6 +202,12 @@ for (const requirement of [
   'Contains ads, Data safety and Advertising ID',
 ]) {
   requireCondition(buildDocs.includes(requirement), `Mobile documentation is missing: ${requirement}`);
+}
+
+const artifactPath = process.argv[2];
+if (artifactPath) {
+  checkGeneratedReleaseManifests();
+  checkAab(path.resolve(root, artifactPath));
 }
 
 console.log('Android AdMob configuration validation passed.');

@@ -141,6 +141,7 @@ if [[ ! -f "$AAB_PATH" ]]; then
   exit 1
 fi
 
+node "$ROOT_DIR/scripts/check-android-admob-config.js" "$AAB_PATH"
 "$ROOT_DIR/scripts/verify-android-media-permissions.sh" "$AAB_PATH"
 "$ROOT_DIR/scripts/verify-android-foreground-service-permissions.sh" "$AAB_PATH"
 

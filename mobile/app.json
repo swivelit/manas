@@ -3,7 +3,7 @@
     "name": "MANAS",
     "slug": "manas",
     "scheme": "manas",
-    "version": "1.0.8",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +23,8 @@
         "WAKE_LOCK",
         "BLUETOOTH",
         "BLUETOOTH_CONNECT",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "com.google.android.gms.permission.AD_ID"
       ],
       "blockedPermissions": [
         "android.permission.READ_MEDIA_VIDEO",

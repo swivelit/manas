@@ -45,6 +45,9 @@ from Profile → Ad privacy choices. MANAS does not send sensitive wellness or a
 information to AdMob for targeting.
 
 Play Console must be updated for Contains ads, Data safety and Advertising ID before release.
+MANAS uses Google AdMob and explicitly declares `com.google.android.gms.permission.AD_ID` in
+the Android manifest. The release AAB must contain that permission; Play Console may continue
+to report an error if another older active artifact does not contain it.
 
 ---
 
