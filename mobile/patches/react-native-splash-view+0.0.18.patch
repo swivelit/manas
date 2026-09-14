@@ -1,0 +1,6 @@
+diff --git a/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt b/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
+--- a/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
++++ b/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
+@@
+-    currentActivity?.let { SplashView.showSplashView(it) }
++    getCurrentActivity()?.let { SplashView.showSplashView(it) }
