@@ -85,6 +85,17 @@ export function signMeetingToken(input: {
         // MANAS MVP sessions are 1-to-1. Both the booked user and assigned
         // coach are moderators so either participant can start the room.
         moderator: true,
+         },
+  features: {
+    livestreaming: false,
+    recording: false,
+    transcription: false,
+    'sip-inbound-call': false,
+    'sip-outbound-call': false,
+    'inbound-call': false,
+    'outbound-call': false,
+    'file-upload': false,
+    'list-visitors': false,
       },
     },
   };

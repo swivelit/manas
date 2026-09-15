@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef,useState } from 'react';
 import { ActivityIndicator, PermissionsAndroid, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { WebView } from 'react-native-webview';
-import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
+import { JitsiMeeting } from '@jitsi/react-native-sdk';
 import { useSession, useSessionCallConfig } from '../../lib/queries';
 import { useAuthStore } from '../../lib/auth';
 import { canJoinSession, isCallSession } from '../../lib/sessionCall';
@@ -96,14 +95,24 @@ export default function SessionCallScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = (Array.isArray(id) ? id[0] : id) ?? '';
   const token = useAuthStore(s => s.token);
+  const user = useAuthStore(s => s.user);
+  const jitsiRef = useRef<any>(null);
   const { data: session, isLoading, isError } = useSession(sessionId);
-  const [webError, setWebError] = useState<string | null>(null);
+  const [meetingError, setMeetingError] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('idle');
   const [permissionRetryKey, setPermissionRetryKey] = useState(0);
 
   const joinable = useMemo(() => canJoinSession(session), [session]);
   const isCall = isCallSession(session?.type);
-  const shouldFetchCallConfig = Boolean(token && sessionId && session && isCall && joinable && permissionStatus === 'granted' && !webError);
+  const shouldFetchCallConfig = Boolean(
+  token &&
+    sessionId &&
+    session &&
+    isCall &&
+    joinable &&
+    permissionStatus === 'granted' &&
+    !meetingError
+);
   const {
     data: callConfig,
     isLoading: isCallConfigLoading,
@@ -130,15 +139,6 @@ export default function SessionCallScreen() {
       cancelled = true;
     };
   }, [permissionRetryKey, session, token]);
-
-  function handleShouldStartLoadWithRequest(request: ShouldStartLoadRequest) {
-    if (isBlockedAuthNavigation(request.url)) {
-      console.warn('[call] blocked meeting auth navigation', safeNavigationTarget(request.url));
-      setWebError(SERVICE_CONFIG_ERROR);
-      return false;
-    }
-    return true;
-  }
 
   if (!token) {
     return (
@@ -220,7 +220,7 @@ export default function SessionCallScreen() {
     );
   }
 
-  if (isCallConfigError || !callConfig?.joinUrl) {
+  if (isCallConfigError || !callConfig?.room || !callConfig?.serverURL || !callConfig?.jwt) {
     return (
       <CallStateScreen
         title="Meeting room unavailable"
@@ -230,11 +230,11 @@ export default function SessionCallScreen() {
     );
   }
 
-  if (webError) {
+  if (meetingError) {
     return (
       <CallStateScreen
         title="Call could not load"
-        message={webError}
+        message={meetingError}
         actionLabel="Back to session"
         onPress={() => returnToSession(sessionId)}
       />
@@ -243,20 +243,32 @@ export default function SessionCallScreen() {
 
   return (
     <SafeAreaView style={styles.callScreen} edges={['top', 'bottom', 'left', 'right']}>
-      <WebView
-        source={{ uri: callConfig.joinUrl }}
-        style={styles.webview}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        allowsFullscreenVideo
-        mediaPlaybackRequiresUserAction={false}
-        mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
-        originWhitelist={['https://*', 'http://*']}
-        setSupportMultipleWindows={false}
-        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-        onError={() => setWebError('The meeting provider could not load. Please try again.')}
-      />
+  
+     <JitsiMeeting
+  ref={jitsiRef}
+  room={callConfig.room}
+  serverURL={callConfig.serverURL}
+  token={callConfig.jwt}
+  userInfo={{
+  displayName: user?.email ?? 'MANAS User',
+  email: user?.email ?? '',
+  avatarURL: '',
+}}
+  config={{
+    toolbarButtons: user?.role === 'COACH'
+      ? ['microphone', 'camera', 'desktop', 'hangup', 'overflowmenu']
+      : ['microphone', 'camera', 'hangup', 'overflowmenu'],
+  }}
+  eventListeners={{
+    onConferenceJoined: () => {
+      setMeetingError(null);
+    },
+    onReadyToClose: () => {
+      returnToSession(sessionId);
+    },
+  }}
+  style={styles.webview}
+/>
       <View pointerEvents="box-none" style={styles.callChrome}>
         <TouchableOpacity onPress={() => returnToSession(sessionId)} style={styles.endButton} activeOpacity={0.85}>
           <Text style={styles.endButtonText}>End</Text>

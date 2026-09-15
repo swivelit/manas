@@ -9,11 +9,14 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.swivelit.manas",
-      "versionCode": 10,
+      "versionCode": 8,
+      "minSdkVersion": 26,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
         "INTERNET",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PROJECTION",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
         "MODIFY_AUDIO_SETTINGS",
@@ -27,11 +30,7 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_CAMERA",
-        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -89,6 +88,8 @@
         "expo-build-properties",
         {
           "android": {
+            "minSdkVersion": 26,
+            "ndkVersion": "27.1.12297006",
             "extraProguardRules": "-keep class com.google.android.gms.internal.consent_sdk.** { *; }",
             "kotlinVersion": "2.3.0"
           }
