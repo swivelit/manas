@@ -83,6 +83,7 @@ run_step "Backend build" bash -c "cd '$ROOT_DIR/backend' && npm run build"
 run_step "app-ads.txt response check" node "$ROOT_DIR/backend/scripts/check-app-ads-txt.mjs"
 
 run_step "Mobile npm ci" bash -c "cd '$ROOT_DIR/mobile' && npm ci"
+run_step "Android Jitsi configuration check" node "$ROOT_DIR/scripts/check-android-jitsi-config.js"
 run_step "Mobile typecheck" bash -c "cd '$ROOT_DIR/mobile' && npm run typecheck"
 run_step "Mobile Expo dependency check" bash -c "cd '$ROOT_DIR/mobile' && npx expo install --check"
 run_step "Mobile Expo doctor" bash -c "cd '$ROOT_DIR/mobile' && npx expo-doctor"

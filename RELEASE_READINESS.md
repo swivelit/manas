@@ -60,7 +60,8 @@ Last checked: 2026-05-31 (branch `release-blockers`)
 - MANAS requests the normal `CAMERA` and `RECORD_AUDIO` runtime permissions only for visible, user-initiated in-app calls and toy audio recording.
 - MANAS does not perform background camera capture or background microphone capture.
 - Audio and video are not designed for sustained background playback; Android lock-screen media controls, native background playback, and Picture-in-Picture are disabled.
-- The current release therefore must not declare camera, microphone, or media-playback foreground-service permissions or services, and no Play Console foreground-service declaration should be required.
+- Android screen sharing is not a MANAS v1 feature; the Jitsi `desktop` action is not exposed to coaches.
+- The current release therefore must not declare foreground-service permissions or services, including media projection, and no Play Console foreground-service declaration should be required.
 - Before uploading, run `./scripts/build-android_release-aab.sh`; the build verifies the generated manifests and final AAB. The standalone check is `./scripts/verify-android-foreground-service-permissions.sh dist/manas-release.aab`.
 
 ### Previously completed (carried forward, not regressed)

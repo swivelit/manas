@@ -109,6 +109,37 @@ const groovyFiles = [
   'node_modules/react-native-worklets/android/build.gradle',
 ];
 
+const splashViewFiles = [
+  'node_modules/react-native-splash-view/android/src/newarch/java/com/splashview/SplashViewModuleNew.kt',
+  'node_modules/react-native-splash-view/android/src/oldarch/java/com/splashview/SplashViewModuleOld.kt',
+];
+
+const gestureHandlerFiles = [
+  'node_modules/react-native-gesture-handler/android/src/main/java/com/swmansion/gesturehandler/react/RNGestureHandlerModule.kt',
+];
+
+function ensureSplashViewReactNativeActivity(contents) {
+  const replacement = 'reactApplicationContext.currentActivity?.let { SplashView.showSplashView(it) }';
+  if (contents.includes(replacement)) return contents;
+
+  const original = 'currentActivity?.let { SplashView.showSplashView(it) }';
+  if (!contents.includes(original)) {
+    throw new Error('Could not find the react-native-splash-view currentActivity expression to patch.');
+  }
+  return contents.replace(original, replacement);
+}
+
+function ensureGestureHandlerRootViewTagMethod(contents) {
+  const replacement = 'it.rootView is ReactRootView && it.rootView.getRootViewTag() == rootViewTag';
+  if (contents.includes(replacement)) return contents;
+
+  const original = 'it.rootView is ReactRootView && it.rootView.rootViewTag == rootViewTag';
+  if (!contents.includes(original)) {
+    throw new Error('Could not find the react-native-gesture-handler rootViewTag expression to patch.');
+  }
+  return contents.replace(original, replacement);
+}
+
 let changed = 0;
 for (const file of kotlinFiles) {
   if (patchFile(file, ensureKotlinFile)) changed += 1;
@@ -117,4 +148,14 @@ for (const file of groovyFiles) {
   if (patchFile(file, ensureGroovyFile)) changed += 1;
 }
 
-console.log(`Patched Android Gradle Node resolution in ${changed} file(s).`);
+let splashViewChanged = 0;
+for (const file of splashViewFiles) {
+  if (patchFile(file, ensureSplashViewReactNativeActivity)) splashViewChanged += 1;
+}
+
+let gestureHandlerChanged = 0;
+for (const file of gestureHandlerFiles) {
+  if (patchFile(file, ensureGestureHandlerRootViewTagMethod)) gestureHandlerChanged += 1;
+}
+
+console.log(`Patched Android Gradle Node resolution in ${changed} file(s), react-native-splash-view in ${splashViewChanged} file(s), and react-native-gesture-handler in ${gestureHandlerChanged} file(s).`);

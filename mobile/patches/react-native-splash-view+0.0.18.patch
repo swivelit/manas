@@ -1,6 +1,12 @@
-diff --git a/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt b/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
---- a/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
-+++ b/node_modules/react-native-splash-view/android/src/main/java/com/splashview/SplashViewModule.kt
-@@
+diff --git a/node_modules/react-native-splash-view/android/src/newarch/java/com/splashview/SplashViewModuleNew.kt b/node_modules/react-native-splash-view/android/src/newarch/java/com/splashview/SplashViewModuleNew.kt
+--- a/node_modules/react-native-splash-view/android/src/newarch/java/com/splashview/SplashViewModuleNew.kt
++++ b/node_modules/react-native-splash-view/android/src/newarch/java/com/splashview/SplashViewModuleNew.kt
+@@ -13 +13 @@
 -    currentActivity?.let { SplashView.showSplashView(it) }
-+    getCurrentActivity()?.let { SplashView.showSplashView(it) }
++    reactApplicationContext.currentActivity?.let { SplashView.showSplashView(it) }
+diff --git a/node_modules/react-native-splash-view/android/src/oldarch/java/com/splashview/SplashViewModuleOld.kt b/node_modules/react-native-splash-view/android/src/oldarch/java/com/splashview/SplashViewModuleOld.kt
+--- a/node_modules/react-native-splash-view/android/src/oldarch/java/com/splashview/SplashViewModuleOld.kt
++++ b/node_modules/react-native-splash-view/android/src/oldarch/java/com/splashview/SplashViewModuleOld.kt
+@@ -14 +14 @@
+-    currentActivity?.let { SplashView.showSplashView(it) }
++    reactApplicationContext.currentActivity?.let { SplashView.showSplashView(it) }

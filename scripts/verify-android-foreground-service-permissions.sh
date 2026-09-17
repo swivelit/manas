@@ -11,11 +11,12 @@ FORBIDDEN_LITERALS=(
   "android.permission.FOREGROUND_SERVICE_CAMERA"
   "android.permission.FOREGROUND_SERVICE_MICROPHONE"
   "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+  "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
   "expo.modules.audio.service.AudioControlsService"
   "expo.modules.audio.service.AudioRecordingService"
   "expo.modules.video.playbackService.ExpoVideoPlaybackService"
 )
-FOREGROUND_TYPE_REGEX="android:foregroundServiceType[[:space:]]*=[[:space:]]*[\"'][^\"']*(camera|microphone|mediaPlayback)([|,[:space:]\"']|$)"
+FOREGROUND_TYPE_REGEX="android:foregroundServiceType[[:space:]]*=[[:space:]]*[\"'][^\"']*(camera|microphone|mediaPlayback|mediaProjection)([|,[:space:]\"']|$)"
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/manas-foreground-services.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -61,7 +62,7 @@ check_text_manifest() {
 
   matches="$(grep -nE "$FOREGROUND_TYPE_REGEX" "$file_path" || true)"
   if [[ -n "$matches" ]]; then
-    mark_failure "$label" 'camera, microphone, or mediaPlayback foregroundServiceType' "$matches"
+    mark_failure "$label" 'camera, microphone, mediaPlayback, or mediaProjection foregroundServiceType' "$matches"
   fi
 }
 
@@ -90,7 +91,7 @@ check_source_manifest_removals() {
 
   matches="$(grep -nE "$FOREGROUND_TYPE_REGEX" "$file_path" || true)"
   if [[ -n "$matches" ]]; then
-    mark_failure "$label" 'camera, microphone, or mediaPlayback foregroundServiceType' "$matches"
+    mark_failure "$label" 'camera, microphone, mediaPlayback, or mediaProjection foregroundServiceType' "$matches"
   fi
 }
 
@@ -132,9 +133,9 @@ check_strings_manifest() {
   check_text_manifest "$strings_path" "$label"
 
   if grep -F "foregroundServiceType" "$strings_path" >/dev/null 2>&1; then
-    matches="$(grep -nE '^(camera|microphone|mediaPlayback)([^[:alnum:]_]|$)' "$strings_path" || true)"
+    matches="$(grep -nE '^(camera|microphone|mediaPlayback|mediaProjection)([^[:alnum:]_]|$)' "$strings_path" || true)"
     if [[ -n "$matches" ]]; then
-      mark_failure "$label" 'camera, microphone, or mediaPlayback foregroundServiceType' "$matches"
+      mark_failure "$label" 'camera, microphone, mediaPlayback, or mediaProjection foregroundServiceType' "$matches"
     fi
   fi
 }
@@ -194,8 +195,8 @@ cat <<'EOF'
 =================================================
  MANAS Android Foreground Service Permission Check
 =================================================
-The release must not contain camera, microphone, or media-playback foreground
-service permissions, service types, or Expo background playback services.
+The release must not contain foreground-service permissions, media-projection
+service types, or Expo background playback services.
 
 EOF
 

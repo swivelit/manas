@@ -197,6 +197,7 @@ fi
 npx expo --version
 CI=1 npx expo config --type public
 CI=1 npx expo prebuild --platform android --clean
+node "$REPO_ROOT/scripts/check-android-jitsi-config.js" --generated
 
 cat > android/local.properties <<EOF
 sdk.dir=$ANDROID_SDK_ROOT

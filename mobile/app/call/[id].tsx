@@ -256,7 +256,7 @@ export default function SessionCallScreen() {
 }}
   config={{
     toolbarButtons: user?.role === 'COACH'
-      ? ['microphone', 'camera', 'desktop', 'hangup', 'overflowmenu']
+      ? ['microphone', 'camera', 'hangup', 'overflowmenu']
       : ['microphone', 'camera', 'hangup', 'overflowmenu'],
   }}
   eventListeners={{
