@@ -56,6 +56,7 @@ function PlayableVideo({ video, videoId ,subtitleEnabled,}: { video: VideoDetail
   const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const [currentSubtitle, setCurrentSubtitle] = useState('');
   const savedProgressSec = typeof video.progress?.progressSec === 'number' ? video.progress.progressSec : 0;
+  console.log('VIDEO URL:', video.url);
   useEffect(() => {
   if (!video.subtitleUrl) {
     setSubtitleCues([]);
@@ -149,6 +150,13 @@ function PlayableVideo({ video, videoId ,subtitleEnabled,}: { video: VideoDetail
 
   if (savedProgressSec > 0) {
     p.currentTime = savedProgressSec;
+  }
+});
+useEventListener(player, 'statusChange', ({ status, error }) => {
+  console.log('VIDEO STATUS:', status);
+
+  if (error) {
+    console.log('VIDEO ERROR:', error);
   }
 });
 
