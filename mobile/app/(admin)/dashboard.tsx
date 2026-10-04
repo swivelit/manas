@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator,KeyboardAvoidingView,Platform, } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAdminStats, useBroadcast } from '../../lib/queries';
@@ -58,7 +58,17 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+  style={{ flex: 1 }}
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+>
+  <ScrollView
+    contentContainerStyle={styles.scroll}
+    keyboardShouldPersistTaps="handled"
+    keyboardDismissMode="on-drag"
+    showsVerticalScrollIndicator={false}
+  >
         <View style={styles.head}>
           <View style={{ flex: 1 }}>
             <Text style={styles.kicker}>ADMIN</Text>
@@ -102,6 +112,7 @@ export default function AdminDashboard() {
           </>
         )}
       </ScrollView>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -65,12 +65,14 @@ export default function SetPassword() {
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding'  : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding'  : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
         style={styles.keyboard}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Text style={styles.heading}>
             Set your{'\n'}
